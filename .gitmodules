@@ -1,0 +1,3 @@
+[submodule "taskusalkku-spec"]
+	path = taskusalkku-spec
+	url = git@github.com:Metatavu/taskusalkku-spec.git
