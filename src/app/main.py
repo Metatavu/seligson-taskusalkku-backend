@@ -53,7 +53,4 @@ def list_historical_values(
 
 @app.get('/v1/system/ping', response_model=None)
 def ping() -> None:
-    """
-    Replies with pong
-    """
-    pass
+    return {"ping": "pong!"}
