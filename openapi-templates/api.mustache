@@ -38,9 +38,9 @@ class {{classname}}Spec(ABC):
     @abstractmethod
     async def {{operationId}}(self,
         {{#allParams}}
-        {{>endpoint_argument_definition}},
+        {{paramName}}: {{>param_type}}{{^-last}},{{/-last}}
         {{/allParams}}
-    ) -> str:
+    ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
         ...
 
     @router.{{#lambda.lowercase}}{{httpMethod}}{{/lambda.lowercase}}(

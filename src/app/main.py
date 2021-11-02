@@ -1,5 +1,11 @@
 # coding: utf-8
 
+import os
+import sys
+
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_PATH)
+
 """
     Taskusalkku API
 """
@@ -7,6 +13,7 @@
 from fastapi import FastAPI
 
 from ..impl.apis.system_api import SystemApiRouter
+from ..impl.apis.funds_api import FundsApiRouter
 
 app = FastAPI(
     title="Taskusalkku API",
@@ -15,3 +22,4 @@ app = FastAPI(
 )
 
 app.include_router(SystemApiRouter)
+app.include_router(FundsApiRouter)
