@@ -3,14 +3,18 @@ from testcontainers.core.waiting_utils import wait_for_logs
 from os import environ
 
 
+KEYCLOAK_USER="KEYCLOAK_USER"
+KEYCLOAK_PASSWORD="KEYCLOAK_PASSWORD"
+KEYCLOAK_IMPORT="KEYCLOAK_IMPORT"
+
 class KeycloakContainer(DockerContainer):
     """
     Keycloak container.
     -------
     """
-    KEYCLOAK_USER = environ.get("KEYCLOAK_USER", "admin")
-    KEYCLOAK_PASSWORD = environ.get("KEYCLOAK_PASSWORD", "admin")
-    KEYCLOAK_IMPORT = environ.get("KEYCLOAK_IMPORT")
+    KEYCLOAK_USER = environ.get(KEYCLOAK_USER, "admin")
+    KEYCLOAK_PASSWORD = environ.get(KEYCLOAK_PASSWORD, "admin")
+    KEYCLOAK_IMPORT = environ.get(KEYCLOAK_IMPORT)
     
     def __init__(self, image="quay.io/keycloak/keycloak:latest", **kwargs):
         """Constructor
@@ -66,9 +70,9 @@ class KeycloakContainer(DockerContainer):
     def _configure(self):
         """Configures the Keycloak container
         """        
-        self.with_env("KEYCLOAK_USER", self.KEYCLOAK_USER)
-        self.with_env("KEYCLOAK_PASSWORD", self.KEYCLOAK_PASSWORD)
+        self.with_env(KEYCLOAK_USER, self.KEYCLOAK_USER)
+        self.with_env(KEYCLOAK_PASSWORD, self.KEYCLOAK_PASSWORD)
 
         if self.KEYCLOAK_IMPORT:
             self.with_volume_mapping(self.KEYCLOAK_IMPORT, "/tmp/kc.json") #NOSONAR
-            self.with_env("KEYCLOAK_IMPORT", "/tmp/kc.json") #NOSONAR
+            self.with_env(KEYCLOAK_IMPORT, "/tmp/kc.json") #NOSONAR
