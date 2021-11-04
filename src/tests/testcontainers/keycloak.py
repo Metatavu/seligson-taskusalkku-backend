@@ -50,7 +50,7 @@ class KeycloakContainer(DockerContainer):
         """        
         host = self.get_container_host_ip()
         port = self.get_exposed_port(8080)
-        return "http://" + host + ":" + port + "/auth"
+        return "http://" + host + ":" + port + "/auth" #NOSONAR
 
     def get_oidc_token_url(self, realm):
         """Returns access token URL for given realm
@@ -70,5 +70,5 @@ class KeycloakContainer(DockerContainer):
         self.with_env("KEYCLOAK_PASSWORD", self.KEYCLOAK_PASSWORD)
 
         if self.KEYCLOAK_IMPORT:
-            self.with_volume_mapping(self.KEYCLOAK_IMPORT, "/tmp/kc.json")
-            self.with_env("KEYCLOAK_IMPORT", "/tmp/kc.json")
+            self.with_volume_mapping(self.KEYCLOAK_IMPORT, "/tmp/kc.json") #NOSONAR
+            self.with_env("KEYCLOAK_IMPORT", "/tmp/kc.json") #NOSONAR
