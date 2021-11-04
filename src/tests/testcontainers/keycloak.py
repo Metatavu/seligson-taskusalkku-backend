@@ -50,7 +50,18 @@ class KeycloakContainer(DockerContainer):
         """        
         host = self.get_container_host_ip()
         port = self.get_exposed_port(8080)
-        return "http://" + host + ":" + port
+        return "http://" + host + ":" + port + "/auth"
+
+    def get_oidc_token_url(self, realm):
+        """Returns access token URL for given realm
+
+        Args:
+            realm (str): realm
+
+        Returns:
+            str: Access token URL
+        """        
+        return self.get_keycloak_url() + "/realms/" + realm + "/protocol/openid-connect/token"
 
     def _configure(self):
         """Configures the Keycloak container

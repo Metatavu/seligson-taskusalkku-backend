@@ -4,7 +4,7 @@ from ...app.main import app
 
 
 @pytest.fixture()
-def client():
+def client() -> TestClient:
     """Fixture for test REST client
 
     Returns:
