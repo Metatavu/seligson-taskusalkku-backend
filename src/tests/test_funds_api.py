@@ -2,7 +2,6 @@ from starlette.testclient import TestClient
 
 from .auth.auth import BearerAuth
 
-from .fixtures.keycloak import *
 from .fixtures.mysql import *
 from .fixtures.users import *
 from .fixtures.client import *

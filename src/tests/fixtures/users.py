@@ -3,6 +3,7 @@ import pytest
 from ..auth.auth import AccessTokenProvider, BearerAuth
 from ..testcontainers.keycloak import KeycloakContainer
 from ...app.main import app
+from ..fixtures.keycloak import *
 
 @pytest.fixture()
 def user_1_token(keycloak: KeycloakContainer) -> str:
