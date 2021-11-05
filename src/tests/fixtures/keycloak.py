@@ -24,6 +24,8 @@ def keycloak(request):
                                  )
 
     keycloak.start()
+    os.environ["OIDC_AUTH_SERVER_URL"] = keycloak.get_keycloak_url() + "/realms/seligson"
+    os.environ["OIDC_AUDIENCE"] = "api"
 
     def teardown():
         """Stops the containers after session
