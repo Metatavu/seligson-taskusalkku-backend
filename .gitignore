@@ -25,4 +25,3 @@ archive.zip
 *~
 .*.sw?
 bin/utils/*.jar
-src/spec
