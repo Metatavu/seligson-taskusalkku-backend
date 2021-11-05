@@ -2,7 +2,7 @@
 
 from typing import List
 from fastapi_utils.cbv import cbv
-from ...spec.apis.funds_api import FundsApiSpec, router as FundsApiRouter
+from spec.apis.funds_api import FundsApiSpec, router as FundsApiRouter
 
 from spec.models.fund import Fund
 from spec.models.historical_value import HistoricalValue

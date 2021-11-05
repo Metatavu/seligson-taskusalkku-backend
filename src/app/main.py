@@ -3,23 +3,6 @@
 import os
 import sys
 
-BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_PATH)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-"""
-    Taskusalkku API
-"""
-
-from fastapi import FastAPI
-
-from ..impl.apis.system_api import SystemApiRouter
-from ..impl.apis.funds_api import FundsApiRouter
-
-app = FastAPI(
-    title="Taskusalkku API",
-    description="Taskusalkku API",
-    version="1.0.0",
-)
-
-app.include_router(SystemApiRouter)
-app.include_router(FundsApiRouter)
+from .app import *
