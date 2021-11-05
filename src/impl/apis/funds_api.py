@@ -4,11 +4,11 @@ from typing import List
 import logging
 
 from fastapi_utils.cbv import cbv
-from ...spec.apis.funds_api import FundsApiSpec, router as FundsApiRouter
-from ...spec.models.extra_models import TokenModel
+from spec.apis.funds_api import FundsApiSpec, router as FundsApiRouter
 
 from spec.models.fund import Fund
 from spec.models.historical_value import HistoricalValue
+from spec.models.extra_models import TokenModel
 
 logger = logging.getLogger(__name__)
 

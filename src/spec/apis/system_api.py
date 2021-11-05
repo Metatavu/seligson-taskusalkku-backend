@@ -20,7 +20,7 @@ from fastapi import (  # noqa: F401
 from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
 
-from ...spec.models.extra_models import TokenModel  # noqa: F401
+from spec.models.extra_models import TokenModel  # noqa: F401
 
 
 router = APIRouter()
