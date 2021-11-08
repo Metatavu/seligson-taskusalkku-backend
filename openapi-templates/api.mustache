@@ -1,0 +1,80 @@
+# coding: utf-8
+
+from typing import Dict, List  # noqa: F401
+from abc import ABC, abstractmethod
+
+from fastapi import (  # noqa: F401
+    APIRouter,
+    Body,
+    Cookie,
+    Depends,
+    Form,
+    Header,
+    Path,
+    Query,
+    Response,
+    Security,
+    status,
+)
+
+from fastapi_utils.cbv import cbv
+from fastapi_utils.inferring_router import InferringRouter
+
+from {{modelPackage}}.extra_models import TokenModel  # noqa: F401
+{{#imports}}
+{{import}}
+{{/imports}}
+{{#securityImports.0}}from {{packageName}}.security_api import {{#securityImports}}get_token_{{.}}{{^-last}}, {{/-last}}{{/securityImports}}{{/securityImports.0}}
+
+router = APIRouter()
+router = InferringRouter()
+
+@cbv(router)
+class {{classname}}Spec(ABC):
+
+    {{#operations}}
+    {{#operation}}
+
+    @abstractmethod
+    async def {{operationId}}(self,
+        {{#allParams}}
+        {{paramName}}: {{>param_type}}{{^-last}},{{/-last}}
+        {{/allParams}}
+    ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
+        ...
+
+    @router.{{#lambda.lowercase}}{{httpMethod}}{{/lambda.lowercase}}(
+        "{{path}}",
+        responses={
+            {{#responses}}
+            {{code}}: {{=<% %>=}}{<%#dataType%>"model": <%dataType%>, "description": "<%message%>"<%/dataType%><%^dataType%>"description": "<%message%>"<%/dataType%>}<%={{ }}=%>,
+            {{/responses}}
+        },
+        tags=[{{#tags}}"{{name}}"{{^-last}},{{/-last}}{{/tags}}],
+        {{#summary}}
+        summary="{{.}}",
+        {{/summary}}
+        {{#description}}
+        description = "{{.}}",
+        {{/description}}
+    )
+    async def {{operationId}}_spec(self,
+        {{#allParams}}
+        {{>endpoint_argument_definition}},
+        {{/allParams}}
+        {{#hasAuthMethods}}
+        {{#authMethods}}
+        token_{{name}}: TokenModel = Security(
+            get_token_{{name}}{{#isOAuth}}, scopes=[{{#scopes}}"{{scope}}"{{^-last}}, {{/-last}}{{/scopes}}]{{/isOAuth}}
+        ),
+        {{/authMethods}}
+        {{/hasAuthMethods}}
+    ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
+        {{#notes}}"""{{.}}"""{{/notes}}{{^notes}}...{{/notes}}
+        return await self.{{operationId}}({{#allParams}}{{baseName}}{{^-last}}, {{/-last}}{{/allParams}})
+    {{^-last}}
+
+
+    {{/-last}}
+    {{/operation}}
+    {{/operations}}
