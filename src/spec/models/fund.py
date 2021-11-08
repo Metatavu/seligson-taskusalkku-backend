@@ -35,7 +35,6 @@ class Fund(BaseModel):
         risk: The risk of this Fund [Optional].
         kiid: The kiid of this Fund [Optional].
     """
-
     id: Optional[str] = None
     name: LocalizedValue
     long_name: Optional[LocalizedValue] = None
@@ -51,5 +50,6 @@ class Fund(BaseModel):
     color: Optional[str] = None
     risk: Optional[int] = None
     kiid: Optional[LocalizedValue] = None
+
 
 Fund.update_forward_refs()

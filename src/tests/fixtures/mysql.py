@@ -5,7 +5,7 @@ from testcontainers.mysql import MySqlContainer
 
 @pytest.fixture(scope="session")
 def mysql(request):
-    """MySQL Fixuture.
+    """MySQL Fixture.
 
     Args:
         request (FixtureRequest): A fixture request object

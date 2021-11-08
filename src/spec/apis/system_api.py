@@ -26,12 +26,13 @@ from spec.models.extra_models import TokenModel  # noqa: F401
 router = APIRouter()
 router = InferringRouter()
 
+
 @cbv(router)
 class SystemApiSpec(ABC):
-
-
+    
     @abstractmethod
-    async def ping(self,
+    async def ping(
+        self,
     ) -> str:
         ...
 
@@ -43,7 +44,10 @@ class SystemApiSpec(ABC):
         tags=["System"],
         summary="Replies with pong",
     )
-    async def ping_spec(self,
+    async def ping_spec(
+        self,
     ) -> str:
         """Replies ping with pong"""
-        return await self.ping()
+        return await self.ping(
+            
+        )

@@ -1,6 +1,7 @@
 import requests
 from ..testcontainers.keycloak import KeycloakContainer
 
+
 class BearerAuth(requests.auth.AuthBase):
     """Bearer authentication strategy for requests
     """    
@@ -25,24 +26,24 @@ class BearerAuth(requests.auth.AuthBase):
         request.headers["authorization"] = "Bearer " + self.token
         return request
 
+
 class AccessTokenProvider():
     """Authentication provider class for test purposes
     """    
 
     def __init__(self, keycloak: KeycloakContainer, realm: str, client_id: str, client_secret: str = None):
-      """Constructor
+        """Constructor
 
-      Args:
-          keycloak (KeycloakContainer): Keycloak container reference
-          realm (str): realm
-          client_id (str): client id
-          client_secret (str, optional): client secret. Defaults to None.
-      """      
-      self.keycloak = keycloak
-      self.realm = realm
-      self.client_id = client_id
-      self.client_secret = client_secret
-
+        Args:
+            keycloak (KeycloakContainer): Keycloak container reference
+            realm (str): realm
+            client_id (str): client id
+            client_secret (str, optional): client secret. Defaults to None.
+        """
+        self.keycloak = keycloak
+        self.realm = realm
+        self.client_id = client_id
+        self.client_secret = client_secret
   
     def get_access_token(self, username: str, password: str) -> str:
         """Returns access token with given credentials
@@ -62,7 +63,7 @@ class AccessTokenProvider():
           "password": password
         }
 
-        if (self.client_secret != None):
+        if self.client_secret is not None:
           data["client_secret"] = self.client_secret
 
         return requests.post(token_url, data = data).json()["access_token"]

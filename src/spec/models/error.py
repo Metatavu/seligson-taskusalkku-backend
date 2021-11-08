@@ -19,8 +19,8 @@ class Error(BaseModel):
         code: The code of this Error.
         message: The message of this Error.
     """
-
     code: int
     message: str
+
 
 Error.update_forward_refs()

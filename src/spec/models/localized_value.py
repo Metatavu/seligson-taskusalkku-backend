@@ -19,8 +19,8 @@ class LocalizedValue(BaseModel):
         fi: The fi of this LocalizedValue.
         sv: The sv of this LocalizedValue.
     """
-
     fi: str
     sv: str
+
 
 LocalizedValue.update_forward_refs()

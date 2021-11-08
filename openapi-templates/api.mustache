@@ -29,14 +29,13 @@ from {{modelPackage}}.extra_models import TokenModel  # noqa: F401
 router = APIRouter()
 router = InferringRouter()
 
+
 @cbv(router)
 class {{classname}}Spec(ABC):
-
-    {{#operations}}
-    {{#operation}}
-
+    {{#operations}}{{#operation}}
     @abstractmethod
-    async def {{operationId}}(self,
+    async def {{operationId}}(
+        self,
         {{#allParams}}
         {{>endpoint_argument_definition}},
         {{/allParams}}
@@ -65,7 +64,8 @@ class {{classname}}Spec(ABC):
         description = "{{.}}",
         {{/description}}
     )
-    async def {{operationId}}_spec(self,
+    async def {{operationId}}_spec(
+        self,
         {{#allParams}}
         {{>endpoint_argument_definition}},
         {{/allParams}}
@@ -78,10 +78,11 @@ class {{classname}}Spec(ABC):
         {{/hasAuthMethods}}
     ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
         {{#notes}}"""{{.}}"""{{/notes}}{{^notes}}...{{/notes}}
-        return await self.{{operationId}}({{#allParams}}{{baseName}}{{^-last}}, {{/-last}}{{/allParams}}{{#hasParams}}, {{/hasParams}}{{#hasAuthMethods}}{{#authMethods}}token_{{name}}{{^-last}}, {{/-last}}{{/authMethods}}{{/hasAuthMethods}})
+        return await self.{{operationId}}(
+            {{#allParams}}{{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}{{^-last}},
+            {{/-last}}{{/allParams}}{{#hasParams}},
+            {{/hasParams}}{{#hasAuthMethods}}{{#authMethods}}token_{{name}}{{^-last}},
+            {{/-last}}{{/authMethods}}{{/hasAuthMethods}}
+        )
     {{^-last}}
-
-
-    {{/-last}}
-    {{/operation}}
-    {{/operations}}
+    {{/-last}}{{/operation}}{{/operations}}

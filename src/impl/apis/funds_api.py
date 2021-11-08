@@ -12,6 +12,7 @@ from spec.models.extra_models import TokenModel
 
 logger = logging.getLogger(__name__)
 
+
 @cbv(FundsApiRouter)
 class FundsApiImpl(FundsApiSpec):
 
