@@ -1,0 +1,50 @@
+{
+  "TEST-1": {
+    "name": [
+      "Testirahasto 1",
+      "Testfond 1"
+    ],
+    "longName": [
+      "Testirahasto 1 - pitkä nimi suomeksi",
+      "Testfond 1 - långt namn på svenska "
+    ],
+    "shortName": [
+      "Testirahasto 1 - suomeksi",
+      "Testfond 1 - på svenska "
+    ],
+    "color": "#123456",
+    "risk": 1
+  },
+  "TEST-2": {
+    "name": [
+      "Testirahasto 2",
+      "Testfond 2"
+    ],
+    "longName": [
+      "Testirahasto 2 - pitkä nimi suomeksi",
+      "Testfond 2 - långt namn på svenska "
+    ],
+    "shortName": [
+      "Testirahasto 2 - suomeksi",
+      "Testfond 2 - på svenska "
+    ],
+    "color": "#234567",
+    "risk": 2
+  },
+  "TEST-3": {
+    "name": [
+      "Testirahasto 3",
+      "Testfond 3"
+    ],
+    "longName": [
+      "Testirahasto 3 - pitkä nimi suomeksi",
+      "Testfond 3 - långt namn på svenska "
+    ],
+    "shortName": [
+      "Testirahasto 3 - suomeksi",
+      "Testfond 3 - på svenska "
+    ],
+    "color": "#345678",
+    "risk": 3
+  }
+}
