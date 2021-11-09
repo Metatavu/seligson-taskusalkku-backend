@@ -19,8 +19,8 @@ class HistoricalValue(BaseModel):
         date: The date of this HistoricalValue [Optional].
         value: The value of this HistoricalValue [Optional].
     """
-
     date: Optional[date] = None
     value: Optional[float] = None
+
 
 HistoricalValue.update_forward_refs()

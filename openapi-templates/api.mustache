@@ -24,22 +24,28 @@ from {{modelPackage}}.extra_models import TokenModel  # noqa: F401
 {{#imports}}
 {{import}}
 {{/imports}}
-{{#securityImports.0}}from {{packageName}}.security_api import {{#securityImports}}get_token_{{.}}{{^-last}}, {{/-last}}{{/securityImports}}{{/securityImports.0}}
+{{#securityImports.0}}from impl.security_api import {{#securityImports}}get_token_{{.}}{{^-last}}, {{/-last}}{{/securityImports}}{{/securityImports.0}}
 
 router = APIRouter()
 router = InferringRouter()
 
+
 @cbv(router)
 class {{classname}}Spec(ABC):
-
-    {{#operations}}
-    {{#operation}}
-
+    {{#operations}}{{#operation}}
     @abstractmethod
-    async def {{operationId}}(self,
+    async def {{operationId}}(
+        self,
         {{#allParams}}
-        {{paramName}}: {{>param_type}}{{^-last}},{{/-last}}
+        {{>endpoint_argument_definition}},
         {{/allParams}}
+        {{#hasAuthMethods}}
+        {{#authMethods}}
+        token_{{name}}: TokenModel = Security(
+            get_token_{{name}}{{#isOAuth}}, scopes=[{{#scopes}}"{{scope}}"{{^-last}}, {{/-last}}{{/scopes}}]{{/isOAuth}}
+        ),
+        {{/authMethods}}
+        {{/hasAuthMethods}}
     ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
         ...
 
@@ -58,7 +64,8 @@ class {{classname}}Spec(ABC):
         description = "{{.}}",
         {{/description}}
     )
-    async def {{operationId}}_spec(self,
+    async def {{operationId}}_spec(
+        self,
         {{#allParams}}
         {{>endpoint_argument_definition}},
         {{/allParams}}
@@ -71,10 +78,11 @@ class {{classname}}Spec(ABC):
         {{/hasAuthMethods}}
     ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
         {{#notes}}"""{{.}}"""{{/notes}}{{^notes}}...{{/notes}}
-        return await self.{{operationId}}({{#allParams}}{{baseName}}{{^-last}}, {{/-last}}{{/allParams}})
+        return await self.{{operationId}}(
+            {{#allParams}}{{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}{{^-last}},
+            {{/-last}}{{/allParams}}{{#hasParams}},
+            {{/hasParams}}{{#hasAuthMethods}}{{#authMethods}}token_{{name}}{{^-last}},
+            {{/-last}}{{/authMethods}}{{/hasAuthMethods}}
+        )
     {{^-last}}
-
-
-    {{/-last}}
-    {{/operation}}
-    {{/operations}}
+    {{/-last}}{{/operation}}{{/operations}}

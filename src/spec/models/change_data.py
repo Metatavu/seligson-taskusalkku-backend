@@ -25,7 +25,6 @@ class ChangeData(BaseModel):
         _15y_change: The _15y_change of this ChangeData [Optional].
         _20y_change: The _20y_change of this ChangeData [Optional].
     """
-
     _1d_change: Optional[float] = None
     _1m_change: Optional[float] = None
     _1y_change: Optional[float] = None
@@ -34,5 +33,6 @@ class ChangeData(BaseModel):
     _10y_change: Optional[float] = None
     _15y_change: Optional[float] = None
     _20y_change: Optional[float] = None
+
 
 ChangeData.update_forward_refs()
