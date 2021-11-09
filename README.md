@@ -38,6 +38,17 @@ Install Python 3.6+ on your local(tested only with python 3.8)
 ```bash
 python3 -m venv  venv
 source venv/bin/activate
+```
+copy environment variables and assign them
+```bash
+cp env_copy.sh env.sh
+```
+export them
+```bash
+export env.sh
+```
+install requirements
+```bash
 cd src
 pip install -r requirements-dev.txt  # for development purposes
 ```
@@ -75,5 +86,14 @@ make sure you are in git root folder
 bin/utils/generate-spec.sh
 ```
 
-## schema creation
-
+## Schema creation
+Basically this should only be done in the bootstrapping phase to represent external changes that are done to db.
+You need to have the following dependencies installed in os.
+```bash
+#requirements for alchemy and autogeneration of code
+sudo apt-get install mysql-server mysql-client libmysqlclient-dev
+```
+Run the generator
+```bash
+sqlacodegen --outfile db/models.py <SQLALCHEMY_DATABASE_URL>
+```

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from typing import Dict, List  # noqa: F401
+from typing import Dict, List, Union  # noqa: F401
 from abc import ABC, abstractmethod
 
 from fastapi import (  # noqa: F401
@@ -20,14 +20,26 @@ from fastapi import (  # noqa: F401
 from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
 
+from sqlalchemy.orm import Session
+
 from spec.models.extra_models import TokenModel  # noqa: F401
 from spec.models.error import Error
 from spec.models.fund import Fund
 from spec.models.historical_value import HistoricalValue
 from impl.security_api import get_token_bearerAuth
+from db.database import SessionLocal
 
 router = APIRouter()
 router = InferringRouter()
+
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @cbv(router)
@@ -40,6 +52,7 @@ class FundsApiSpec(ABC):
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
+        db: Session = Depends(get_db),
     ) -> Fund:
         ...
 
@@ -60,11 +73,13 @@ class FundsApiSpec(ABC):
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
+        db: Session = Depends(get_db),
     ) -> Fund:
         """Finds a fund by id."""
         return await self.find_fund(
             fundId,
-            token_bearerAuth
+            token_bearerAuth,
+            db,
         )
     
     @abstractmethod
@@ -75,6 +90,7 @@ class FundsApiSpec(ABC):
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
+        db: Session = Depends(get_db),
     ) -> List[Fund]:
         ...
 
@@ -96,12 +112,14 @@ class FundsApiSpec(ABC):
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
+        db: Session = Depends(get_db),
     ) -> List[Fund]:
         """Lists funds."""
         return await self.list_funds(
             first_result,
             max_results,
-            token_bearerAuth
+            token_bearerAuth,
+            db,
         )
     
     @abstractmethod
@@ -115,6 +133,7 @@ class FundsApiSpec(ABC):
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
+        db: Session = Depends(get_db),
     ) -> List[HistoricalValue]:
         ...
 
@@ -139,6 +158,7 @@ class FundsApiSpec(ABC):
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
+        db: Session = Depends(get_db),
     ) -> List[HistoricalValue]:
         """Lists historical values"""
         return await self.list_historical_values(
@@ -147,5 +167,6 @@ class FundsApiSpec(ABC):
             max_results,
             start_date,
             end_date,
-            token_bearerAuth
+            token_bearerAuth,
+            db,
         )

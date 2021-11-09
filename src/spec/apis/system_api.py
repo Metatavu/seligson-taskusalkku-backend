@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from typing import Dict, List  # noqa: F401
+from typing import Dict, List, Union  # noqa: F401
 from abc import ABC, abstractmethod
 
 from fastapi import (  # noqa: F401
@@ -20,11 +20,23 @@ from fastapi import (  # noqa: F401
 from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
 
+from sqlalchemy.orm import Session
+
 from spec.models.extra_models import TokenModel  # noqa: F401
 
+from db.database import SessionLocal
 
 router = APIRouter()
 router = InferringRouter()
+
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @cbv(router)
@@ -33,6 +45,7 @@ class SystemApiSpec(ABC):
     @abstractmethod
     async def ping(
         self,
+        db: Session = Depends(get_db),
     ) -> str:
         ...
 
@@ -46,8 +59,10 @@ class SystemApiSpec(ABC):
     )
     async def ping_spec(
         self,
+        db: Session = Depends(get_db),
     ) -> str:
         """Replies ping with pong"""
         return await self.ping(
             
+            db,
         )

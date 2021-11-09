@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from typing import Dict, List  # noqa: F401
+from typing import Dict, List, Union  # noqa: F401
 from abc import ABC, abstractmethod
 
 from fastapi import (  # noqa: F401
@@ -20,14 +20,26 @@ from fastapi import (  # noqa: F401
 from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
 
+from sqlalchemy.orm import Session
+
 from {{modelPackage}}.extra_models import TokenModel  # noqa: F401
 {{#imports}}
 {{import}}
 {{/imports}}
 {{#securityImports.0}}from impl.security_api import {{#securityImports}}get_token_{{.}}{{^-last}}, {{/-last}}{{/securityImports}}{{/securityImports.0}}
+from db.database import SessionLocal
 
 router = APIRouter()
 router = InferringRouter()
+
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @cbv(router)
@@ -46,6 +58,7 @@ class {{classname}}Spec(ABC):
         ),
         {{/authMethods}}
         {{/hasAuthMethods}}
+        db: Session = Depends(get_db),
     ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
         ...
 
@@ -76,13 +89,15 @@ class {{classname}}Spec(ABC):
         ),
         {{/authMethods}}
         {{/hasAuthMethods}}
+        db: Session = Depends(get_db),
     ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
         {{#notes}}"""{{.}}"""{{/notes}}{{^notes}}...{{/notes}}
         return await self.{{operationId}}(
             {{#allParams}}{{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}{{^-last}},
             {{/-last}}{{/allParams}}{{#hasParams}},
-            {{/hasParams}}{{#hasAuthMethods}}{{#authMethods}}token_{{name}}{{^-last}},
+            {{/hasParams}}{{#hasAuthMethods}}{{#authMethods}}token_{{name}},{{^-last}},
             {{/-last}}{{/authMethods}}{{/hasAuthMethods}}
+            db,
         )
     {{^-last}}
     {{/-last}}{{/operation}}{{/operations}}
