@@ -12,12 +12,14 @@ fund_1_id = "b4b48c6c-dc78-32cd-8b4b-bad38c9c23bf"
 fund_2_id = "9654b4b6-8cda-3f5d-a9cf-ed687ee779e5"
 fund_3_id = "024dedad-e688-3ea9-83d0-fefc7b1107f4"
 
+invalid_uuids = ["potato", "`?%!", "äö", "Правда"]
+
 class TestFunds:
     """Tests for funds endpoints
     """    
 
     def test_find_fund(self, client: TestClient, user_1_auth: BearerAuth):
-      response = client.get("/v1/funds/{fund_1_id}".format(fund_1_id = fund_1_id), auth = user_1_auth)
+      response = client.get("/v1/funds/{fund_id}".format(fund_id = fund_1_id), auth = user_1_auth)
       assert response.status_code == 200
 
       fund = response.json()
@@ -36,3 +38,8 @@ class TestFunds:
       assert None == fund["change_data"]
       assert None == fund["profit_projection"]
       assert None == fund["profit_projection_date"]
+
+    def test_find_fund_invalid_id(self, client: TestClient, user_1_auth: BearerAuth):          
+          for id in invalid_uuids:
+            response = client.get("/v1/funds/{fund_id}".format(fund_id = id), auth = user_1_auth)
+            assert response.status_code == 400

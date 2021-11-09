@@ -16,6 +16,7 @@ from fastapi import (  # noqa: F401
     Response,
     Security,
     status,
+    HTTPException
 )
 
 from fastapi_utils.cbv import cbv
@@ -37,7 +38,7 @@ class FundsApiSpec(ABC):
     @abstractmethod
     async def find_fund(
         self,
-        fundId: str = Path(None, description="fund id"),
+        fundId: UUID,
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
@@ -64,15 +65,15 @@ class FundsApiSpec(ABC):
     ) -> Fund:
         """Finds a fund by id."""
         return await self.find_fund(
-            fundId,
+            self.toUuid(fundId),
             token_bearerAuth
         )
     
     @abstractmethod
     async def list_funds(
         self,
-        first_result: int = Query(None, description="First result. Defaults to 0"),
-        max_results: int = Query(None, description="Max results. Defaults to 10"),
+        first_result: int,
+        max_results: int,
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
@@ -108,11 +109,11 @@ class FundsApiSpec(ABC):
     @abstractmethod
     async def list_historical_values(
         self,
-        fundId: str = Path(None, description="fund id"),
-        first_result: int = Query(None, description="First result. Defaults to 0"),
-        max_results: int = Query(None, description="Max results. Defaults to 10"),
-        start_date: str = Query(None, description="Filter starting from this date"),
-        end_date: str = Query(None, description="Filter ending to this date"),
+        fundId: UUID,
+        first_result: int,
+        max_results: int,
+        start_date: str,
+        end_date: str,
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
@@ -143,10 +144,24 @@ class FundsApiSpec(ABC):
     ) -> List[HistoricalValue]:
         """Lists historical values"""
         return await self.list_historical_values(
-            fundId,
+            self.toUuid(fundId),
             first_result,
             max_results,
             start_date,
             end_date,
             token_bearerAuth
         )
+
+    def toUuid(self, str: str) -> UUID:
+        """Translates str to UUID
+
+        Args:
+            str (str): str
+
+        Returns:
+            UUID: UUID
+        """
+        try:
+          return UUID(str)
+        except ValueError:
+          raise HTTPException(status_code=400, detail="Invalid UUID {str}".format(str = str))

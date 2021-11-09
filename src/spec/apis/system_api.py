@@ -2,6 +2,7 @@
 
 from typing import Dict, List  # noqa: F401
 from abc import ABC, abstractmethod
+from uuid import UUID
 
 from fastapi import (  # noqa: F401
     APIRouter,
@@ -15,6 +16,7 @@ from fastapi import (  # noqa: F401
     Response,
     Security,
     status,
+    HTTPException
 )
 
 from fastapi_utils.cbv import cbv
@@ -51,3 +53,17 @@ class SystemApiSpec(ABC):
         return await self.ping(
             
         )
+
+    def toUuid(self, str: str) -> UUID:
+        """Translates str to UUID
+
+        Args:
+            str (str): str
+
+        Returns:
+            UUID: UUID
+        """
+        try:
+          return UUID(str)
+        except ValueError:
+          raise HTTPException(status_code=400, detail="Invalid UUID {str}".format(str = str))
