@@ -16,7 +16,8 @@ from funds.funds_meta import FundMeta
 from spec.models.localized_value import LocalizedValue
 
 logger = logging.getLogger(__name__)
-        
+
+
 @cbv(FundsApiRouter)
 class FundsApiImpl(FundsApiSpec):
 

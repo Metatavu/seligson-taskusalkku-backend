@@ -30,12 +30,13 @@ from impl.security_api import get_token_bearerAuth
 router = APIRouter()
 router = InferringRouter()
 
+
 @cbv(router)
 class FundsApiSpec(ABC):
-
-
+    
     @abstractmethod
-    async def find_fund(self,
+    async def find_fund(
+        self,
         fundId: str = Path(None, description="fund id"),
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
@@ -54,19 +55,22 @@ class FundsApiSpec(ABC):
         tags=["Funds"],
         summary="Find a fund.",
     )
-    async def find_fund_spec(self,
+    async def find_fund_spec(
+        self,
         fundId: str = Path(None, description="fund id"),
         token_bearerAuth: TokenModel = Security(
             get_token_bearerAuth
         ),
     ) -> Fund:
         """Finds a fund by id."""
-        return await self.find_fund(UUID(fundId), token_bearerAuth)
-
-
-
+        return await self.find_fund(
+            fundId,
+            token_bearerAuth
+        )
+    
     @abstractmethod
-    async def list_funds(self,
+    async def list_funds(
+        self,
         first_result: int = Query(None, description="First result. Defaults to 0"),
         max_results: int = Query(None, description="Max results. Defaults to 10"),
         token_bearerAuth: TokenModel = Security(
@@ -86,7 +90,8 @@ class FundsApiSpec(ABC):
         tags=["Funds"],
         summary="List funds.",
     )
-    async def list_funds_spec(self,
+    async def list_funds_spec(
+        self,
         first_result: int = Query(None, description="First result. Defaults to 0"),
         max_results: int = Query(None, description="Max results. Defaults to 10"),
         token_bearerAuth: TokenModel = Security(
@@ -94,12 +99,15 @@ class FundsApiSpec(ABC):
         ),
     ) -> List[Fund]:
         """Lists funds."""
-        return await self.list_funds(firstResult, maxResults, token_bearerAuth)
-
-
-
+        return await self.list_funds(
+            first_result,
+            max_results,
+            token_bearerAuth
+        )
+    
     @abstractmethod
-    async def list_historical_values(self,
+    async def list_historical_values(
+        self,
         fundId: str = Path(None, description="fund id"),
         first_result: int = Query(None, description="First result. Defaults to 0"),
         max_results: int = Query(None, description="Max results. Defaults to 10"),
@@ -122,7 +130,8 @@ class FundsApiSpec(ABC):
         tags=["Funds"],
         summary="Lists historical values",
     )
-    async def list_historical_values_spec(self,
+    async def list_historical_values_spec(
+        self,
         fundId: str = Path(None, description="fund id"),
         first_result: int = Query(None, description="First result. Defaults to 0"),
         max_results: int = Query(None, description="Max results. Defaults to 10"),
@@ -133,4 +142,11 @@ class FundsApiSpec(ABC):
         ),
     ) -> List[HistoricalValue]:
         """Lists historical values"""
-        return await self.list_historical_values(fundId, firstResult, maxResults, startDate, endDate, token_bearerAuth)
+        return await self.list_historical_values(
+            fundId,
+            first_result,
+            max_results,
+            start_date,
+            end_date,
+            token_bearerAuth
+        )

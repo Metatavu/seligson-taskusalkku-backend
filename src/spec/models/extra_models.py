@@ -2,20 +2,24 @@
 
 from typing import TypedDict, List
 
+
 class RealmAccess(TypedDict):
     """Defines a access token realm access model."""
 
     roles: List[str]
+
 
 class ResourceAccessAccount(TypedDict):
     """Defines a access token resource access account model."""
 
     roles: List[str]
 
+
 class ResourceAccess(TypedDict):
     """Defines a access token resource access model."""
 
     account: ResourceAccessAccount
+
 
 class TokenModel(TypedDict):
     """Defines an access token model."""

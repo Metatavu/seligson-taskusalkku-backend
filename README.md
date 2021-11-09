@@ -23,12 +23,6 @@ Build production:
 docker build -t seligson-taskusalkku-backend --target production src/
 ```
 
-Build test:
-```bash
-docker build -t seligson-taskusalkku-backend --target test src/
-```
-
-
 Run
 development
 ```bash
@@ -38,11 +32,6 @@ production
 ```bash
 docker run --net=host -it --rm --name production seligson-taskusalkku-backend
 ```
-test
-```bash
-docker run --net=host -it --rm --name test seligson-taskusalkku-backend pytest
-```
-
 
 ###2.Local
 Install Python 3.6+ on your local(tested only with python 3.8)
@@ -58,12 +47,32 @@ cd src
 uvicorn app.main:app --reload
 ```
 
+### 3.Tests
+Prepare environment as mentioned above
+```bash
+source venv/bin/activate
+pytest
+```
+
 ##Ping:
 ```bash
 http://127.0.0.1:8000/v1/system/ping
 ```
 
 ## Code generating from API Specification
+Basically you don't need to do this to run the current implementation, and it is for development purpose. 
+- generating the spec
+make sure you are in git root folder
 ```bash
-fastapi-codegen --input taskusalkku-spec/swagger.yaml --output app
+sudo apt install maven
+sudo apt-get install jq
+./bin/utils/generate-spec.sh # make sure you are in git root folder
 ```
+- generating the output for the api
+make sure you are in git root folder
+```bash
+./bin/utils/openapi-generator-cli.sh author template -g python-fastapi
+bin/utils/generate-spec.sh
+```
+
+

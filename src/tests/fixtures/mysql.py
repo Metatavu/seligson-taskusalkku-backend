@@ -10,7 +10,7 @@ container_file="/tmp/import.sql"
 
 @pytest.fixture(scope="session")
 def mysql(request):
-    """MySQL Fixuture.
+    """MySQL Fixture.
 
     Args:
         request (FixtureRequest): A fixture request object
