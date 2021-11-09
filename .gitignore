@@ -20,9 +20,9 @@ docs_build
 venv
 docs.zip
 archive.zip
+out
 
 # vim temporary files
 *~
 .*.sw?
 bin/utils/*.jar
-src/spec

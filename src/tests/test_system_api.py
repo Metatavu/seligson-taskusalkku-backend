@@ -1,11 +1,12 @@
-from starlette.testclient import TestClient
 
-from ..app.main import app
-
-client = TestClient(app)
+from .fixtures.client import *
 
 
-def test_ping():
-    response = client.get("/v1/system/ping")
-    assert response.status_code == 200
-    assert response.json() == "pong"
+class TestSystem:
+    """Tests for system endpoints
+    """    
+
+    def test_ping(self, client: TestClient):
+        response = client.get("/v1/system/ping")
+        assert response.status_code == 200
+        assert response.json() == "pong"

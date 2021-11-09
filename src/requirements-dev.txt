@@ -4,158 +4,47 @@
 #
 #    pip-compile requirements-dev.in
 #
-anyio==3.3.4
-    # via httpcore
-argcomplete==1.12.3
-    # via datamodel-code-generator
 attrs==21.2.0
-    # via
-    #   jsonschema
-    #   pytest
-black==21.10b0
-    # via datamodel-code-generator
+    # via pytest
 certifi==2021.10.8
-    # via
-    #   httpx
-    #   requests
+    # via requests
 chardet==4.0.0
-    # via
-    #   prance
-    #   requests
-charset-normalizer==2.0.7
-    # via httpx
-click==7.1.2
-    # via
-    #   black
-    #   typer
-colorama==0.4.4
-    # via typer
-datamodel-code-generator[http]==0.11.9
-    # via fastapi-code-generator
-dnspython==2.1.0
-    # via email-validator
-email-validator==1.1.3
-    # via pydantic
-fastapi-code-generator==0.3.0
-    # via -r requirements-dev.in
-genson==1.2.2
-    # via datamodel-code-generator
+    # via requests
+deprecation==2.1.0
+    # via testcontainers
+docker==5.0.3
+    # via testcontainers
 greenlet==1.1.2
     # via sqlalchemy
-h11==0.12.0
-    # via httpcore
-httpcore==0.13.7
-    # via httpx
-httpx==0.20.0
-    # via datamodel-code-generator
 idna==2.10
-    # via
-    #   anyio
-    #   email-validator
-    #   requests
-    #   rfc3986
-importlib-resources==5.4.0
-    # via jsonschema
-inflect==5.3.0
-    # via
-    #   datamodel-code-generator
-    #   sqlacodegen
+    # via requests
 iniconfig==1.1.1
     # via pytest
-isodate==0.6.0
-    # via openapi-schema-validator
-isort==5.10.0
-    # via datamodel-code-generator
-jinja2==3.0.2
-    # via
-    #   datamodel-code-generator
-    #   fastapi-code-generator
-jsonschema==4.2.0
-    # via
-    #   openapi-schema-validator
-    #   openapi-spec-validator
-markupsafe==2.0.1
-    # via jinja2
-mypy-extensions==0.4.3
-    # via black
-openapi-schema-validator==0.1.5
-    # via openapi-spec-validator
-openapi-spec-validator==0.3.1
-    # via datamodel-code-generator
 packaging==21.2
-    # via pytest
-pathspec==0.9.0
-    # via black
-platformdirs==2.4.0
-    # via black
+    # via
+    #   deprecation
+    #   pytest
 pluggy==0.13.1
     # via pytest
-prance==0.21.8.0
-    # via datamodel-code-generator
 py==1.10.0
     # via pytest
-pydantic[email]==1.8.2
-    # via
-    #   datamodel-code-generator
-    #   fastapi-code-generator
+pymysql==1.0.2
+    # via testcontainers
 pyparsing==2.4.7
     # via packaging
-pyrsistent==0.18.0
-    # via jsonschema
-pysnooper==0.5.0
-    # via
-    #   datamodel-code-generator
-    #   fastapi-code-generator
 pytest==6.2.3
     # via -r requirements-dev.in
-pyyaml==6.0
-    # via openapi-spec-validator
-regex==2021.11.2
-    # via black
 requests==2.25.1
-    # via
-    #   -r requirements-dev.in
-    #   prance
-rfc3986[idna2008]==1.5.0
-    # via httpx
-ruamel.yaml==0.17.17
-    # via prance
-ruamel.yaml.clib==0.2.6
-    # via ruamel.yaml
-semver==2.13.0
-    # via prance
-shellingham==1.4.0
-    # via typer
-six==1.16.0
-    # via
-    #   isodate
-    #   openapi-schema-validator
-    #   openapi-spec-validator
-    #   prance
-sniffio==1.2.0
-    # via
-    #   anyio
-    #   httpcore
-    #   httpx
-sqlacodegen==2.3.0
-    # via -r requirements-dev.in
+    # via docker
 sqlalchemy==1.4.26
-    # via sqlacodegen
-stringcase==1.2.0
-    # via fastapi-code-generator
+    # via testcontainers
+testcontainers[mysql]==3.4.2
+    # via -r requirements-dev.in
 toml==0.10.2
-    # via
-    #   datamodel-code-generator
-    #   pytest
-tomli==1.2.2
-    # via black
-typer[all]==0.3.2
-    # via fastapi-code-generator
-typing-extensions==3.10.0.2
-    # via
-    #   black
-    #   pydantic
+    # via pytest
 urllib3==1.26.7
     # via requests
-zipp==3.6.0
-    # via importlib-resources
+websocket-client==1.2.1
+    # via docker
+wrapt==1.13.3
+    # via testcontainers
