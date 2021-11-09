@@ -2,6 +2,7 @@
 
 from typing import Dict, List  # noqa: F401
 from abc import ABC, abstractmethod
+from uuid import UUID
 
 from fastapi import (  # noqa: F401
     APIRouter,
@@ -60,7 +61,7 @@ class FundsApiSpec(ABC):
         ),
     ) -> Fund:
         """Finds a fund by id."""
-        return await self.find_fund(fundId, token_bearerAuth)
+        return await self.find_fund(UUID(fundId), token_bearerAuth)
 
 
 
