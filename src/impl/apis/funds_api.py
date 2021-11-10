@@ -60,24 +60,27 @@ class FundsApiImpl(FundsApiSpec):
 
         Returns:
             Fund: Translated REST resource
-        """        
+        """
+        long_name = self.translate_meta_locale(fund_meta["long_name"])
+        short_name = self.translate_meta_locale(fund_meta["short_name"])
+        kiid = self.translate_meta_locale(fund_meta.get("kiid",  None))
         result = Fund(
-            id = str(fund_meta["id"]),
-            name = self.translate_meta_locale(fund_meta["name"]),
-            long_name = self.translate_meta_locale(fund_meta["long_name"]),
-            short_name = self.translate_meta_locale(fund_meta["short_name"]),
-            kiid = self.translate_meta_locale(fund_meta.get("kiid",  None)),
-            color = fund_meta["color"],
-            risk = fund_meta["risk"],
-            bank_receiver_name = None,
-            group = None,
-            price_date = None,
-            a_share_value = None,
-            b_share_value = None,
-            change_data = None,
-            profit_projection = None,
-            profit_projection_date = None
-        )
+                      id=str(fund_meta["id"]),
+                      name=self.translate_meta_locale(fund_meta["name"]),
+                      long_name=long_name,
+                      short_name=short_name,
+                      kiid=kiid,
+                      color=fund_meta["color"],
+                      risk=fund_meta["risk"],
+                      bank_receiver_name=None,
+                      group=fund_meta["group"],
+                      price_date=None,
+                      a_share_value=None,
+                      b_share_value=None,
+                      change_data=None,
+                      profit_projection=None,
+                      profit_projection_date=None
+                  )
                 
         return result
 

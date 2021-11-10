@@ -73,9 +73,9 @@ class {{classname}}(BaseModel):
         return value
 {{/pattern}}
 {{/vars}}
+
+
+{{classname}}.update_forward_refs()
 {{/isEnum}}
 {{/model}}
-
 {{/models}}
-
-{{^isEnum}}{{classname}}.update_forward_refs(){{/isEnum}}

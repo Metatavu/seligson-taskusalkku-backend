@@ -10,6 +10,3 @@ from pydantic import AnyUrl, BaseModel, EmailStr, validator  # noqa: F401
 
 
 FundGroup = str
-
-
-FundGroup.update_forward_refs()
