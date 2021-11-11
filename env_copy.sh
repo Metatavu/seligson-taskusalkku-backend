@@ -1,0 +1,3 @@
+export FUND_JSON=
+export FUND_OPTIONS_JSON=
+export FUND_VALUES_BASIC_CSV=

@@ -54,7 +54,10 @@ class TestFunds:
         assert -0.32 == fund["profitProjection"]
         assert "2021-10-12" == fund["profitProjectionDate"]
 
-    def test_find_fund_invalid_id(self, client: TestClient, user_1_auth: BearerAuth):
+    def test_find_fund_invalid_id(self,
+                                  client: TestClient,
+                                  user_1_auth: BearerAuth
+                                  ):
         for id in invalid_uuids:
             url = "/v1/funds/{fund_id}".format(fund_id=id)
             response = client.get(url, auth=user_1_auth)
@@ -69,3 +72,41 @@ class TestFunds:
         assert 6 == len(response_funds)
         for fund_id in fund_ids.values():
             assert fund_id in response_ids
+
+    def test_list_funds_limits(self,
+                               client: TestClient,
+                               user_1_auth: BearerAuth
+                               ):
+        self.assert_list_count(
+            client=client,
+            auth=user_1_auth,
+            expected_count=3,
+            first_result=0,
+            max_results=3
+        )
+        """
+        self.assert_list_count(
+            client=client,
+            auth=user_1_auth,
+            expected_count=4,
+            first_result=2,
+            max_results=8
+        )
+        """
+
+    def assert_list_count(self,
+                          expected_count: int,
+                          client: TestClient,
+                          auth: BearerAuth,
+                          first_result: int,
+                          max_results: int
+                          ):
+        query = "first_result={first_result}&max_results={max_results}".format(
+            first_result=first_result,
+            max_results=max_results
+        )
+        url = "/v1/funds?{query}".format(query=query)
+        response = client.get(url, auth=auth)
+        assert response.status_code == 200
+        response_json = response.json()
+        assert len(response_json) == expected_count

@@ -4,8 +4,8 @@
 
 from fastapi import FastAPI
 
-from impl.apis.system_api import SystemApiRouter
-from impl.apis.funds_api import FundsApiRouter
+from impl.apis.system_api import systemApiRouter
+from impl.apis.funds_api import fundsApiRouter
 
 app = FastAPI(
     title="Taskusalkku API",
@@ -13,5 +13,5 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.include_router(SystemApiRouter)
-app.include_router(FundsApiRouter)
+app.include_router(systemApiRouter)
+app.include_router(fundsApiRouter)

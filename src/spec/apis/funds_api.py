@@ -34,7 +34,7 @@ router = InferringRouter()
 
 @cbv(router)
 class FundsApiSpec(ABC):
-    
+
     @abstractmethod
     async def find_fund(
         self,

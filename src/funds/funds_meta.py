@@ -93,31 +93,32 @@ class FundsMetaController:
         """
         return next((entry for entry in self.get_all_fund_metas() if entry["id"] == fund_id), None)
 
-    def get_fund_meta_by_fund_code(self, fund_code: str) -> Optional[FundMeta]:
-        """Returns fund meta entry for given fund code
+    def get_all_fund_metas(self,
+                           first_result: Optional[int] = 0,
+                           max_results: Optional[int] = None
+                           ) -> List[FundMeta]:
+        """Returns fund metas
 
         Args:
-            fund_code (str): Fund code
-
-        Returns:
-            FundMeta: fund meta
-        """
-        return next((entry for entry in self.get_all_fund_metas() if entry["code"] == fund_code), None)
-
-    def get_all_fund_metas(self) -> List[FundMeta]:
-        """Returns fund metas
+            first_result (int): first result. Defaults to 0
+            max_results (int): max results. Not limited by default
 
         Returns:
             List[FundMeta]: Fund metas
         """
         if not self.data:
             funds = self.load_funds()
-
             data: List[FundMeta] = []
             for (code, value) in funds.items():
-                fund_meta = self.translate_fund_meta(code=code, fund_json_entry=value)
+                fund_meta = self.translate_fund_meta(
+                                                     code=code,
+                                                     fund_json_entry=value
+                                                    )
                 data.append(fund_meta)
             self.data = data
+
+        if first_result > 0 or max_results:
+            return list(self.data[first_result:max_results])
 
         return self.data
 
@@ -126,7 +127,7 @@ class FundsMetaController:
 
         Args:
             code (str): Fund code
-            entry (FundJsonEntry): JSON entry
+            fund_json_entry (FundJsonEntry): JSON entry
 
         Returns:
             FundMeta: FundMeta entry
@@ -175,33 +176,33 @@ class FundsMetaController:
                         profit_projection_date=profit_projection_date
                       )
 
-    def parse_csv_date(self, str: str) -> Optional[date]:
+    def parse_csv_date(self, csv_date: str) -> Optional[date]:
         """Parses date from CSV value
 
         Args:
-            str (str): CSV value
+            csv_date_string (str): CSV date value
 
         Returns:
             Optional[date]: date
         """
-        if "-" == str:
+        if "-" == csv_date:
             return None
 
-        return datetime.strptime(str, "%d.%m.%Y").date()
+        return datetime.strptime(csv_date, "%d.%m.%Y").date()
 
-    def parse_csv_float(self, str: str) -> Optional[float]:
+    def parse_csv_float(self, csv_float: str) -> Optional[float]:
         """Parses float from CSV value
 
         Args:
-            str (str): CSV value
+            csv_float (str): CSV float value
 
         Returns:
             Optional[float]: float
         """
-        if "-" == str:
+        if "-" == csv_float:
             return None
 
-        return float(str.replace(",", "."))
+        return float(csv_float.replace(",", "."))
 
     def get_fund_values_basic_for_fund_id(self, fund_id: str) -> Dict[str, str]:
         """Resolves CSV row from basic values basic CSV for given fund_id
@@ -261,7 +262,7 @@ class FundsMetaController:
 
         return self.fund_options
 
-    def get_fund_values_basic(self) -> Dict:
+    def get_fund_values_basic(self) -> Optional[List[Dict[str, str]]]:
         """Returns fund values basic
 
         Returns:
@@ -283,7 +284,7 @@ class FundsMetaController:
         """Creates UUID from fund code
 
         Args:
-            name (str): [description]
+            name (str): fund code
 
         Returns:
             UUID: [description]
