@@ -70,9 +70,9 @@ class FundOptions(TypedDict):
 class FundsMetaController:
     """Funds meta controller"""
 
-    data: List[FundMeta] = None
-    fund_options: dict = None
-    fund_values_basic: List[dict[str, str]] = None
+    data: Optional[List[FundMeta]] = None
+    fund_options: Optional[dict] = None
+    fund_values_basic: Optional[List[dict[str, str]]] = None
     group_map = {
       "spiltan": "SPILTAN",
       "dimension": "DIMENSION",
