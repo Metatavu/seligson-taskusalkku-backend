@@ -7,7 +7,7 @@ KEYCLOAK_USER = "KEYCLOAK_USER"
 KEYCLOAK_PASSWORD = "KEYCLOAK_PASSWORD"
 KEYCLOAK_IMPORT = "KEYCLOAK_IMPORT"
 
-realm_import_file = "/tmp/kc.json"
+realm_import_file = "/tmp/kc.json"  # NOSONAR
 
 
 class KeycloakContainer(DockerContainer):
