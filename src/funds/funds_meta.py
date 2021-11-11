@@ -2,7 +2,7 @@ import os
 import json
 import logging
 
-from typing import List, TypedDict, Optional
+from typing import List, TypedDict, Optional, Dict
 from uuid import UUID, uuid3
 from csv import DictReader
 from datetime import date, datetime
@@ -62,8 +62,8 @@ class FundValueGroup(TypedDict):
 
 class FundOptions(TypedDict):
     """Defines fund options file structure"""
-    fundId: dict
-    fundKey: dict
+    fundId: Dict[str, str]
+    fundKey: Dict[str, str]
     fundValueGroups: List[FundValueGroup]
 
 
@@ -71,8 +71,8 @@ class FundsMetaController:
     """Funds meta controller"""
 
     data: Optional[List[FundMeta]] = None
-    fund_options: Optional[dict] = None
-    fund_values_basic: Optional[List[dict[str, str]]] = None
+    fund_options: Optional[FundOptions] = None
+    fund_values_basic: Optional[List[Dict[str, str]]] = None
     group_map = {
       "spiltan": "SPILTAN",
       "dimension": "DIMENSION",
@@ -203,7 +203,7 @@ class FundsMetaController:
 
         return float(str.replace(",", "."))
 
-    def get_fund_values_basic_for_fund_id(self, fund_id: str) -> dict[str, str]:
+    def get_fund_values_basic_for_fund_id(self, fund_id: str) -> Dict[str, str]:
         """Resolves CSV row from basic values basic CSV for given fund_id
 
         Args:
@@ -214,7 +214,7 @@ class FundsMetaController:
         """
         return next((entry for entry in self.get_fund_values_basic() if fund_id == entry["fund_id"]), None)
 
-    def load_funds(self) -> dict:
+    def load_funds(self) -> Dict:
         """Loads fund JSON file
 
         Returns:
@@ -261,7 +261,7 @@ class FundsMetaController:
 
         return self.fund_options
 
-    def get_fund_values_basic(self) -> dict:
+    def get_fund_values_basic(self) -> Dict:
         """Returns fund values basic
 
         Returns:
