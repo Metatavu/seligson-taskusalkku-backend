@@ -12,6 +12,8 @@
       "Passive test fund 1 - fi, short",
       "Passive test fund 1 - en, short"
     ],
+    "subsName": "Passive test fund 1 - subs",
+    "kiid": ["PASSIVETESTFI", "PASSIVETESTSV"],
     "color": "#123456",
     "risk": 1
   },

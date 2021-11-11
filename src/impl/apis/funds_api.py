@@ -28,14 +28,14 @@ class FundsApiImpl(FundsApiSpec):
                         fund_id: uuid,
                         token_bearerAuth: TokenModel
                         ) -> Fund:
-        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id = fund_id)
+        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id=fund_id)
         if not fund_meta:
           raise HTTPException(status_code=404, detail="Fund {fund_id} not found")
 
         return self.translate_fund(fund_meta = fund_meta)
 
-         
-        
+
+
     async def list_funds(self,
                          first_result: int,
                          max_results: int,
@@ -73,7 +73,7 @@ class FundsApiImpl(FundsApiSpec):
                       KIID=kiid,
                       color=fund_meta["color"],
                       risk=fund_meta["risk"],
-                      bankReceiverName=None,
+                      bankReceiverName=fund_meta.get("subs_name", None),
                       group=fund_meta["group"],
                       priceDate=fund_meta["price_date"],
                       aShareValue=fund_meta["a_share_value"],
