@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from typing import List, Optional, Union
+from typing import List, Optional
 import logging
 import uuid
 
@@ -28,20 +28,22 @@ class FundsApiImpl(FundsApiSpec):
                         fund_id: uuid,
                         token_bearerAuth: TokenModel
                         ) -> Fund:
-        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id=fund_id)
+        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id)
         if not fund_meta:
-          raise HTTPException(status_code=404, detail="Fund {fund_id} not found")
+            raise HTTPException(
+                                status_code=404,
+                                detail="Fund {fund_id} not found"
+                              )
 
-        return self.translate_fund(fund_meta = fund_meta)
-
-
+        return self.translate_fund(fund_meta=fund_meta)
 
     async def list_funds(self,
                          first_result: int,
                          max_results: int,
                          token_bearerAuth: TokenModel
                          ) -> List[Fund]:
-        ...
+        fund_metas = self.fundsMetaController.get_all_fund_metas()
+        return list(map(self.translate_fund, fund_metas))
 
     async def list_historical_values(self,
                                      fund_id: str,
@@ -105,7 +107,9 @@ class FundsApiImpl(FundsApiSpec):
             change20y=fund_meta["_20y_change"],
         )
 
-    def translate_meta_locale(self, meta_locale: Optional[List[str]]) -> Optional[LocalizedValue]:
+    def translate_meta_locale(self,
+                              meta_locale: Optional[List[str]]
+                              ) -> Optional[LocalizedValue]:
         """Translates localized value from fund meta to LocalizedValue
 
         Args:
@@ -115,12 +119,12 @@ class FundsApiImpl(FundsApiSpec):
             LocalizedValue: [description]
         """
         if not meta_locale:
-          return None
+            return None
 
         fi = meta_locale[0] if len(meta_locale) > 0 else None
         sv = meta_locale[1] if len(meta_locale) > 1 else None
 
         return LocalizedValue(
-            fi = fi,
-            sv = sv
+            fi=fi,
+            sv=sv
         )

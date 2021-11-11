@@ -91,7 +91,7 @@ class FundsMetaController:
         Returns:
             FundMeta: fund meta
         """
-        return next((entry for entry in self.get_funds_meta() if entry["id"] == fund_id), None)
+        return next((entry for entry in self.get_all_fund_metas() if entry["id"] == fund_id), None)
 
     def get_fund_meta_by_fund_code(self, fund_code: str) -> Optional[FundMeta]:
         """Returns fund meta entry for given fund code
@@ -102,9 +102,9 @@ class FundsMetaController:
         Returns:
             FundMeta: fund meta
         """
-        return next((entry for entry in self.get_funds_meta() if entry["code"] == fund_code), None)
+        return next((entry for entry in self.get_all_fund_metas() if entry["code"] == fund_code), None)
 
-    def get_funds_meta(self) -> List[FundMeta]:
+    def get_all_fund_metas(self) -> List[FundMeta]:
         """Returns fund metas
 
         Returns:
