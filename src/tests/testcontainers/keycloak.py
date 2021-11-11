@@ -68,9 +68,8 @@ class KeycloakContainer(DockerContainer):
         Returns:
             str: Access token URL
         """
-        template = "{url}/realms/{realm}/protocol/openid-connect/token"
         url = self.get_keycloak_url()
-        return template.format(url=url, realm=realm)
+        return f"{url}/realms/{realm}/protocol/openid-connect/token"
 
     def _configure(self):
         """Configures the Keycloak container

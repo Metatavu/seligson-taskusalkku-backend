@@ -180,7 +180,7 @@ class FundsMetaController:
         """Parses date from CSV value
 
         Args:
-            csv_date_string (str): CSV date value
+            csv_date (str): CSV date value
 
         Returns:
             Optional[date]: date
@@ -284,7 +284,7 @@ class FundsMetaController:
         """Creates UUID from fund code
 
         Args:
-            name (str): fund code
+            fund_code (str): fund code
 
         Returns:
             UUID: [description]

@@ -34,7 +34,7 @@ router = InferringRouter()
 
 @cbv(router)
 class FundsApiSpec(ABC):
-
+    
     @abstractmethod
     async def find_fund(
         self,
@@ -152,16 +152,19 @@ class FundsApiSpec(ABC):
             token_bearerAuth
         )
 
-    def toUuid(self, str: str) -> UUID:
-        """Translates str to UUID
+    def toUuid(self, hex: str) -> UUID:
+        """Translates given hex to UUID
 
         Args:
-            str (str): str
+            hex (str): UUID in hexadecimal string
 
         Returns:
             UUID: UUID
         """
         try:
-          return UUID(str)
+            return UUID(hex)
         except ValueError:
-          raise HTTPException(status_code=400, detail="Invalid UUID {str}".format(str = str))
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid UUID {str}".format(str=str)
+            )

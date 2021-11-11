@@ -58,8 +58,8 @@ class TestFunds:
                                   client: TestClient,
                                   user_1_auth: BearerAuth
                                   ):
-        for id in invalid_uuids:
-            url = "/v1/funds/{fund_id}".format(fund_id=id)
+        for invalid_uuid in invalid_uuids:
+            url = f"/v1/funds/{invalid_uuid}"
             response = client.get(url, auth=user_1_auth)
             assert response.status_code == 400
 
@@ -101,12 +101,8 @@ class TestFunds:
                           first_result: int,
                           max_results: int
                           ):
-        query = "first_result={first_result}&max_results={max_results}".format(
-            first_result=first_result,
-            max_results=max_results
-        )
-        url = "/v1/funds?{query}".format(query=query)
-        response = client.get(url, auth=auth)
+        query = f"first_result={first_result}&max_results={max_results}"
+        response = client.get(f"/v1/funds?{query}", auth=auth)
         assert response.status_code == 200
         response_json = response.json()
         assert len(response_json) == expected_count

@@ -52,13 +52,13 @@ class FundsApiImpl(FundsApiSpec):
         if first_result < 0:
             raise HTTPException(
                                  status_code=400,
-                                 message="Invalid first result parameter"
+                                 message="Invalid first result parameter cannot be negative"
                                )
 
         if max_results < 0:
             raise HTTPException(
                                  status_code=400,
-                                 message="Invalid max results parameter"
+                                 message="Invalid max results parameter cannot be negative"
                                )
 
         fund_metas = self.fundsMetaController.get_all_fund_metas(
