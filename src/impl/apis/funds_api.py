@@ -68,19 +68,19 @@ class FundsApiImpl(FundsApiSpec):
         result = Fund(
                       id=str(fund_meta["id"]),
                       name=self.translate_meta_locale(fund_meta["name"]),
-                      long_name=long_name,
-                      short_name=short_name,
-                      kiid=kiid,
+                      longName=long_name,
+                      shortName=short_name,
+                      KIID=kiid,
                       color=fund_meta["color"],
                       risk=fund_meta["risk"],
-                      bank_receiver_name=None,
+                      bankReceiverName=None,
                       group=fund_meta["group"],
-                      price_date=fund_meta["price_date"],
-                      a_share_value=fund_meta["a_share_value"],
-                      b_share_value=fund_meta["b_share_value"],
-                      change_data=self.translate_change_date(fund_meta),
-                      profit_projection=fund_meta["profit_projection"],
-                      profit_projection_date=fund_meta["profit_projection_date"]
+                      priceDate=fund_meta["price_date"],
+                      aShareValue=fund_meta["a_share_value"],
+                      bShareValue=fund_meta["b_share_value"],
+                      changeData=self.translate_change_date(fund_meta),
+                      profitProjection=fund_meta["profit_projection"],
+                      profitProjectionDate=fund_meta["profit_projection_date"]
                   )
 
         return result
@@ -95,14 +95,14 @@ class FundsApiImpl(FundsApiSpec):
             ChangeData: change data
         """
         return ChangeData(
-            _1d_change=fund_meta["_1d_change"],
-            _1m_change=fund_meta["_1m_change"],
-            _1y_change=fund_meta["_1y_change"],
-            _3y_change=fund_meta["_3y_change"],
-            _5y_change=fund_meta["_5y_change"],
-            _10y_change=fund_meta["_10y_change"],
-            _15y_change=fund_meta["_15y_change"],
-            _20y_change=fund_meta["_20y_change"],
+            change1d=fund_meta["_1d_change"],
+            change1m=fund_meta["_1m_change"],
+            change1y=fund_meta["_1y_change"],
+            change3y=fund_meta["_3y_change"],
+            change5y=fund_meta["_5y_change"],
+            change10y=fund_meta["_10y_change"],
+            change15y=fund_meta["_15y_change"],
+            change20y=fund_meta["_20y_change"],
         )
 
     def translate_meta_locale(self, meta_locale: Optional[List[str]]) -> Optional[LocalizedValue]:

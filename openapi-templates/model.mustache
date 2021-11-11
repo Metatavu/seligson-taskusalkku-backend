@@ -30,11 +30,11 @@ class {{classname}}(BaseModel):
     {{classname}} - a model defined in OpenAPI
 
     {{#vars}}
-        {{name}}: The {{name}} of this {{classname}}{{^required}} [Optional]{{/required}}.
+        {{baseName}}: The {{baseName}} of this {{classname}}{{^required}} [Optional]{{/required}}.
     {{/vars}}
     """
 {{#vars}}
-    {{name}}: {{#required}}{{>model_field_type}}{{/required}}{{^required}}Optional[{{>model_field_type}}] = None{{/required}}
+    {{baseName}}: {{#required}}{{>model_field_type}}{{/required}}{{^required}}Optional[{{>model_field_type}}] = None{{/required}}
 {{/vars}}
 {{#vars}}
 {{#maximum}}
