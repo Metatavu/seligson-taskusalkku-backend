@@ -14,6 +14,7 @@ from spec.models.extra_models import TokenModel
 from funds.funds_meta import FundsMetaController
 from funds.funds_meta import FundMeta
 from spec.models.localized_value import LocalizedValue
+from src.spec.models.change_data import ChangeData
 
 logger = logging.getLogger(__name__)
 
@@ -74,15 +75,35 @@ class FundsApiImpl(FundsApiSpec):
                       risk=fund_meta["risk"],
                       bank_receiver_name=None,
                       group=fund_meta["group"],
-                      price_date=None,
-                      a_share_value=None,
-                      b_share_value=None,
-                      change_data=None,
-                      profit_projection=None,
-                      profit_projection_date=None
+                      price_date=fund_meta["price_date"],
+                      a_share_value=fund_meta["a_share_value"],
+                      b_share_value=fund_meta["b_share_value"],
+                      change_data=self.translate_change_date(fund_meta),
+                      profit_projection=fund_meta["profit_projection"],
+                      profit_projection_date=fund_meta["profit_projection_date"]
                   )
-                
+
         return result
+
+    def translate_change_date(self, fund_meta: FundMeta) -> ChangeData:
+        """Translates change data from fund meta object
+
+        Args:
+            fund_meta (FundMeta): fund meta object
+
+        Returns:
+            ChangeData: change data
+        """
+        return ChangeData(
+            _1d_change=fund_meta["_1d_change"],
+            _1m_change=fund_meta["_1m_change"],
+            _1y_change=fund_meta["_1y_change"],
+            _3y_change=fund_meta["_3y_change"],
+            _5y_change=fund_meta["_5y_change"],
+            _10y_change=fund_meta["_10y_change"],
+            _15y_change=fund_meta["_15y_change"],
+            _20y_change=fund_meta["_20y_change"],
+        )
 
     def translate_meta_locale(self, meta_locale: Optional[List[str]]) -> Optional[LocalizedValue]:
         """Translates localized value from fund meta to LocalizedValue

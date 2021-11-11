@@ -1,5 +1,3 @@
-import json
-
 from starlette.testclient import TestClient
 
 from .auth.auth import BearerAuth
@@ -35,12 +33,20 @@ class TestFunds:
         assert None == fund["kiid"]
         assert None == fund["bank_receiver_name"]
         assert "PASSIVE" == fund["group"]
-        assert None == fund["price_date"]
-        assert None == fund["a_share_value"]
-        assert None == fund["b_share_value"]
-        assert None == fund["change_data"]
-        assert None == fund["profit_projection"]
-        assert None == fund["profit_projection_date"]
+        assert "2021-11-10" == fund["price_date"]
+        assert 1.2345 == fund["a_share_value"]
+        assert 1.098 == fund["b_share_value"]
+        assert 0.00 == fund["change_data"]["1d_change"]
+        assert -0.01 == fund["change_data"]["1m_change"]
+        assert -0.19 == fund["change_data"]["1y_change"]
+        assert -0.27 == fund["change_data"]["3y_change"]
+        assert -1.02 == fund["change_data"]["5y_change"]
+        assert 1.22 == fund["change_data"]["10y_change"]
+        assert 12.3 == fund["change_data"]["15y_change"]
+        assert 25.5 == fund["change_data"]["20y_change"]
+        assert -0.32 == fund["profit_projection"]
+        assert "2021-10-12" == fund["profit_projection_date"]
+
 
     def test_find_fund_invalid_id(self, client: TestClient, user_1_auth: BearerAuth):          
           for id in invalid_uuids:

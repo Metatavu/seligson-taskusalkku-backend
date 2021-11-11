@@ -4,6 +4,8 @@ import logging
 
 from typing import List, TypedDict, Optional
 from uuid import UUID, uuid3
+from csv import DictReader
+from datetime import date, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,19 @@ class FundMeta(TypedDict, total=False):
     risk: int
     kiid: Optional[List[str]]
     group: str
+    price_date: date
+    a_share_value: float
+    b_share_value: float
+    _1d_change: float
+    _1m_change: float
+    _1y_change: float
+    _3y_change: float
+    _5y_change: float
+    _10y_change: float
+    _15y_change: float
+    _20y_change: float
+    profit_projection: float
+    profit_projection_date: date
 
 
 class FundJsonEntry(TypedDict, total=False):
@@ -57,6 +72,7 @@ class FundsMetaController:
 
     data: List[FundMeta] = None
     fund_options: dict = None
+    fund_values_basic: List[dict[str, str]] = None
     group_map = {
       "spiltan": "SPILTAN",
       "dimension": "DIMENSION",
@@ -99,7 +115,8 @@ class FundsMetaController:
 
             data: List[FundMeta] = []
             for (code, value) in funds.items():
-                data.append(self.translate_fund_meta(code = code, fund_json_entry = value))
+                fund_meta = self.translate_fund_meta(code=code, fund_json_entry=value)
+                data.append(fund_meta)
             self.data = data
 
         return self.data
@@ -115,11 +132,26 @@ class FundsMetaController:
             FundMeta: FundMeta entry
         """
         group = self.get_fund_group(fund_code=code)
+        fund_id = self.get_fund_id(fund_code=code)
+        values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
+        price_date = self.parse_csv_date(values_basic["price_date"])
+        a_share_value = self.parse_csv_float(values_basic["a_share_value"])
+        b_share_value = self.parse_csv_float(values_basic["b_share_value"])
+        _1d_change = self.parse_csv_float(values_basic["1d_change"])
+        _1m_change = self.parse_csv_float(values_basic["1m_change"])
+        _1y_change = self.parse_csv_float(values_basic["1y_change"])
+        _3y_change = self.parse_csv_float(values_basic["3y_change"])
+        _5y_change = self.parse_csv_float(values_basic["5y_change"])
+        _10y_change = self.parse_csv_float(values_basic["10y_change"])
+        _15y_change = self.parse_csv_float(values_basic["15y_change"])
+        _20y_change = self.parse_csv_float(values_basic["20y_change"])
+        profit_projection = self.parse_csv_float(values_basic["profit_projection"])
+        profit_projection_date = self.parse_csv_date(values_basic["profit_projection_date"])
 
         return FundMeta(
                         id=self.create_id(fund_code=code),
                         fund_code=code,
-                        fund_id=self.get_fund_id(fund_code=code),
+                        fund_id=fund_id,
                         color=fund_json_entry["color"],
                         kiid=fund_json_entry.get("kiid", None),
                         long_name=fund_json_entry["longName"],
@@ -127,8 +159,60 @@ class FundsMetaController:
                         risk=fund_json_entry["risk"],
                         short_name=fund_json_entry["shortName"],
                         subs_name=fund_json_entry.get("subsName", None),
-                        group=self.group_map[group["group"]]
+                        group=self.group_map[group["group"]],
+                        price_date=price_date,
+                        a_share_value=a_share_value,
+                        b_share_value=b_share_value,
+                        _1d_change=_1d_change,
+                        _1m_change=_1m_change,
+                        _1y_change=_1y_change,
+                        _3y_change=_3y_change,
+                        _5y_change=_5y_change,
+                        _10y_change=_10y_change,
+                        _15y_change=_15y_change,
+                        _20y_change=_20y_change,
+                        profit_projection=profit_projection,
+                        profit_projection_date=profit_projection_date
                       )
+
+    def parse_csv_date(self, str: str) -> Optional[date]:
+        """Parses date from CSV value
+
+        Args:
+            str (str): CSV value
+
+        Returns:
+            Optional[date]: date
+        """
+        if "-" == str:
+            return None
+
+        return datetime.strptime(str, "%d.%m.%Y").date()
+
+    def parse_csv_float(self, str: str) -> Optional[float]:
+        """Parses float from CSV value
+
+        Args:
+            str (str): CSV value
+
+        Returns:
+            Optional[float]: float
+        """
+        if "-" == str:
+            return None
+
+        return float(str.replace(",", "."))
+
+    def get_fund_values_basic_for_fund_id(self, fund_id: str) -> dict[str, str]:
+        """Resolves CSV row from basic values basic CSV for given fund_id
+
+        Args:
+            fund_id (str): fund id
+
+        Returns:
+            dict[str, str]: CSV row data
+        """
+        return next((entry for entry in self.get_fund_values_basic() if fund_id == entry["fund_id"]), None)
 
     def load_funds(self) -> dict:
         """Loads fund JSON file
@@ -176,6 +260,24 @@ class FundsMetaController:
                 self.fund_options = json.load(json_file)
 
         return self.fund_options
+
+    def get_fund_values_basic(self) -> dict:
+        """Returns fund values basic
+
+        Returns:
+            dict: fund values object
+        """
+        if not self.fund_values_basic:
+            with open(os.environ["FUND_VALUES_BASIC_CSV"]) as csv_file:
+                rows = DictReader(csv_file, delimiter=";")
+                self.fund_values_basic = []
+                for row in rows:
+                    basic_value = dict()
+                    for key, value in row.items():
+                        basic_value[key.strip()] = value
+                    self.fund_values_basic.append(basic_value)
+
+        return self.fund_values_basic
 
     def create_id(self, fund_code: str) -> UUID:
         """Creates UUID from fund code
