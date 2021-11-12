@@ -2,6 +2,7 @@
 
 from typing import Dict, List  # noqa: F401
 from abc import ABC, abstractmethod
+from uuid import UUID
 
 from fastapi import (  # noqa: F401
     APIRouter,
@@ -15,6 +16,7 @@ from fastapi import (  # noqa: F401
     Response,
     Security,
     status,
+    HTTPException
 )
 
 from fastapi_utils.cbv import cbv
@@ -23,7 +25,6 @@ from fastapi_utils.inferring_router import InferringRouter
 from spec.models.extra_models import TokenModel  # noqa: F401
 
 
-router = APIRouter()
 router = InferringRouter()
 
 
@@ -51,3 +52,20 @@ class SystemApiSpec(ABC):
         return await self.ping(
             
         )
+
+    def to_uuid(self, hexadecimal_uuid: str) -> UUID:
+        """Translates given hex to UUID
+
+        Args:
+            hexadecimal_uuid (str): UUID in hexadecimal string
+
+        Returns:
+            UUID: UUID
+        """
+        try:
+            return UUID(hex=hexadecimal_uuid)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid UUID {hexadecimal_uuid}"
+            )

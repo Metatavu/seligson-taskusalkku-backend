@@ -18,13 +18,14 @@ def keycloak(request):
 
     Returns:
         KeycloakContainer: Reference to Keycloak container
-    """    
+    """
     keycloak = KeycloakContainer("quay.io/keycloak/keycloak:15.0.2",
                                  KEYCLOAK_IMPORT=keycloak_import_file
                                  )
 
     keycloak.start()
-    os.environ["OIDC_AUTH_SERVER_URL"] = keycloak.get_keycloak_url() + "/realms/seligson"
+    keycloak_url = keycloak.get_keycloak_url()
+    os.environ["OIDC_AUTH_SERVER_URL"] = keycloak_url + "/realms/seligson"
     os.environ["OIDC_AUDIENCE"] = "api"
 
     def teardown():

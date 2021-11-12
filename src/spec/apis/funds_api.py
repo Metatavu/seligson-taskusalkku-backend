@@ -2,6 +2,7 @@
 
 from typing import Dict, List  # noqa: F401
 from abc import ABC, abstractmethod
+from uuid import UUID
 
 from fastapi import (  # noqa: F401
     APIRouter,
@@ -15,6 +16,7 @@ from fastapi import (  # noqa: F401
     Response,
     Security,
     status,
+    HTTPException
 )
 
 from fastapi_utils.cbv import cbv
@@ -24,9 +26,8 @@ from spec.models.extra_models import TokenModel  # noqa: F401
 from spec.models.error import Error
 from spec.models.fund import Fund
 from spec.models.historical_value import HistoricalValue
-from impl.security_api import get_token_bearerAuth
+from impl.security_api import get_token_bearer
 
-router = APIRouter()
 router = InferringRouter()
 
 
@@ -36,9 +37,9 @@ class FundsApiSpec(ABC):
     @abstractmethod
     async def find_fund(
         self,
-        fundId: str = Path(None, description="fund id"),
-        token_bearerAuth: TokenModel = Security(
-            get_token_bearerAuth
+        fundId: UUID,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
         ),
     ) -> Fund:
         ...
@@ -57,23 +58,23 @@ class FundsApiSpec(ABC):
     async def find_fund_spec(
         self,
         fundId: str = Path(None, description="fund id"),
-        token_bearerAuth: TokenModel = Security(
-            get_token_bearerAuth
+        token_bearer: TokenModel = Security(
+            get_token_bearer
         ),
     ) -> Fund:
         """Finds a fund by id."""
         return await self.find_fund(
-            fundId,
-            token_bearerAuth
+            self.to_uuid(fundId),
+            token_bearer
         )
     
     @abstractmethod
     async def list_funds(
         self,
-        first_result: int = Query(None, description="First result. Defaults to 0"),
-        max_results: int = Query(None, description="Max results. Defaults to 10"),
-        token_bearerAuth: TokenModel = Security(
-            get_token_bearerAuth
+        first_result: int,
+        max_results: int,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
         ),
     ) -> List[Fund]:
         ...
@@ -93,27 +94,27 @@ class FundsApiSpec(ABC):
         self,
         first_result: int = Query(None, description="First result. Defaults to 0"),
         max_results: int = Query(None, description="Max results. Defaults to 10"),
-        token_bearerAuth: TokenModel = Security(
-            get_token_bearerAuth
+        token_bearer: TokenModel = Security(
+            get_token_bearer
         ),
     ) -> List[Fund]:
         """Lists funds."""
         return await self.list_funds(
             first_result,
             max_results,
-            token_bearerAuth
+            token_bearer
         )
     
     @abstractmethod
     async def list_historical_values(
         self,
-        fundId: str = Path(None, description="fund id"),
-        first_result: int = Query(None, description="First result. Defaults to 0"),
-        max_results: int = Query(None, description="Max results. Defaults to 10"),
-        start_date: str = Query(None, description="Filter starting from this date"),
-        end_date: str = Query(None, description="Filter ending to this date"),
-        token_bearerAuth: TokenModel = Security(
-            get_token_bearerAuth
+        fundId: UUID,
+        first_result: int,
+        max_results: int,
+        start_date: str,
+        end_date: str,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
         ),
     ) -> List[HistoricalValue]:
         ...
@@ -136,16 +137,33 @@ class FundsApiSpec(ABC):
         max_results: int = Query(None, description="Max results. Defaults to 10"),
         start_date: str = Query(None, description="Filter starting from this date"),
         end_date: str = Query(None, description="Filter ending to this date"),
-        token_bearerAuth: TokenModel = Security(
-            get_token_bearerAuth
+        token_bearer: TokenModel = Security(
+            get_token_bearer
         ),
     ) -> List[HistoricalValue]:
         """Lists historical values"""
         return await self.list_historical_values(
-            fundId,
+            self.to_uuid(fundId),
             first_result,
             max_results,
             start_date,
             end_date,
-            token_bearerAuth
+            token_bearer
         )
+
+    def to_uuid(self, hexadecimal_uuid: str) -> UUID:
+        """Translates given hex to UUID
+
+        Args:
+            hexadecimal_uuid (str): UUID in hexadecimal string
+
+        Returns:
+            UUID: UUID
+        """
+        try:
+            return UUID(hex=hexadecimal_uuid)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid UUID {hexadecimal_uuid}"
+            )

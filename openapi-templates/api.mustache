@@ -2,6 +2,7 @@
 
 from typing import Dict, List  # noqa: F401
 from abc import ABC, abstractmethod
+from uuid import UUID
 
 from fastapi import (  # noqa: F401
     APIRouter,
@@ -15,6 +16,7 @@ from fastapi import (  # noqa: F401
     Response,
     Security,
     status,
+    HTTPException
 )
 
 from fastapi_utils.cbv import cbv
@@ -26,7 +28,6 @@ from {{modelPackage}}.extra_models import TokenModel  # noqa: F401
 {{/imports}}
 {{#securityImports.0}}from impl.security_api import {{#securityImports}}get_token_{{.}}{{^-last}}, {{/-last}}{{/securityImports}}{{/securityImports.0}}
 
-router = APIRouter()
 router = InferringRouter()
 
 
@@ -37,7 +38,7 @@ class {{classname}}Spec(ABC):
     async def {{operationId}}(
         self,
         {{#allParams}}
-        {{>endpoint_argument_definition}},
+        {{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}: {{#isString}}{{#isUuid}}UUID{{/isUuid}}{{^isUuid}}str{{/isUuid}}{{/isString}}{{#isInteger}}int{{/isInteger}}{{#isLong}}int{{/isLong}}{{#isFloat}}float{{/isFloat}}{{#isDouble}}float{{/isDouble}}{{#isByteArray}}str{{/isByteArray}}{{#isBinary}}str{{/isBinary}}{{#isBoolean}}bool{{/isBoolean}}{{#isDate}}str{{/isDate}}{{#isDateTime}}str{{/isDateTime}}{{#isModel}}{{dataType}}{{/isModel}}{{#isContainer}}{{dataType}}{{/isContainer}},
         {{/allParams}}
         {{#hasAuthMethods}}
         {{#authMethods}}
@@ -79,10 +80,26 @@ class {{classname}}Spec(ABC):
     ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
         {{#notes}}"""{{.}}"""{{/notes}}{{^notes}}...{{/notes}}
         return await self.{{operationId}}(
-            {{#allParams}}{{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}{{^-last}},
+            {{#allParams}}{{#isUuid}}self.to_uuid({{/isUuid}}{{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}{{#isUuid}}){{/isUuid}}{{^-last}},
             {{/-last}}{{/allParams}}{{#hasParams}},
             {{/hasParams}}{{#hasAuthMethods}}{{#authMethods}}token_{{name}}{{^-last}},
             {{/-last}}{{/authMethods}}{{/hasAuthMethods}}
         )
     {{^-last}}
     {{/-last}}{{/operation}}{{/operations}}
+    def to_uuid(self, hexadecimal_uuid: str) -> UUID:
+        """Translates given hex to UUID
+
+        Args:
+            hexadecimal_uuid (str): UUID in hexadecimal string
+
+        Returns:
+            UUID: UUID
+        """
+        try:
+            return UUID(hex=hexadecimal_uuid)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid UUID {hexadecimal_uuid}"
+            )
