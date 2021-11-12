@@ -14,7 +14,7 @@ from spec.models.extra_models import TokenModel
 from funds.funds_meta import FundsMetaController
 from funds.funds_meta import FundMeta
 from spec.models.localized_value import LocalizedValue
-from src.spec.models.change_data import ChangeData
+from spec.models.change_data import ChangeData
 
 logger = logging.getLogger(__name__)
 
