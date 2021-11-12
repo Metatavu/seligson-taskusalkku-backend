@@ -171,7 +171,7 @@ class FundsMetaController:
                         risk=fund_json_entry["risk"],
                         short_name=fund_json_entry["shortName"],
                         subs_name=fund_json_entry.get("subsName", None),
-                        group=self.group_map[group["group"]],
+                        group=group,
                         price_date=price_date,
                         a_share_value=a_share_value,
                         b_share_value=b_share_value,
@@ -254,14 +254,33 @@ class FundsMetaController:
         except ValueError:
             return None
 
-    def get_fund_group(self, fund_code: str) -> FundValueGroup:
-        """Resolves fund group for given fund code
+    def get_fund_group(self, fund_code: str) -> Optional[str]:
+        """Returns group for given fund code
 
         Args:
             fund_code (str): fund code
 
         Returns:
-            FundValueGroup: fund group
+            Optional[str]: fund group or None if not found
+        """
+        fund_value_group = self.get_fund_value_group(fund_code=fund_code)
+        if not fund_value_group:
+            return None
+
+        group = fund_value_group["group"]
+        if not group:
+            return None
+
+        return self.group_map.get(group, None)
+
+    def get_fund_value_group(self, fund_code: str) -> Optional[FundValueGroup]:
+        """Resolves fund value group for given fund code
+
+        Args:
+            fund_code (str): fund code
+
+        Returns:
+            Optional[FundValueGroup]: fund value group
         """
         fund_options = self.get_fund_options()
         groups = fund_options["fundValueGroups"]
