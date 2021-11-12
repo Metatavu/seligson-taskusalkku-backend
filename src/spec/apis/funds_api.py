@@ -28,7 +28,6 @@ from spec.models.fund import Fund
 from spec.models.historical_value import HistoricalValue
 from impl.security_api import get_token_bearerAuth
 
-router = APIRouter()
 router = InferringRouter()
 
 
@@ -65,7 +64,7 @@ class FundsApiSpec(ABC):
     ) -> Fund:
         """Finds a fund by id."""
         return await self.find_fund(
-            self.toUuid(fundId),
+            self.to_uuid(fundId),
             token_bearerAuth
         )
     
@@ -144,7 +143,7 @@ class FundsApiSpec(ABC):
     ) -> List[HistoricalValue]:
         """Lists historical values"""
         return await self.list_historical_values(
-            self.toUuid(fundId),
+            self.to_uuid(fundId),
             first_result,
             max_results,
             start_date,
@@ -152,19 +151,19 @@ class FundsApiSpec(ABC):
             token_bearerAuth
         )
 
-    def toUuid(self, hex: str) -> UUID:
+    def to_uuid(self, hexadecimal_uuid: str) -> UUID:
         """Translates given hex to UUID
 
         Args:
-            hex (str): UUID in hexadecimal string
+            hexadecimal_uuid (str): UUID in hexadecimal string
 
         Returns:
             UUID: UUID
         """
         try:
-            return UUID(hex)
+            return UUID(hexadecimal_uuid)
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid UUID {str}".format(str=str)
+                detail=f"Invalid UUID {hexadecimal_uuid}"
             )

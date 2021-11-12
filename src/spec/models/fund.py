@@ -21,35 +21,35 @@ class Fund(BaseModel):
 
         id: The id of this Fund [Optional].
         name: The name of this Fund.
-        longName: The longName of this Fund [Optional].
-        shortName: The shortName of this Fund [Optional].
-        bankReceiverName: The bankReceiverName of this Fund [Optional].
+        long_name: The long_name of this Fund [Optional].
+        short_name: The short_name of this Fund [Optional].
+        bank_receiver_name: The bank_receiver_name of this Fund [Optional].
         group: The group of this Fund [Optional].
-        priceDate: The priceDate of this Fund [Optional].
-        aShareValue: The aShareValue of this Fund [Optional].
-        bShareValue: The bShareValue of this Fund [Optional].
-        changeData: The changeData of this Fund [Optional].
-        profitProjection: The profitProjection of this Fund [Optional].
-        profitProjectionDate: The profitProjectionDate of this Fund [Optional].
+        price_date: The price_date of this Fund [Optional].
+        a_share_value: The a_share_value of this Fund [Optional].
+        b_share_value: The b_share_value of this Fund [Optional].
+        change_data: The change_data of this Fund [Optional].
+        profit_projection: The profit_projection of this Fund [Optional].
+        profit_projection_date: The profit_projection_date of this Fund [Optional].
         color: The color of this Fund [Optional].
         risk: The risk of this Fund [Optional].
-        KIID: The KIID of this Fund [Optional].
+        kiid: The kiid of this Fund [Optional].
     """
     id: Optional[str] = None
     name: LocalizedValue
-    longName: Optional[LocalizedValue] = None
-    shortName: Optional[LocalizedValue] = None
-    bankReceiverName: Optional[str] = None
+    long_name: Optional[LocalizedValue] = None
+    short_name: Optional[LocalizedValue] = None
+    bank_receiver_name: Optional[str] = None
     group: Optional[FundGroup] = None
-    priceDate: Optional[date] = None
-    aShareValue: Optional[float] = None
-    bShareValue: Optional[float] = None
-    changeData: Optional[ChangeData] = None
-    profitProjection: Optional[float] = None
-    profitProjectionDate: Optional[date] = None
+    price_date: Optional[date] = None
+    a_share_value: Optional[float] = None
+    b_share_value: Optional[float] = None
+    change_data: Optional[ChangeData] = None
+    profit_projection: Optional[float] = None
+    profit_projection_date: Optional[date] = None
     color: Optional[str] = None
     risk: Optional[int] = None
-    KIID: Optional[LocalizedValue] = None
+    kiid: Optional[LocalizedValue] = None
 
 
 Fund.update_forward_refs()

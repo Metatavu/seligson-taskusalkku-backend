@@ -6,7 +6,7 @@ import uuid
 
 from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
-from spec.apis.funds_api import FundsApiSpec, router as fundsApiRouter
+from spec.apis.funds_api import FundsApiSpec, router as funds_api_router
 
 from spec.models.fund import Fund
 from spec.models.historical_value import HistoricalValue
@@ -19,7 +19,7 @@ from spec.models.change_data import ChangeData
 logger = logging.getLogger(__name__)
 
 
-@cbv(fundsApiRouter)
+@cbv(funds_api_router)
 class FundsApiImpl(FundsApiSpec):
 
     fundsMetaController: FundsMetaController = FundsMetaController()
@@ -52,13 +52,13 @@ class FundsApiImpl(FundsApiSpec):
         if first_result < 0:
             raise HTTPException(
                                  status_code=400,
-                                 message="Invalid first result parameter cannot be negative"
+                                 detail="Invalid first result parameter cannot be negative"
                                )
 
         if max_results < 0:
             raise HTTPException(
                                  status_code=400,
-                                 message="Invalid max results parameter cannot be negative"
+                                 detail="Invalid max results parameter cannot be negative"
                                )
 
         fund_metas = self.fundsMetaController.get_all_fund_metas(
