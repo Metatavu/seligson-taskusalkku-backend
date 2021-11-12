@@ -16,23 +16,23 @@ class ChangeData(BaseModel):
 
     ChangeData - a model defined in OpenAPI
 
-        _1d_change: The _1d_change of this ChangeData [Optional].
-        _1m_change: The _1m_change of this ChangeData [Optional].
-        _1y_change: The _1y_change of this ChangeData [Optional].
-        _3y_change: The _3y_change of this ChangeData [Optional].
-        _5y_change: The _5y_change of this ChangeData [Optional].
-        _10y_change: The _10y_change of this ChangeData [Optional].
-        _15y_change: The _15y_change of this ChangeData [Optional].
-        _20y_change: The _20y_change of this ChangeData [Optional].
+        change1d: The change1d of this ChangeData [Optional].
+        change1m: The change1m of this ChangeData [Optional].
+        change1y: The change1y of this ChangeData [Optional].
+        change3y: The change3y of this ChangeData [Optional].
+        change5y: The change5y of this ChangeData [Optional].
+        change10y: The change10y of this ChangeData [Optional].
+        change15y: The change15y of this ChangeData [Optional].
+        change20y: The change20y of this ChangeData [Optional].
     """
-    _1d_change: Optional[float] = None
-    _1m_change: Optional[float] = None
-    _1y_change: Optional[float] = None
-    _3y_change: Optional[float] = None
-    _5y_change: Optional[float] = None
-    _10y_change: Optional[float] = None
-    _15y_change: Optional[float] = None
-    _20y_change: Optional[float] = None
+    change1d: Optional[float] = None
+    change1m: Optional[float] = None
+    change1y: Optional[float] = None
+    change3y: Optional[float] = None
+    change5y: Optional[float] = None
+    change10y: Optional[float] = None
+    change15y: Optional[float] = None
+    change20y: Optional[float] = None
 
 
 ChangeData.update_forward_refs()

@@ -63,7 +63,7 @@ class SystemApiSpec(ABC):
             UUID: UUID
         """
         try:
-            return UUID(hexadecimal_uuid)
+            return UUID(hex=hexadecimal_uuid)
         except ValueError:
             raise HTTPException(
                 status_code=400,

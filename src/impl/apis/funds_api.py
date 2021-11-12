@@ -26,7 +26,7 @@ class FundsApiImpl(FundsApiSpec):
 
     async def find_fund(self,
                         fund_id: uuid,
-                        token_bearerAuth: TokenModel
+                        token_bearer: TokenModel
                         ) -> Fund:
         fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id)
         if not fund_meta:
@@ -40,7 +40,7 @@ class FundsApiImpl(FundsApiSpec):
     async def list_funds(self,
                          first_result: int,
                          max_results: int,
-                         token_bearerAuth: TokenModel
+                         token_bearer: TokenModel
                          ) -> List[Fund]:
 
         if not first_result:
@@ -74,7 +74,7 @@ class FundsApiImpl(FundsApiSpec):
                                      max_results: int,
                                      start_date: str,
                                      end_date: str,
-                                     token_bearerAuth: TokenModel
+                                     token_bearer: TokenModel
                                      ) -> List[HistoricalValue]:
         ...
 

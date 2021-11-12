@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 bearer_auth = HTTPBearer()
 
 
-def get_token_bearerAuth(credentials: HTTPAuthorizationCredentials = Depends(bearer_auth)) -> TokenModel:
-    """Returns 
+def get_token_bearer(credentials: HTTPAuthorizationCredentials = Depends(bearer_auth)) -> TokenModel:
+    """Returns
 
     Args:
         credentials (HTTPAuthorizationCredentials, optional): Credentials from the HTTP Request. Defaults to Depends(bearer_auth).
