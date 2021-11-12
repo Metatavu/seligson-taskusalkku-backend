@@ -114,7 +114,8 @@ class FundsMetaController:
                                                      code=code,
                                                      fund_json_entry=value
                                                     )
-                data.append(fund_meta)
+                if fund_meta:
+                    data.append(fund_meta)
             self.data = data
 
         if first_result > 0 or max_results:
@@ -122,7 +123,10 @@ class FundsMetaController:
 
         return self.data
 
-    def translate_fund_meta(self, code: str, fund_json_entry: FundJsonEntry) -> FundMeta:
+    def translate_fund_meta(self,
+                            code: str,
+                            fund_json_entry: FundJsonEntry
+                            ) -> Optional[FundMeta]:
         """Translates single JSON file entry to FundMeta entry
 
         Args:
@@ -132,8 +136,11 @@ class FundsMetaController:
         Returns:
             FundMeta: FundMeta entry
         """
-        group = self.get_fund_group(fund_code=code)
         fund_id = self.get_fund_id(fund_code=code)
+        if not fund_id:
+            return None
+
+        group = self.get_fund_group(fund_code=code)
         values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
         price_date = self.parse_csv_date(values_basic["price_date"])
         a_share_value = self.parse_csv_float(values_basic["a_share_value"])
@@ -146,8 +153,12 @@ class FundsMetaController:
         _10y_change = self.parse_csv_float(values_basic["10y_change"])
         _15y_change = self.parse_csv_float(values_basic["15y_change"])
         _20y_change = self.parse_csv_float(values_basic["20y_change"])
-        profit_projection = self.parse_csv_float(values_basic["profit_projection"])
-        profit_projection_date = self.parse_csv_date(values_basic["profit_projection_date"])
+        profit_projection = self.parse_csv_float(
+          values_basic["profit_projection"]
+        )
+        profit_projection_date = self.parse_csv_date(
+          values_basic["profit_projection_date"]
+        )
 
         return FundMeta(
                         id=self.create_id(fund_code=code),
@@ -204,7 +215,9 @@ class FundsMetaController:
 
         return float(csv_float.replace(",", "."))
 
-    def get_fund_values_basic_for_fund_id(self, fund_id: str) -> Dict[str, str]:
+    def get_fund_values_basic_for_fund_id(self,
+                                          fund_id: str
+                                          ) -> Dict[str, str]:
         """Resolves CSV row from basic values basic CSV for given fund_id
 
         Args:
@@ -224,18 +237,22 @@ class FundsMetaController:
         with open(os.environ["FUND_JSON"]) as json_file:
             return json.load(json_file)
 
-    def get_fund_id(self, fund_code: str) -> str:
+    def get_fund_id(self, fund_code: str) -> Optional[str]:
         """Resolves fund id for given fund code
 
         Args:
             fund_code (str): fund code
 
         Returns:
-            str: fund id for given fund code
+            str: fund id for given fund code or None if not found
         """
         fund_options = self.get_fund_options()
         fund_id = fund_options["fundId"]
-        return list(fund_id.keys())[list(fund_id.values()).index(fund_code)]
+        try:
+            fund_index = list(fund_id.values()).index(fund_code)
+            return list(fund_id.keys())[fund_index]
+        except ValueError:
+            return None
 
     def get_fund_group(self, fund_code: str) -> FundValueGroup:
         """Resolves fund group for given fund code

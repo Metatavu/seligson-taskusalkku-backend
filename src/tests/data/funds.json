@@ -96,5 +96,21 @@
     ],
     "color": "#678901",
     "risk": 6
+  },
+  "REMOVED TEST": {
+    "name": [
+      "Removed test fund 1 - fi",
+      "Removed test fund 1 - en"
+    ],
+    "longName": [
+      "Removed test fund 1 - fi, long",
+      "Removed test fund 1 - en, long"
+    ],
+    "shortName": [
+      "Removed test fund 1 - fi, short",
+      "Removed test fund 1 - en, short"
+    ],
+    "color": "#000000",
+    "risk": 7
   }
 }
