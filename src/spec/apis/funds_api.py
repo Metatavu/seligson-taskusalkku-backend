@@ -5,6 +5,7 @@ from functools import lru_cache
 from typing import Dict, List, Iterator  # noqa: F401
 from abc import ABC, abstractmethod
 from uuid import UUID
+from datetime import date
 
 from fastapi import (  # noqa: F401
     APIRouter,
@@ -137,8 +138,8 @@ class FundsApiSpec(ABC):
         fundId: UUID,
         first_result: int,
         max_results: int,
-        start_date: str,
-        end_date: str,
+        start_date: date,
+        end_date: date,
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -172,16 +173,39 @@ class FundsApiSpec(ABC):
             self.to_uuid(fundId),
             first_result,
             max_results,
-            start_date,
-            end_date,
+            self.to_date(start_date),
+            self.to_date(end_date),
             token_bearer
         )
+
+    def to_date(self, isodate: str) -> date:
+        """Translates given string to date
+
+        Args:
+            isodate (str): date as ISO date string
+
+        Raises:
+            HTTPException: bad request HTTPException when isodate is not valid ISO date string
+
+        Returns:
+            date: parsed date object
+        """
+        try:
+            return date.fromisoformat(isodate)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid date {isodate}"
+            )
 
     def to_uuid(self, hexadecimal_uuid: str) -> UUID:
         """Translates given hex to UUID
 
         Args:
             hexadecimal_uuid (str): UUID in hexadecimal string
+
+        Raises:
+            HTTPException: bad request HTTPException when hexadecimal_uuid is not valid UUID string
 
         Returns:
             UUID: UUID
