@@ -61,7 +61,7 @@ class FundsApiImpl(FundsApiSpec):
                                  detail="Invalid max results parameter cannot be negative"
                                )
 
-        fund_metas = self.fundsMetaController.get_all_fund_metas(
+        fund_metas = self.fundsMetaController.list_fund_metas(
             first_result=first_result,
             max_results=max_results
         )

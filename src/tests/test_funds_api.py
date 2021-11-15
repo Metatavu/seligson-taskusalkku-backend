@@ -1,5 +1,6 @@
 import logging
 
+from typing import List
 from starlette.testclient import TestClient
 
 from .auth.auth import BearerAuth
@@ -35,8 +36,8 @@ class TestFunds:
         assert {"fi": "Passive test fund 1 - fi", "sv": "Passive test fund 1 - en"} == fund["name"]
         assert {"fi": "Passive test fund 1 - fi, long", "sv": "Passive test fund 1 - en, long"} == fund["longName"]
         assert {"fi": "Passive test fund 1 - fi, short", "sv": "Passive test fund 1 - en, short"} == fund["shortName"]
-        assert "#123456" == fund["color"] 
-        assert 1 == fund["risk"] 
+        assert "#123456" == fund["color"]
+        assert 1 == fund["risk"]
         assert {"fi": "PASSIVETESTFI", "sv": "PASSIVETESTSV"} == fund["KIID"]
         assert "Passive test fund 1 - subs" == fund["bankReceiverName"]
         assert "PASSIVE" == fund["group"]
@@ -77,32 +78,52 @@ class TestFunds:
                                client: TestClient,
                                user_1_auth: BearerAuth
                                ):
-        self.assert_list_count(
-            client=client,
-            auth=user_1_auth,
-            expected_count=3,
-            first_result=0,
-            max_results=3
-        )
-        """
-        self.assert_list_count(
-            client=client,
-            auth=user_1_auth,
-            expected_count=4,
-            first_result=2,
-            max_results=8
-        )
-        """
 
-    def assert_list_count(self,
-                          expected_count: int,
-                          client: TestClient,
-                          auth: BearerAuth,
-                          first_result: int,
-                          max_results: int
-                          ):
-        query = f"first_result={first_result}&max_results={max_results}"
-        response = client.get(f"/v1/funds?{query}", auth=auth)
+        self.assert_list(
+            client=client,
+            auth=user_1_auth,
+            first_result=0,
+            max_results=3,
+            expected_ids=[
+              fund_ids["passivetest01"],
+              fund_ids["activetest01"],
+              fund_ids["balancedtst01"]
+            ]
+        )
+
+        self.assert_list(
+            client=client,
+            auth=user_1_auth,
+            first_result=2,
+            max_results=8,
+            expected_ids=[
+              fund_ids["balancedtst01"],
+              fund_ids["fixedtest0"],
+              fund_ids["dimetest01"],
+              fund_ids["spiltan_test"]
+            ]
+        )
+
+        self.assert_list(
+            client=client,
+            auth=user_1_auth,
+            first_result=2,
+            max_results=2,
+            expected_ids=[
+              fund_ids["balancedtst01"],
+              fund_ids["fixedtest0"]
+            ]
+        )
+
+    def assert_list(self,
+                    expected_ids: List[str],
+                    client: TestClient,
+                    auth: BearerAuth,
+                    first_result: int,
+                    max_results: int
+                    ):
+        response = client.get(f"/v1/funds?first_result={first_result}&max_results={max_results}", auth=auth)
         assert response.status_code == 200
         response_json = response.json()
-        assert len(response_json) == expected_count
+        response_ids = list(map(lambda i: i["id"], response_json))
+        assert response_ids == expected_ids, f"Fund list with first_result {first_result}, max_results {max_results} to yield {expected_ids}"
