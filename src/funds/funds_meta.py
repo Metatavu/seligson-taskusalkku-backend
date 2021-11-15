@@ -93,15 +93,23 @@ class FundsMetaController:
         """
         return next((entry for entry in self.get_all_fund_metas() if entry["id"] == fund_id), None)
 
-    def get_all_fund_metas(self,
-                           first_result: Optional[int] = 0,
-                           max_results: Optional[int] = None
-                           ) -> List[FundMeta]:
+    def list_fund_metas(self,
+                        first_result: int,
+                        max_results: int,
+                        ) -> List[FundMeta]:
         """Returns fund metas
 
         Args:
-            first_result (int): first result. Defaults to 0
-            max_results (int): max results. Not limited by default
+            first_result (int): first result.
+            max_results (int): max results.
+
+        Returns:
+            List[FundMeta]: Fund metas
+        """
+        return list(self.get_all_fund_metas()[first_result:first_result + max_results])
+
+    def get_all_fund_metas(self) -> List[FundMeta]:
+        """Returns all fund metas
 
         Returns:
             List[FundMeta]: Fund metas
@@ -117,9 +125,6 @@ class FundsMetaController:
                 if fund_meta:
                     data.append(fund_meta)
             self.data = data
-
-        if first_result > 0 or max_results:
-            return list(self.data[first_result:max_results])
 
         return self.data
 
