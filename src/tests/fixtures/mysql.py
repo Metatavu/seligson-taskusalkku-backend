@@ -1,4 +1,3 @@
-import time
 import pytest
 import os
 import logging
@@ -25,6 +24,7 @@ def mysql(request):
     mysql = MySqlContainer('mariadb:10.3.29')
     mysql.with_volume_mapping(data_dir, container_import_folder)
     mysql.start()
+    os.environ["SQLALCHEMY_DATABASE_URL"] = mysql.get_connection_url()
 
     for sql_import_file in sql_import_files:
         import_command = f'bash -c "mysql -uroot -ptest test < {container_import_folder}/{sql_import_file}"'

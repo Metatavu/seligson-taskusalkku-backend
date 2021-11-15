@@ -1,6 +1,8 @@
 # coding: utf-8
+import os
 
-from typing import Dict, List  # noqa: F401
+from functools import lru_cache
+from typing import Dict, List, Iterator  # noqa: F401
 from abc import ABC, abstractmethod
 from uuid import UUID
 
@@ -21,6 +23,8 @@ from fastapi import (  # noqa: F401
 
 from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
+from fastapi_utils.session import FastAPISessionMaker
+from sqlalchemy.orm import Session
 
 from {{modelPackage}}.extra_models import TokenModel  # noqa: F401
 {{#imports}}
@@ -31,9 +35,31 @@ from {{modelPackage}}.extra_models import TokenModel  # noqa: F401
 router = InferringRouter()
 
 
+def get_database() -> Iterator[Session]:
+    """FastAPI dependency that provides a sqlalchemy session
+
+    Yields:
+        Iterator[Session]: sqlalchemy session
+    """
+    yield from _get_fastapi_sessionmaker().get_db()
+
+
+@lru_cache()
+def _get_fastapi_sessionmaker() -> FastAPISessionMaker:
+    """Returns FastAPI session maker
+
+    Returns:
+        FastAPISessionMaker: FastAPI session maker
+    """
+    database_uri = os.environ["SQLALCHEMY_DATABASE_URL"]
+    return FastAPISessionMaker(database_uri)
+
+
 @cbv(router)
 class {{classname}}Spec(ABC):
-    {{#operations}}{{#operation}}
+
+    database: Session = Depends(get_database)
+{{#operations}}{{#operation}}
     @abstractmethod
     async def {{operationId}}(
         self,

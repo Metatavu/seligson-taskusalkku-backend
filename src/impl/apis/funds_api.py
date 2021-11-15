@@ -16,6 +16,9 @@ from funds.funds_meta import FundMeta
 from spec.models.localized_value import LocalizedValue
 from spec.models.change_data import ChangeData
 
+from database.operations import query_raterah
+from database.sqlalchemy_models import RATErah
+
 logger = logging.getLogger(__name__)
 
 
@@ -76,7 +79,21 @@ class FundsApiImpl(FundsApiSpec):
                                      end_date: str,
                                      token_bearer: TokenModel
                                      ) -> List[HistoricalValue]:
-        ...
+        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id)
+        if not fund_meta:
+            raise HTTPException(
+                                status_code=404,
+                                detail="Fund {fund_id} not found"
+                              )
+
+        values = query_raterah(
+            database=self.database,
+            secid=fund_meta["fund_code"],
+            first_result=first_result,
+            max_result=max_results
+        )
+
+        return list(map(self.translate_historical_value, values))
 
     def translate_fund(self, fund_meta: FundMeta) -> Fund:
         """Translates fund to REST resource
@@ -151,3 +168,17 @@ class FundsApiImpl(FundsApiSpec):
             fi=fi,
             sv=sv
         )
+
+    def translate_historical_value(self, rate_rah: RATErah) -> HistoricalValue:
+        """Translates historical value
+
+        Args:
+            rate_rah (RATErah): single row from RATErah table
+
+        Returns:
+            HistoricalValue: REST resource
+        """
+        result = HistoricalValue()
+        result.value = rate_rah.RCLOSE
+        result.date = rate_rah.RDATE
+        return result
