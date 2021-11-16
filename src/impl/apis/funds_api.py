@@ -1,12 +1,13 @@
 # coding: utf-8
 
-from typing import List, Optional
 import logging
 import uuid
 
+from typing import List, Optional
 from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
 from spec.apis.funds_api import FundsApiSpec, router as funds_api_router
+from datetime import date
 
 from spec.models.fund import Fund
 from spec.models.historical_value import HistoricalValue
@@ -15,6 +16,9 @@ from funds.funds_meta import FundsMetaController
 from funds.funds_meta import FundMeta
 from spec.models.localized_value import LocalizedValue
 from spec.models.change_data import ChangeData
+
+from database.operations import query_raterah
+from database.sqlalchemy_models import RATErah
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +76,27 @@ class FundsApiImpl(FundsApiSpec):
                                      fund_id: str,
                                      first_result: int,
                                      max_results: int,
-                                     start_date: str,
-                                     end_date: str,
+                                     start_date: date,
+                                     end_date: date,
                                      token_bearer: TokenModel
                                      ) -> List[HistoricalValue]:
-        ...
+        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id)
+        if not fund_meta:
+            raise HTTPException(
+                                status_code=404,
+                                detail="Fund {fund_id} not found"
+                              )
+
+        values = query_raterah(
+            database=self.database,
+            secid=fund_meta["fund_code"],
+            rdate_min=start_date,
+            rdate_max=end_date,
+            first_result=first_result,
+            max_result=max_results
+        )
+
+        return list(map(self.translate_historical_value, values))
 
     def translate_fund(self, fund_meta: FundMeta) -> Fund:
         """Translates fund to REST resource
@@ -151,3 +171,17 @@ class FundsApiImpl(FundsApiSpec):
             fi=fi,
             sv=sv
         )
+
+    def translate_historical_value(self, rate_rah: RATErah) -> HistoricalValue:
+        """Translates historical value
+
+        Args:
+            rate_rah (RATErah): single row from RATErah table
+
+        Returns:
+            HistoricalValue: REST resource
+        """
+        result = HistoricalValue()
+        result.value = rate_rah.RCLOSE
+        result.date = rate_rah.RDATE
+        return result

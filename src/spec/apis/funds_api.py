@@ -1,8 +1,11 @@
 # coding: utf-8
+import os
 
-from typing import Dict, List  # noqa: F401
+from functools import lru_cache
+from typing import Dict, List, Iterator  # noqa: F401
 from abc import ABC, abstractmethod
 from uuid import UUID
+from datetime import date
 
 from fastapi import (  # noqa: F401
     APIRouter,
@@ -21,6 +24,8 @@ from fastapi import (  # noqa: F401
 
 from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
+from fastapi_utils.session import FastAPISessionMaker
+from sqlalchemy.orm import Session
 
 from spec.models.extra_models import TokenModel  # noqa: F401
 from spec.models.error import Error
@@ -31,9 +36,31 @@ from impl.security_api import get_token_bearer
 router = InferringRouter()
 
 
+def get_database() -> Iterator[Session]:
+    """FastAPI dependency that provides a sqlalchemy session
+
+    Yields:
+        Iterator[Session]: sqlalchemy session
+    """
+    yield from _get_fastapi_sessionmaker().get_db()
+
+
+@lru_cache()
+def _get_fastapi_sessionmaker() -> FastAPISessionMaker:
+    """Returns FastAPI session maker
+
+    Returns:
+        FastAPISessionMaker: FastAPI session maker
+    """
+    database_uri = os.environ["SQLALCHEMY_DATABASE_URL"]
+    return FastAPISessionMaker(database_uri)
+
+
 @cbv(router)
 class FundsApiSpec(ABC):
-    
+
+    database: Session = Depends(get_database)
+
     @abstractmethod
     async def find_fund(
         self,
@@ -111,8 +138,8 @@ class FundsApiSpec(ABC):
         fundId: UUID,
         first_result: int,
         max_results: int,
-        start_date: str,
-        end_date: str,
+        start_date: date,
+        end_date: date,
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -146,16 +173,39 @@ class FundsApiSpec(ABC):
             self.to_uuid(fundId),
             first_result,
             max_results,
-            start_date,
-            end_date,
+            self.to_date(start_date),
+            self.to_date(end_date),
             token_bearer
         )
+
+    def to_date(self, isodate: str) -> date:
+        """Translates given string to date
+
+        Args:
+            isodate (str): date as ISO date string
+
+        Raises:
+            HTTPException: bad request HTTPException when isodate is not valid ISO date string
+
+        Returns:
+            date: parsed date object
+        """
+        try:
+            return date.fromisoformat(isodate)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid date {isodate}"
+            )
 
     def to_uuid(self, hexadecimal_uuid: str) -> UUID:
         """Translates given hex to UUID
 
         Args:
             hexadecimal_uuid (str): UUID in hexadecimal string
+
+        Raises:
+            HTTPException: bad request HTTPException when hexadecimal_uuid is not valid UUID string
 
         Returns:
             UUID: UUID
