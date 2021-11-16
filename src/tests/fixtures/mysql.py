@@ -6,8 +6,8 @@ from testcontainers.mysql import MySqlContainer
 
 logger = logging.getLogger(__name__)
 data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
-sql_import_file = os.path.join(data_dir, 'db.sql')
-container_file = "/tmp/import.sql"  # NOSONAR
+sql_import_files = ['db.sql', 'raterah.sql']
+container_import_folder = "/tmp/import"  # NOSONAR
 
 
 @pytest.fixture(scope="session")
@@ -22,12 +22,14 @@ def mysql(request):
     """
 
     mysql = MySqlContainer('mariadb:10.3.29')
-    mysql.with_volume_mapping(sql_import_file, container_file)
+    mysql.with_volume_mapping(data_dir, container_import_folder)
     mysql.start()
+    os.environ["SQLALCHEMY_DATABASE_URL"] = mysql.get_connection_url()
 
-    import_command = f'bash -c "mysql -uroot -ptest test < {container_file}"'
-    import_result = mysql.exec(import_command)
-    assert import_result.exit_code == 0
+    for sql_import_file in sql_import_files:
+        import_command = f'bash -c "mysql -uroot -ptest test < {container_import_folder}/{sql_import_file}"'
+        import_result = mysql.exec(import_command)
+        assert import_result.exit_code == 0
 
     def teardown():
         """Stops the containers after session

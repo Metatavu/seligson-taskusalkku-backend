@@ -2,12 +2,12 @@ import logging
 
 from typing import List
 from starlette.testclient import TestClient
-
+from testcontainers.mysql import MySqlContainer
 from .auth.auth import BearerAuth
 
-from .fixtures.mysql import *
-from .fixtures.users import *
-from .fixtures.client import *
+from .fixtures.client import *  # noqa
+from .fixtures.users import *  # noqa
+from .fixtures.mysql import *  # noqa
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ invalid_uuids = ["potato", "`?%!", "äö", "Правда"]
 class TestFunds:
     """Tests for funds endpoints"""
 
-    def test_find_fund(self, client: TestClient, user_1_auth: BearerAuth):
+    def test_find_fund(self, client: TestClient, user_1_auth: BearerAuth, mysql: MySqlContainer):
         fund_id = fund_ids["passivetest01"]
         response = client.get("/v1/funds/{fund_id}".format(fund_id=fund_id), auth=user_1_auth)
         assert response.status_code == 200
@@ -55,16 +55,13 @@ class TestFunds:
         assert -0.32 == fund["profitProjection"]
         assert "2021-10-12" == fund["profitProjectionDate"]
 
-    def test_find_fund_invalid_id(self,
-                                  client: TestClient,
-                                  user_1_auth: BearerAuth
-                                  ):
+    def test_find_fund_invalid_id(self, client: TestClient, user_1_auth: BearerAuth, mysql: MySqlContainer):
         for invalid_uuid in invalid_uuids:
             url = f"/v1/funds/{invalid_uuid}"
             response = client.get(url, auth=user_1_auth)
             assert response.status_code == 400
 
-    def test_list_funds(self, client: TestClient, user_1_auth: BearerAuth):
+    def test_list_funds(self, client: TestClient, user_1_auth: BearerAuth, mysql: MySqlContainer):
         response = client.get("/v1/funds", auth=user_1_auth)
         assert response.status_code == 200
 
@@ -74,10 +71,7 @@ class TestFunds:
         for fund_id in fund_ids.values():
             assert fund_id in response_ids
 
-    def test_list_funds_limits(self,
-                               client: TestClient,
-                               user_1_auth: BearerAuth
-                               ):
+    def test_list_funds_limits(self, client: TestClient, user_1_auth: BearerAuth, mysql: MySqlContainer):
 
         self.assert_list(
             client=client,
@@ -114,6 +108,20 @@ class TestFunds:
               fund_ids["fixedtest0"]
             ]
         )
+
+    def test_find_fund_values(self, client: TestClient, user_1_auth: BearerAuth, mysql: MySqlContainer):
+        fund_id = fund_ids["passivetest01"]
+        start_date = "2020-01-01"
+        end_date = "2020-01-05"
+        response = client.get(f"/v1/funds/{fund_id}/historicalValues/?start_date={start_date}&end_date={end_date}", auth=user_1_auth)
+        assert response.status_code == 200
+
+        values = response.json()
+        assert 5 == len(values)
+        assert "2020-01-01" == values[0]["date"]
+        assert "2020-01-05" == values[4]["date"]
+        assert 0.564846 == values[0]["value"]
+        assert 1.665009 == values[4]["value"]
 
     def assert_list(self,
                     expected_ids: List[str],

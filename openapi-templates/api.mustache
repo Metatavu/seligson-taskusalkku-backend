@@ -1,8 +1,11 @@
 # coding: utf-8
+import os
 
-from typing import Dict, List  # noqa: F401
+from functools import lru_cache
+from typing import Dict, List, Iterator  # noqa: F401
 from abc import ABC, abstractmethod
 from uuid import UUID
+from datetime import date
 
 from fastapi import (  # noqa: F401
     APIRouter,
@@ -21,6 +24,8 @@ from fastapi import (  # noqa: F401
 
 from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
+from fastapi_utils.session import FastAPISessionMaker
+from sqlalchemy.orm import Session
 
 from {{modelPackage}}.extra_models import TokenModel  # noqa: F401
 {{#imports}}
@@ -31,14 +36,36 @@ from {{modelPackage}}.extra_models import TokenModel  # noqa: F401
 router = InferringRouter()
 
 
+def get_database() -> Iterator[Session]:
+    """FastAPI dependency that provides a sqlalchemy session
+
+    Yields:
+        Iterator[Session]: sqlalchemy session
+    """
+    yield from _get_fastapi_sessionmaker().get_db()
+
+
+@lru_cache()
+def _get_fastapi_sessionmaker() -> FastAPISessionMaker:
+    """Returns FastAPI session maker
+
+    Returns:
+        FastAPISessionMaker: FastAPI session maker
+    """
+    database_uri = os.environ["SQLALCHEMY_DATABASE_URL"]
+    return FastAPISessionMaker(database_uri)
+
+
 @cbv(router)
 class {{classname}}Spec(ABC):
-    {{#operations}}{{#operation}}
+
+    database: Session = Depends(get_database)
+{{#operations}}{{#operation}}
     @abstractmethod
     async def {{operationId}}(
         self,
         {{#allParams}}
-        {{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}: {{#isString}}{{#isUuid}}UUID{{/isUuid}}{{^isUuid}}str{{/isUuid}}{{/isString}}{{#isInteger}}int{{/isInteger}}{{#isLong}}int{{/isLong}}{{#isFloat}}float{{/isFloat}}{{#isDouble}}float{{/isDouble}}{{#isByteArray}}str{{/isByteArray}}{{#isBinary}}str{{/isBinary}}{{#isBoolean}}bool{{/isBoolean}}{{#isDate}}str{{/isDate}}{{#isDateTime}}str{{/isDateTime}}{{#isModel}}{{dataType}}{{/isModel}}{{#isContainer}}{{dataType}}{{/isContainer}},
+        {{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}: {{#isString}}{{#isUuid}}UUID{{/isUuid}}{{^isUuid}}str{{/isUuid}}{{/isString}}{{#isInteger}}int{{/isInteger}}{{#isLong}}int{{/isLong}}{{#isFloat}}float{{/isFloat}}{{#isDouble}}float{{/isDouble}}{{#isByteArray}}str{{/isByteArray}}{{#isBinary}}str{{/isBinary}}{{#isBoolean}}bool{{/isBoolean}}{{#isDate}}date{{/isDate}}{{#isDateTime}}str{{/isDateTime}}{{#isModel}}{{dataType}}{{/isModel}}{{#isContainer}}{{dataType}}{{/isContainer}},
         {{/allParams}}
         {{#hasAuthMethods}}
         {{#authMethods}}
@@ -80,18 +107,41 @@ class {{classname}}Spec(ABC):
     ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
         {{#notes}}"""{{.}}"""{{/notes}}{{^notes}}...{{/notes}}
         return await self.{{operationId}}(
-            {{#allParams}}{{#isUuid}}self.to_uuid({{/isUuid}}{{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}{{#isUuid}}){{/isUuid}}{{^-last}},
+            {{#allParams}}{{#isDate}}self.to_date({{/isDate}}{{#isUuid}}self.to_uuid({{/isUuid}}{{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}{{#isUuid}}){{/isUuid}}{{#isDate}}){{/isDate}}{{^-last}},
             {{/-last}}{{/allParams}}{{#hasParams}},
             {{/hasParams}}{{#hasAuthMethods}}{{#authMethods}}token_{{name}}{{^-last}},
             {{/-last}}{{/authMethods}}{{/hasAuthMethods}}
         )
     {{^-last}}
     {{/-last}}{{/operation}}{{/operations}}
+    def to_date(self, isodate: str) -> date:
+        """Translates given string to date
+
+        Args:
+            isodate (str): date as ISO date string
+
+        Raises:
+            HTTPException: bad request HTTPException when isodate is not valid ISO date string
+
+        Returns:
+            date: parsed date object
+        """
+        try:
+            return date.fromisoformat(isodate)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid date {isodate}"
+            )
+
     def to_uuid(self, hexadecimal_uuid: str) -> UUID:
         """Translates given hex to UUID
 
         Args:
             hexadecimal_uuid (str): UUID in hexadecimal string
+
+        Raises:
+            HTTPException: bad request HTTPException when hexadecimal_uuid is not valid UUID string
 
         Returns:
             UUID: UUID
