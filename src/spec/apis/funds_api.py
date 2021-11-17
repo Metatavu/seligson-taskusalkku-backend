@@ -84,7 +84,7 @@ class FundsApiSpec(ABC):
     )
     async def find_fund_spec(
         self,
-        fundId: str = Path(None, description="fund id"),
+        fundId: str = Path(None, description="fund id", alias="fundId"),
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -119,8 +119,8 @@ class FundsApiSpec(ABC):
     )
     async def list_funds_spec(
         self,
-        first_result: int = Query(None, description="First result. Defaults to 0"),
-        max_results: int = Query(None, description="Max results. Defaults to 10"),
+        first_result: int = Query(None, description="First result. Defaults to 0", alias="firstResult"),
+        max_results: int = Query(None, description="Max results. Defaults to 10", alias="maxResults"),
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -159,11 +159,11 @@ class FundsApiSpec(ABC):
     )
     async def list_historical_values_spec(
         self,
-        fundId: str = Path(None, description="fund id"),
-        first_result: int = Query(None, description="First result. Defaults to 0"),
-        max_results: int = Query(None, description="Max results. Defaults to 10"),
-        start_date: str = Query(None, description="Filter starting from this date"),
-        end_date: str = Query(None, description="Filter ending to this date"),
+        fundId: str = Path(None, description="fund id", alias="fundId"),
+        first_result: int = Query(None, description="First result. Defaults to 0", alias="firstResult"),
+        max_results: int = Query(None, description="Max results. Defaults to 10", alias="maxResults"),
+        start_date: str = Query(None, description="Filter starting from this date", alias="startDate"),
+        end_date: str = Query(None, description="Filter ending to this date", alias="endDate"),
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
