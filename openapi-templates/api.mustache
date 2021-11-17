@@ -113,7 +113,7 @@ class {{classname}}Spec(ABC):
             {{/-last}}{{/authMethods}}{{/hasAuthMethods}}
         )
     {{^-last}}
-    {{/-last}}{{/operation}}{{/operations}}
+{{/-last}}{{/operation}}{{/operations}}
     def to_date(self, isodate: str) -> date:
         """Translates given string to date
 

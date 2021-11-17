@@ -94,7 +94,7 @@ class FundsApiSpec(ABC):
             self.to_uuid(fundId),
             token_bearer
         )
-    
+
     @abstractmethod
     async def list_funds(
         self,
@@ -131,7 +131,7 @@ class FundsApiSpec(ABC):
             max_results,
             token_bearer
         )
-    
+
     @abstractmethod
     async def list_historical_values(
         self,
