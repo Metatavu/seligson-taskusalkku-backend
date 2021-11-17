@@ -28,7 +28,7 @@ class TestFunds:
 
     def test_find_fund(self, client: TestClient, user_1_auth: BearerAuth, mysql: MySqlContainer):
         fund_id = fund_ids["passivetest01"]
-        response = client.get("/v1/funds/{fund_id}".format(fund_id=fund_id), auth=user_1_auth)
+        response = client.get(f"/v1/funds/{fund_id}", auth=user_1_auth)
         assert response.status_code == 200
 
         fund = response.json()
@@ -113,7 +113,7 @@ class TestFunds:
         fund_id = fund_ids["passivetest01"]
         start_date = "2020-01-01"
         end_date = "2020-01-05"
-        response = client.get(f"/v1/funds/{fund_id}/historicalValues/?start_date={start_date}&end_date={end_date}", auth=user_1_auth)
+        response = client.get(f"/v1/funds/{fund_id}/historicalValues/?startDate={start_date}&endDate={end_date}", auth=user_1_auth)
         assert response.status_code == 200
 
         values = response.json()
@@ -130,7 +130,7 @@ class TestFunds:
                     first_result: int,
                     max_results: int
                     ):
-        response = client.get(f"/v1/funds?first_result={first_result}&max_results={max_results}", auth=auth)
+        response = client.get(f"/v1/funds?firstResult={first_result}&maxResults={max_results}", auth=auth)
         assert response.status_code == 200
         response_json = response.json()
         response_ids = list(map(lambda i: i["id"], response_json))
