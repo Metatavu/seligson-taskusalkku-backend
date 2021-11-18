@@ -1,4 +1,3 @@
-
 FROM python:3.9.4-alpine AS base
 
 
@@ -28,7 +27,6 @@ RUN set -eux \
     && pip install -r /usr/src/app/requirements-dev.txt \
     && rm -rf /root/.cache/pip
 COPY . /usr/src/app/
-EXPOSE 8000
 HEALTHCHECK --start-period=5s --interval=30s --timeout=5s CMD curl -f http://localhost:8000/v1/system/ping || exit 1
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
@@ -44,9 +42,5 @@ CMD ["pytest"]
 
 FROM base AS production
 COPY . /usr/src/app/
-EXPOSE 8000
 HEALTHCHECK --start-period=5s --interval=30s --timeout=5s CMD curl -f http://localhost:8000/v1/system/ping || exit 1
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
-
-
