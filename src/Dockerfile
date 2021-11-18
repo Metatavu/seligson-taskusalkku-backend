@@ -28,7 +28,7 @@ RUN set -eux \
     && pip install -r /usr/src/app/requirements-dev.txt \
     && rm -rf /root/.cache/pip
 COPY . /usr/src/app/
-HEALTHCHECK CMD curl --fail http://127.0.0.1:8000/v1/system/ping || exit 1
+HEALTHCHECK CMD curl --fail http://0.0.0.0:8000/v1/system/ping || exit 1
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 
@@ -43,7 +43,7 @@ CMD ["pytest"]
 
 FROM base AS production
 COPY . /usr/src/app/
-HEALTHCHECK CMD curl --fail http://127.0.0.1:8000/v1/system/ping || exit 1
+HEALTHCHECK CMD curl --fail http://0.0.0.0:8000/v1/system/ping || exit 1
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 
