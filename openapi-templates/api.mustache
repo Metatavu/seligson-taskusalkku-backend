@@ -2,7 +2,7 @@
 import os
 
 from functools import lru_cache
-from typing import Dict, List, Iterator  # noqa: F401
+from typing import Dict, List, Iterator, Optional  # noqa: F401
 from abc import ABC, abstractmethod
 from uuid import UUID
 from datetime import date
@@ -65,7 +65,7 @@ class {{classname}}Spec(ABC):
     async def {{operationId}}(
         self,
         {{#allParams}}
-        {{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}: {{#isString}}{{#isUuid}}UUID{{/isUuid}}{{^isUuid}}str{{/isUuid}}{{/isString}}{{#isInteger}}int{{/isInteger}}{{#isLong}}int{{/isLong}}{{#isFloat}}float{{/isFloat}}{{#isDouble}}float{{/isDouble}}{{#isByteArray}}str{{/isByteArray}}{{#isBinary}}str{{/isBinary}}{{#isBoolean}}bool{{/isBoolean}}{{#isDate}}date{{/isDate}}{{#isDateTime}}str{{/isDateTime}}{{#isModel}}{{dataType}}{{/isModel}}{{#isContainer}}{{dataType}}{{/isContainer}},
+        {{paramName}}: {{#isString}}{{#isUuid}}UUID{{/isUuid}}{{^isUuid}}str{{/isUuid}}{{/isString}}{{#isInteger}}int{{/isInteger}}{{#isLong}}int{{/isLong}}{{#isFloat}}float{{/isFloat}}{{#isDouble}}float{{/isDouble}}{{#isByteArray}}str{{/isByteArray}}{{#isBinary}}str{{/isBinary}}{{#isBoolean}}bool{{/isBoolean}}{{#isDate}}date{{/isDate}}{{#isDateTime}}str{{/isDateTime}}{{#isModel}}{{dataType}}{{/isModel}}{{#isContainer}}{{dataType}}{{/isContainer}},
         {{/allParams}}
         {{#hasAuthMethods}}
         {{#authMethods}}
@@ -106,15 +106,22 @@ class {{classname}}Spec(ABC):
         {{/hasAuthMethods}}
     ) -> {{returnType}}{{^returnType}}None{{/returnType}}:
         {{#notes}}"""{{.}}"""{{/notes}}{{^notes}}...{{/notes}}
+{{#allParams}}{{#required}}
+        if {{paramName}} is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter {{baseName}}"
+            )
+{{/required}}{{/allParams}}
         return await self.{{operationId}}(
-            {{#allParams}}{{#isDate}}self.to_date({{/isDate}}{{#isUuid}}self.to_uuid({{/isUuid}}{{#isPathParam}}{{baseName}}{{/isPathParam}}{{^isPathParam}}{{paramName}}{{/isPathParam}}{{#isUuid}}){{/isUuid}}{{#isDate}}){{/isDate}}{{^-last}},
+            {{#allParams}}{{paramName}}={{#isDate}}self.to_date({{/isDate}}{{#isUuid}}self.to_uuid({{/isUuid}}{{paramName}}{{#isUuid}}){{/isUuid}}{{#isDate}}){{/isDate}}{{^-last}},
             {{/-last}}{{/allParams}}{{#hasParams}},
-            {{/hasParams}}{{#hasAuthMethods}}{{#authMethods}}token_{{name}}{{^-last}},
+            {{/hasParams}}{{#hasAuthMethods}}{{#authMethods}}token_{{name}}=token_{{name}}{{^-last}},
             {{/-last}}{{/authMethods}}{{/hasAuthMethods}}
         )
     {{^-last}}
 {{/-last}}{{/operation}}{{/operations}}
-    def to_date(self, isodate: str) -> date:
+    def to_date(self, isodate: str) -> Optional[date]:
         """Translates given string to date
 
         Args:
@@ -126,6 +133,9 @@ class {{classname}}Spec(ABC):
         Returns:
             date: parsed date object
         """
+        if not isodate:
+            return None
+
         try:
             return date.fromisoformat(isodate)
         except ValueError:
@@ -134,7 +144,7 @@ class {{classname}}Spec(ABC):
                 detail=f"Invalid date {isodate}"
             )
 
-    def to_uuid(self, hexadecimal_uuid: str) -> UUID:
+    def to_uuid(self, hexadecimal_uuid: str) -> Optional[UUID]:
         """Translates given hex to UUID
 
         Args:
@@ -146,6 +156,9 @@ class {{classname}}Spec(ABC):
         Returns:
             UUID: UUID
         """
+        if not hexadecimal_uuid:
+            return None
+
         try:
             return UUID(hex=hexadecimal_uuid)
         except ValueError:

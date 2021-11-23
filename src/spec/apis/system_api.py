@@ -2,7 +2,7 @@
 import os
 
 from functools import lru_cache
-from typing import Dict, List, Iterator  # noqa: F401
+from typing import Dict, List, Iterator, Optional  # noqa: F401
 from abc import ABC, abstractmethod
 from uuid import UUID
 from datetime import date
@@ -76,11 +76,12 @@ class SystemApiSpec(ABC):
         self,
     ) -> str:
         """Replies ping with pong"""
+
         return await self.ping(
             
         )
 
-    def to_date(self, isodate: str) -> date:
+    def to_date(self, isodate: str) -> Optional[date]:
         """Translates given string to date
 
         Args:
@@ -92,6 +93,9 @@ class SystemApiSpec(ABC):
         Returns:
             date: parsed date object
         """
+        if not isodate:
+            return None
+
         try:
             return date.fromisoformat(isodate)
         except ValueError:
@@ -100,7 +104,7 @@ class SystemApiSpec(ABC):
                 detail=f"Invalid date {isodate}"
             )
 
-    def to_uuid(self, hexadecimal_uuid: str) -> UUID:
+    def to_uuid(self, hexadecimal_uuid: str) -> Optional[UUID]:
         """Translates given hex to UUID
 
         Args:
@@ -112,6 +116,9 @@ class SystemApiSpec(ABC):
         Returns:
             UUID: UUID
         """
+        if not hexadecimal_uuid:
+            return None
+
         try:
             return UUID(hex=hexadecimal_uuid)
         except ValueError:

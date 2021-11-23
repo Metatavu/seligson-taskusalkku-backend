@@ -28,3 +28,4 @@ out
 bin/utils/*.jar
 staging-data
 src/tests/data/gen-raterah.js
+.DS_Store
