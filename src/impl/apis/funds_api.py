@@ -74,10 +74,10 @@ class FundsApiImpl(FundsApiSpec):
 
     async def list_historical_values(self,
                                      fund_id: str,
-                                     first_result: int,
-                                     max_results: int,
-                                     start_date: date,
-                                     end_date: date,
+                                     first_result: Optional[int],
+                                     max_results: Optional[int],
+                                     start_date: Optional[date],
+                                     end_date: Optional[date],
                                      token_bearer: TokenModel
                                      ) -> List[HistoricalValue]:
         fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id)

@@ -105,8 +105,8 @@ class FundsApiSpec(ABC):
     @abstractmethod
     async def list_funds(
         self,
-        first_result: int,
-        max_results: int,
+        first_result: Optional[int],
+        max_results: Optional[int],
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -144,10 +144,10 @@ class FundsApiSpec(ABC):
     async def list_historical_values(
         self,
         fund_id: UUID,
-        first_result: int,
-        max_results: int,
-        start_date: date,
-        end_date: date,
+        first_result: Optional[int],
+        max_results: Optional[int],
+        start_date: Optional[date],
+        end_date: Optional[date],
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
