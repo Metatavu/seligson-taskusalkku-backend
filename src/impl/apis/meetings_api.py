@@ -9,6 +9,7 @@ from csv import reader
 from datetime import *
 from spec.models.extra_models import TokenModel
 from fastapi import HTTPException
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 
 @cbv(meetings_api_router)
 class MeetingsApiImpl(MeetingsApiSpec):
@@ -18,7 +19,46 @@ class MeetingsApiImpl(MeetingsApiSpec):
         meeting: Meeting,
         token_bearer: TokenModel
     ) -> Meeting:
-        pass
+        conf = ConnectionConfig(
+            MAIL_USERNAME="YourUsername",
+            MAIL_PASSWORD="strong_password",
+            MAIL_FROM="your@email.com",
+            MAIL_PORT=587,
+            MAIL_SERVER="your mail server",
+            MAIL_TLS=True,
+            MAIL_SSL=False,
+            USE_CREDENTIALS=True,
+            VALIDATE_CERTS=True
+        )
+
+        email_body = ""
+        email_body += f"Päivämäärä ja aika: {str(meeting.time.date())} klo {str(meeting.time.time())}"
+        email_body += f"\nKielivalinta: {meeting.language}"
+        email_body += f"\nKielivalinta: {meeting.language}"
+        email_body += f"\nTyyppi: {'Puhelinkeskustelu' if meeting.type == 'PHONE' else 'Tapaaminen'}"
+        email_body += f"\nOsallistujia: {meeting.participantCount}"
+        # TODO check customer number
+
+        if meeting.contact.email or meeting.contact.phone:
+            email_body += "\n\nHUOM! Kirjautunut käyttäjä on ilmoittanut yhteystietonsa erikseen tällä lomakkeella!";
+
+        email_body += f"\n\nEtunimi: {meeting.contact.firstName}"
+        email_body += f"\nSukunimi: {meeting.contact.lastName}"
+        email_body += f"\nEmail: {meeting.contact.email}"
+        email_body += f"\nPuhelinnumero: {meeting.contact.phone}"
+        email_body += f"\n\nViesti: {meeting.additionalInformation}"
+
+        # TODO why the email is nullable
+        message = MessageSchema(
+            subject="UUSI AJANVARAUS (Taskusalkun kautta)",
+            recipients="tommi@example.fi",
+            body=email_body,
+            subtype="html"
+            )
+
+        fm = FastMail(conf)
+        await fm.send_message(message)
+        return
 
     async def list_meeting_times(self,
                                  start_date: date,
