@@ -12,6 +12,7 @@ from ..testcontainers.kafka_connect import KafkaConnectContainer
 from ..testcontainers.kafka import KafkaContainer
 
 from ..fixtures.kafka import *
+from ..fixtures.salkku_mysql import *
 
 data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ extra_libs = [
 
 
 @pytest.fixture(scope="session")
-def kafka_connect(request, mysql: MySqlContainer, kafka: KafkaContainer):
+def kafka_connect(request, salkku_mysql: MySqlContainer, kafka: KafkaContainer):
     """Kafka Connect fixture
 
     Args:
@@ -47,7 +48,7 @@ def kafka_connect(request, mysql: MySqlContainer, kafka: KafkaContainer):
     def get_main_mysql_connector():
         with open(f"{data_dir}/test-kafka-connector.json") as json_file:
             result: Dict = json.load(json_file)
-            result["config"]["database.hostname"] = mysql.get_docker_client().bridge_ip(mysql._container.id)
+            result["config"]["database.hostname"] = salkku_mysql.get_docker_client().bridge_ip(salkku_mysql._container.id)
             result["config"]["database.port"] = 3306
             result["config"]["database.user"] = "root"
             result["config"]["database.password"] = "test"

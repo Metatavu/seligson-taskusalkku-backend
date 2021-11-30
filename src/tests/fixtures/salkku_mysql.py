@@ -9,7 +9,7 @@ data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
 container_import_folder = "/tmp/import"  # NOSONAR
 
 
-def mysql_import_sql(mysql: MySqlContainer, sql_import_file: str):
+def salkku_import_sql(mysql: MySqlContainer, sql_import_file: str):
     logger.info(f"Importing SQL file {sql_import_file}...")
     import_command = f'bash -c "mysql -uroot -ptest test < {container_import_folder}/{sql_import_file}"'
     import_result = mysql.exec(import_command)
@@ -17,7 +17,7 @@ def mysql_import_sql(mysql: MySqlContainer, sql_import_file: str):
 
 
 @pytest.fixture(scope="session")
-def mysql(request):
+def salkku_mysql(request):
     """MySQL Fixture.
 
     Args:
@@ -33,9 +33,9 @@ def mysql(request):
     mysql.start()
     os.environ["SQLALCHEMY_DATABASE_URL"] = mysql.get_connection_url()
 
-    mysql_import_sql(mysql, 'db.sql')
-    mysql_import_sql(mysql, 'fund-securities.sql')
-    mysql_import_sql(mysql, 'raterah.sql')
+    salkku_import_sql(mysql, 'salkku-db.sql')
+    ### 
+    ### mysql_import_sql(mysql, 'salkku-raterah.sql')
 
     def teardown():
         """Stops the containers after session
