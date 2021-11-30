@@ -6,6 +6,8 @@
 #
 aiokafka==0.7.2
     # via -r requirements.in
+alembic==1.7.5
+    # via -r requirements.in
 asgiref==3.4.1
     # via uvicorn
 certifi==2021.10.8
@@ -32,6 +34,10 @@ idna==2.10
     # via requests
 kafka-python==2.0.2
     # via aiokafka
+mako==1.1.6
+    # via alembic
+markupsafe==2.0.1
+    # via mako
 mysqlclient==2.0.3
     # via -r requirements.in
 pycparser==2.20
@@ -46,7 +52,9 @@ pyjwt==2.3.0
 requests==2.25.1
     # via -r requirements.in
 sqlalchemy==1.4.26
-    # via fastapi-utils
+    # via
+    #   alembic
+    #   fastapi-utils
 starlette==0.14.2
     # via fastapi
 typing-extensions==3.10.0.2
