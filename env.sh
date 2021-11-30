@@ -4,3 +4,4 @@ export OIDC_AUDIENCE=seli-client
 export FUND_JSON=tests/data/funds.json
 export FUND_OPTIONS_JSON=tests/data/fund-options.json
 export FUND_VALUES_BASIC_CSV=tests/data/fund-values-basic.csv
+export HOLIDAYS_CSV=tests/data/holidays.csv
