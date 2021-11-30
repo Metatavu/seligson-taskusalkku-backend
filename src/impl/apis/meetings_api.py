@@ -29,13 +29,13 @@ class MeetingsApiImpl(MeetingsApiSpec):
         if end_date < start_date:
             raise HTTPException(
                                 status_code=400,
-                                detail="end date before start date"
+                                detail="End date before start date"
                               )
 
         if end_date < date.today() or start_date < date.today():
             raise HTTPException(
                                 status_code=400,
-                                detail="end date and start date can not be in the past"
+                                detail="End date and start date can not be in the past"
                               )
 
         with open(os.environ["HOLIDAYS_CSV"]) as csv_file:
@@ -47,9 +47,11 @@ class MeetingsApiImpl(MeetingsApiSpec):
 
         first_available_date = start_date if start_date > date.today() else date.today()
 
-        while first_available_date < end_date:
+        while first_available_date <= end_date:
             if str(first_available_date) in holidays or first_available_date.weekday() >= 5:
+                first_available_date += timedelta(days=1)
                 continue
+
             result.append(self.construct_meeting_time(first_available_date, 9, 10))
             result.append(self.construct_meeting_time(first_available_date, 10, 11))
             result.append(self.construct_meeting_time(first_available_date, 11, 12))
