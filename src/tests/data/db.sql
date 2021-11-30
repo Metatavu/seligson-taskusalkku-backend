@@ -783,6 +783,19 @@ CREATE TABLE `UserAccountSharedAccessLog` (
 ) ENGINE=InnoDB AUTO_INCREMENT=403 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+DROP TABLE IF EXISTS `FundSecurities`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `FundSecurities` (
+  `fundID` int(11) NOT NULL,
+  `securityID` varchar(24) NOT NULL,
+  `securityName_fi` varchar(64) NOT NULL,
+  `securityName_sv` varchar(64) NOT NULL,
+  `class` enum('other','growth','profit','heart','K') NOT NULL,
+  `minimumPurchase` decimal(13,3) NOT NULL DEFAULT 0.000
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 --
 -- Dumping data for table `UserAccountSharedAccessLog`
 --
