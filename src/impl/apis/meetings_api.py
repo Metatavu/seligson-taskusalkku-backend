@@ -10,6 +10,7 @@ from datetime import *
 from spec.models.extra_models import TokenModel
 from fastapi import HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from ...app.app import email_conf
 
 @cbv(meetings_api_router)
 class MeetingsApiImpl(MeetingsApiSpec):
@@ -19,18 +20,6 @@ class MeetingsApiImpl(MeetingsApiSpec):
         meeting: Meeting,
         token_bearer: TokenModel
     ) -> Meeting:
-        conf = ConnectionConfig(
-            MAIL_USERNAME="YourUsername",
-            MAIL_PASSWORD="strong_password",
-            MAIL_FROM="your@email.com",
-            MAIL_PORT=587,
-            MAIL_SERVER="your mail server",
-            MAIL_TLS=True,
-            MAIL_SSL=False,
-            USE_CREDENTIALS=True,
-            VALIDATE_CERTS=True
-        )
-
         email_body = ""
         email_body += f"Päivämäärä ja aika: {str(meeting.time.date())} klo {str(meeting.time.time())}"
         email_body += f"\nKielivalinta: {meeting.language}"
@@ -56,7 +45,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
             subtype="html"
             )
 
-        fm = FastMail(conf)
+        fm = FastMail(email_conf)
         await fm.send_message(message)
         return
 
