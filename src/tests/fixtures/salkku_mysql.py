@@ -3,17 +3,11 @@ import os
 import logging
 
 from testcontainers.mysql import MySqlContainer
+from ..utils.database import mysql_import_sql
 
 logger = logging.getLogger(__name__)
 data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
 container_import_folder = "/tmp/import"  # NOSONAR
-
-
-def salkku_import_sql(mysql: MySqlContainer, sql_import_file: str):
-    logger.info(f"Importing SQL file {sql_import_file}...")
-    import_command = f'bash -c "mysql -uroot -ptest test < {container_import_folder}/{sql_import_file}"'
-    import_result = mysql.exec(import_command)
-    assert import_result.exit_code == 0
 
 
 @pytest.fixture(scope="session")
@@ -33,7 +27,7 @@ def salkku_mysql(request):
     mysql.start()
     os.environ["SQLALCHEMY_DATABASE_URL"] = mysql.get_connection_url()
 
-    salkku_import_sql(mysql, 'salkku-db.sql')
+    mysql_import_sql(mysql, 'salkku-db.sql')
 
     def teardown():
         """Stops the containers after session

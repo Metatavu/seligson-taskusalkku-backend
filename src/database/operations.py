@@ -1,34 +1,52 @@
-from typing import List
+from typing import List, Optional
+from uuid import UUID
 from sqlalchemy.orm import Session
-from .sqlalchemy_models import RATErah
+from .models import Fund, FundRate
 from datetime import date
 
 
-def query_raterah(database: Session,
-                  secid: str,
-                  rdate_min: date,
-                  rdate_max: date,
-                  first_result: int = 0,
-                  max_result: int = 100
-                  ) -> List[RATErah]:
-    """Queries the RATErah table
+def find_fund(database: Session, id: UUID) -> Optional[Fund]:
+    return database.query(Fund) \
+        .filter(Fund.id == id) \
+        .one_or_none()
+
+
+def list_funds(database: Session,
+               first_result: int,
+               max_result: int
+               ) -> List[Fund]:
+    return database.query(Fund) \
+        .order_by(Fund.fund_id)  \
+        .offset(first_result) \
+        .limit(max_result) \
+        .all()
+
+
+def query_fund_rates(database: Session,
+                     fund_id: UUID,
+                     rate_date_min: date,
+                     rate_date_max: date,
+                     first_result: int = 0,
+                     max_result: int = 100
+                    ) -> List[FundRate]:
+    """Queries the fund rate table
 
     Args:
         database (Session): database session
-        secid (str): secid
-        rdate_min (date): filter results by rdate after given date
-        rdate_max (date): filter results by rdate before given date
+        fund_id (UUID): fund id
+        rate_date_min (date): filter results by rate_date after given date
+        rate_date_max (date): filter results by rate_date before given date
         first_result (int, optional): first result. Defaults to 0.
         max_result (int, optional): max results. Defaults to 100.
 
     Returns:
         List[RATErah]: list of matching RATErah table rows
     """
-    return database.query(RATErah) \
-        .filter(RATErah.SECID == secid) \
-        .filter(RATErah.RDATE >= rdate_min) \
-        .filter(RATErah.RDATE <= rdate_max) \
+    return database.query(FundRate) \
+        .filter(FundRate.fund_id == fund_id) \
+        .filter(FundRate.rate_date >= rate_date_min) \
+        .filter(FundRate.rate_date <= rate_date_max) \
         .offset(first_result) \
         .limit(max_result) \
-        .order_by(RATErah.RDATE)  \
+        .order_by(FundRate.rate_date)  \
         .all()

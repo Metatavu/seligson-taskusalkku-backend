@@ -24,7 +24,7 @@ class SyncHandler:
 
         Args:
             record (ConsumerRecord): record
-        """        
+        """
         topic = record.topic
         logger.info(f"Handling message to topic: {topic}")
 
@@ -93,8 +93,6 @@ class SyncHandler:
         fund.security_id = after["securityID"]
         fund.security_name_fi = after["securityName_fi"]
         fund.security_name_sv = after["securityName_sv"]
-        fund.class_type = after["class"]
-        fund.minimum_purchase = 0
 
         session.add(fund)
         session.flush()

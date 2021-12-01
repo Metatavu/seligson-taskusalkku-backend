@@ -2,7 +2,6 @@ from starlette.testclient import TestClient
 
 from .fixtures.client import *  # noqa
 
-
 class TestSystem:
     """Tests for system endpoints"""
 
