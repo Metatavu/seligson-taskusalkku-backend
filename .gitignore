@@ -27,4 +27,5 @@ out
 .*.sw?
 bin/utils/*.jar
 staging-data
-src/tests/data/gen-raterah.js
+src/tests/data/*.js
+.DS_Store
