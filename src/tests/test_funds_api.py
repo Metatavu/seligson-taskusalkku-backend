@@ -187,8 +187,8 @@ class TestFunds:
                 assert 5 == len(values)
                 assert "2020-01-01" == values[0]["date"]
                 assert "2020-01-05" == values[4]["date"]
-                assert 0.6541150584099753 == values[0]["value"]
-                assert 4.743263185743941 == values[4]["value"]
+                assert 0.654115 == values[0]["value"]
+                assert 4.743263 == values[4]["value"]
 
             mysql_exec_sql(mysql=backend_mysql, sql_file="backend-fund-rates-teardown.sql")
             mysql_exec_sql(mysql=backend_mysql, sql_file="backend-funds-teardown.sql")
