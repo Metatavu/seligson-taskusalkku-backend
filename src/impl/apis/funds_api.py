@@ -130,7 +130,8 @@ class FundsApiImpl(FundsApiSpec):
 
         return result
 
-    def translate_change_date(self, fund_meta: FundMeta) -> ChangeData:
+    @staticmethod
+    def translate_change_date(fund_meta: FundMeta) -> ChangeData:
         """Translates change data from fund meta object
 
         Args:
@@ -150,8 +151,8 @@ class FundsApiImpl(FundsApiSpec):
             change20y=fund_meta["_20y_change"],
         )
 
-    def translate_meta_locale(self,
-                              meta_locale: Optional[List[str]]
+    @staticmethod
+    def translate_meta_locale(meta_locale: Optional[List[str]]
                               ) -> Optional[LocalizedValue]:
         """Translates localized value from fund meta to LocalizedValue
 
@@ -172,7 +173,8 @@ class FundsApiImpl(FundsApiSpec):
             sv=sv
         )
 
-    def translate_historical_value(self, rate_rah: RATErah) -> HistoricalValue:
+    @staticmethod
+    def translate_historical_value(rate_rah: RATErah) -> HistoricalValue:
         """Translates historical value
 
         Args:

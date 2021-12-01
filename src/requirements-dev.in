@@ -1,2 +1,3 @@
 pytest==6.2.3
 testcontainers[mysql]
+factory-boy==3.2.1

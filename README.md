@@ -34,6 +34,12 @@ docker run --net=host -it --rm --name production seligson-taskusalkku-backend
 ```
 
 ###2.Local
+Install the mysql client related packages.
+
+```bash
+sudo apt-get install python3-dev default-libmysqlclient-dev build-essential
+```
+
 Install Python 3.6+ on your local(tested only with python 3.8)
 ```bash
 python3 -m venv  venv

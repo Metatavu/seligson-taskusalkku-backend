@@ -1,10 +1,6 @@
 import logging
 
 from typing import List
-from starlette.testclient import TestClient
-from testcontainers.mysql import MySqlContainer
-from .auth.auth import BearerAuth
-
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.mysql import *  # noqa
@@ -12,12 +8,12 @@ from .fixtures.mysql import *  # noqa
 logger = logging.getLogger(__name__)
 
 fund_ids = {
-  "passivetest01": "03568d76-93f1-3a2d-9ed5-b95516546548",
-  "activetest01": "dc856547-449b-306e-80c9-05ef8a002a3a",
-  "balancedtst01": "3073d4fe-78cc-36ec-a7e0-9c24944030b0",
-  "fixedtest0": "8cd9b437-e524-3926-a3f9-969923cf51bd",
-  "dimetest01": "79f8da68-6bdc-3a24-acde-327aa14e2546",
-  "spiltan_test": "098a999d-65ae-3746-900b-b0b33a5d7d9c"
+    "passivetest01": "03568d76-93f1-3a2d-9ed5-b95516546548",
+    "activetest01": "dc856547-449b-306e-80c9-05ef8a002a3a",
+    "balancedtst01": "3073d4fe-78cc-36ec-a7e0-9c24944030b0",
+    "fixedtest0": "8cd9b437-e524-3926-a3f9-969923cf51bd",
+    "dimetest01": "79f8da68-6bdc-3a24-acde-327aa14e2546",
+    "spiltan_test": "098a999d-65ae-3746-900b-b0b33a5d7d9c"
 }
 
 invalid_uuids = ["potato", "`?%!", "äö", "Правда"]
@@ -79,9 +75,9 @@ class TestFunds:
             first_result=0,
             max_results=3,
             expected_ids=[
-              fund_ids["passivetest01"],
-              fund_ids["activetest01"],
-              fund_ids["balancedtst01"]
+                fund_ids["passivetest01"],
+                fund_ids["activetest01"],
+                fund_ids["balancedtst01"]
             ]
         )
 
@@ -91,10 +87,10 @@ class TestFunds:
             first_result=2,
             max_results=8,
             expected_ids=[
-              fund_ids["balancedtst01"],
-              fund_ids["fixedtest0"],
-              fund_ids["dimetest01"],
-              fund_ids["spiltan_test"]
+                fund_ids["balancedtst01"],
+                fund_ids["fixedtest0"],
+                fund_ids["dimetest01"],
+                fund_ids["spiltan_test"]
             ]
         )
 
@@ -104,8 +100,8 @@ class TestFunds:
             first_result=2,
             max_results=2,
             expected_ids=[
-              fund_ids["balancedtst01"],
-              fund_ids["fixedtest0"]
+                fund_ids["balancedtst01"],
+                fund_ids["fixedtest0"]
             ]
         )
 
@@ -113,7 +109,8 @@ class TestFunds:
         fund_id = fund_ids["passivetest01"]
         start_date = "2020-01-01"
         end_date = "2020-01-05"
-        response = client.get(f"/v1/funds/{fund_id}/historicalValues/?startDate={start_date}&endDate={end_date}", auth=user_1_auth)
+        response = client.get(f"/v1/funds/{fund_id}/historicalValues/?startDate={start_date}&endDate={end_date}",
+                              auth=user_1_auth)
         assert response.status_code == 200
 
         values = response.json()
