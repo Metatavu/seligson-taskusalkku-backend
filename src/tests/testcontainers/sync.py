@@ -2,6 +2,7 @@ from testcontainers.core.generic import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
 KAFKA_BOOTSTRAP_SERVERS = "KAFKA_BOOTSTRAP_SERVERS"
+DATABASE_URL = "DATABASE_URL"
 
 class SyncContainer(DockerContainer):
     """
@@ -9,7 +10,7 @@ class SyncContainer(DockerContainer):
     -------
     """
 
-    def __init__(self, kafkaIp: str, image="seligson-sync", **kwargs):
+    def __init__(self, kafka_ip: str, database_url: str, image="seligson-sync", **kwargs):
         """Constructor
 
         Args:
@@ -17,9 +18,10 @@ class SyncContainer(DockerContainer):
         """
         super(SyncContainer, self).__init__(image)
 
+        self.database_url = database_url
         self.with_kwargs(
           extra_hosts={
-            "kafka": kafkaIp
+            "kafka": kafka_ip
           }
         )
 
@@ -38,3 +40,4 @@ class SyncContainer(DockerContainer):
         """Configures the Kafka container
         """
         self.with_env(KAFKA_BOOTSTRAP_SERVERS, "kafka:9092")
+        self.with_env(DATABASE_URL, self.database_url)

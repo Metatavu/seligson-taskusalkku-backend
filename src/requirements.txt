@@ -49,12 +49,19 @@ pydantic==1.8.2
     #   fastapi-utils
 pyjwt==2.3.0
     # via -r requirements.in
+pymysql==1.0.2
+    # via -r requirements.in
 requests==2.25.1
     # via -r requirements.in
+six==1.16.0
+    # via sqlalchemy-utils
 sqlalchemy==1.4.26
     # via
     #   alembic
     #   fastapi-utils
+    #   sqlalchemy-utils
+sqlalchemy-utils==0.37.9
+    # via -r requirements.in
 starlette==0.14.2
     # via fastapi
 typing-extensions==3.10.0.2

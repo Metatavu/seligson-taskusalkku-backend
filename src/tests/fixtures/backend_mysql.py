@@ -20,7 +20,7 @@ def backend_mysql(request):
         MySqlContainer: Reference to MySQL container
     """
 
-    mysql = MySqlContainer('mysql:5.6')
+    mysql = MySqlContainer('mariadb:10.3.29')
     mysql.with_command("--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci")
     mysql.start()
     os.environ["DATABASE_URL"] = mysql.get_connection_url()
