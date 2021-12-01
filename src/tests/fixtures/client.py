@@ -23,5 +23,13 @@ def client() -> TestClient:
     os.environ["FUND_VALUES_BASIC_CSV"] = fund_values_basic_csv
     os.environ["FUND_VALUES_BASIC_CSV"] = fund_values_basic_csv
     os.environ["HOLIDAYS_CSV"] = holidays_csv
+    os.environ["MAIL_USERNAME"] = ""
+    os.environ["MAIL_PASSWORD"] = ""
+    os.environ["MAIL_FROM"] = "test@example.com"
+    os.environ["MAIL_TO"] = "test2@example.com"
+    os.environ["MAIL_PORT"] = "2500"
+    os.environ["MAIL_SERVER"] = "127.0.0.1"
+    os.environ["MAIL_TLS"] = "False"
+    os.environ["MAIL_SSL"] = "False"
 
     return TestClient(app)

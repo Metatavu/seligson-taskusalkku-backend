@@ -10,7 +10,6 @@ from datetime import *
 from spec.models.extra_models import TokenModel
 from fastapi import HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from app.app import email_conf
 
 @cbv(meetings_api_router)
 class MeetingsApiImpl(MeetingsApiSpec):
@@ -20,15 +19,30 @@ class MeetingsApiImpl(MeetingsApiSpec):
         meeting: Meeting,
         token_bearer: TokenModel
     ) -> Meeting:
-        import pdb
-        pdb.set_trace()
+
+        MAIL_USERNAME = os.environ["MAIL_USERNAME"]
+        MAIL_PASSWORD = os.environ["MAIL_PASSWORD"]
+        USE_CREDENTIALS = bool(MAIL_USERNAME) and bool(MAIL_PASSWORD)
+        VALIDATE_CERTS = USE_CREDENTIALS
+
+        email_conf = ConnectionConfig(
+            MAIL_USERNAME=MAIL_USERNAME,
+            MAIL_PASSWORD=MAIL_PASSWORD,
+            MAIL_FROM=os.environ["MAIL_FROM"],
+            MAIL_PORT=os.environ["MAIL_PORT"],
+            MAIL_SERVER=os.environ["MAIL_SERVER"],
+            MAIL_TLS=eval(os.environ["MAIL_TLS"]),
+            MAIL_SSL=eval(os.environ["MAIL_SSL"]),
+            USE_CREDENTIALS=USE_CREDENTIALS,
+            VALIDATE_CERTS=VALIDATE_CERTS
+        )
+
         email_body = ""
         email_body += f"Päivämäärä ja aika: {str(meeting.time.date())} klo {str(meeting.time.time())}"
         email_body += f"\nKielivalinta: {meeting.language}"
         email_body += f"\nKielivalinta: {meeting.language}"
         email_body += f"\nTyyppi: {'Puhelinkeskustelu' if meeting.type == 'PHONE' else 'Tapaaminen'}"
         email_body += f"\nOsallistujia: {meeting.participantCount}"
-        # TODO check customer number
 
         if meeting.contact.email or meeting.contact.phone:
             email_body += "\n\nHUOM! Kirjautunut käyttäjä on ilmoittanut yhteystietonsa erikseen tällä lomakkeella!";
@@ -41,7 +55,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
 
         message = MessageSchema(
             subject="UUSI AJANVARAUS (Taskusalkun kautta)",
-            recipients=os.environ["MAIL_TO"],
+            recipients=os.environ["MAIL_TO"].split(","),
             body=email_body,
             subtype="html"
             )

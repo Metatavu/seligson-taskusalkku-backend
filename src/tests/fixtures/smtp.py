@@ -1,20 +1,20 @@
 import pytest
 
-from ..testcontainers.bytemark_smtp import BytemarkSmtpContainer
+from ..testcontainers.smtp import SmtpContainer
 import os
 
 
 @pytest.fixture(scope="session")
-def bytemark_smtp(request):
-    """bytemark smtp fixture
+def smtp(request):
+    """smtp fixture
 
     Args:
         request (FixtureRequest): A fixture request object
 
     Returns:
-        KeycloakContainer: Reference to Keycloak container
+        SmtpContainer: Reference to smtp container
     """
-    smtp = BytemarkSmtpContainer()
+    smtp = SmtpContainer()
 
     smtp.start()
 

@@ -4,21 +4,17 @@ import datetime
 from .fixtures.client import *  # noqa
 from .auth.auth import BearerAuth  # noqa
 from .fixtures.users import *  # noqa
-from .fixtures.bytemark_smtp import *  # noqa
+from .fixtures.smtp import *  # noqa
 import json
-from spec.models.meeting import Meeting
 
 
 class TestMeetingTimes:
     """Tests for meeting times endpoints"""
 
-    def test_create_meeting(self, client: TestClient, user_1_auth: BearerAuth, bytemark_smtp: BytemarkSmtpContainer):
-        meeting = Meeting(
-
-        )
+    def test_create_meeting(self, client: TestClient, user_1_auth: BearerAuth, smtp: SmtpContainer):
         meeting = {
             "type": "MEETING",
-            "time": "2021-12-01",
+            "time": "2021-12-01T13:11:24.565341",
             "language": "fi",
             "participantCount": 1,
             "additionalInformation": "additional info",
@@ -29,8 +25,8 @@ class TestMeetingTimes:
                 "phone": "00000",
             }
         }
+        response = client.post(f"/v1/meetings", auth=user_1_auth, data=json.dumps(meeting))
 
-        response = client.post(f"/v1/meetings", auth=user_1_auth, )
         assert response.status_code == 200
 
     def test_find_meeting_times(self, client: TestClient, user_1_auth: BearerAuth):
