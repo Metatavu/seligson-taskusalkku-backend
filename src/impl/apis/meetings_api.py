@@ -6,7 +6,7 @@ from spec.models.meeting_time import MeetingTime
 from spec.models.meeting import Meeting
 from typing import List
 from csv import reader
-from datetime import *
+from datetime import date, datetime, timedelta, time
 from spec.models.extra_models import TokenModel
 from fastapi import HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig

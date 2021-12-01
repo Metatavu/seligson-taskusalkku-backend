@@ -22,7 +22,6 @@ def client(backend_mysql: MySqlContainer) -> TestClient:
     os.environ["FUND_JSON"] = funds_json
     os.environ["FUND_OPTIONS_JSON"] = fund_options_json
     os.environ["FUND_VALUES_BASIC_CSV"] = fund_values_basic_csv
-    os.environ["FUND_VALUES_BASIC_CSV"] = fund_values_basic_csv
     os.environ["HOLIDAYS_CSV"] = holidays_csv
     os.environ["MAIL_USERNAME"] = ""
     os.environ["MAIL_PASSWORD"] = ""
