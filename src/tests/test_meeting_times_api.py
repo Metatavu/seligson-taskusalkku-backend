@@ -2,11 +2,36 @@ from csv import reader
 from starlette.testclient import TestClient
 import datetime
 from .fixtures.client import *  # noqa
-from .auth.auth import BearerAuth # noqa
+from .auth.auth import BearerAuth  # noqa
 from .fixtures.users import *  # noqa
+from .fixtures.bytemark_smtp import *  # noqa
+import json
+from spec.models.meeting import Meeting
+
 
 class TestMeetingTimes:
     """Tests for meeting times endpoints"""
+
+    def test_create_meeting(self, client: TestClient, user_1_auth: BearerAuth, bytemark_smtp: BytemarkSmtpContainer):
+        meeting = Meeting(
+
+        )
+        meeting = {
+            "type": "MEETING",
+            "time": "2021-12-01",
+            "language": "fi",
+            "participantCount": 1,
+            "additionalInformation": "additional info",
+            "contact": {
+                "firstName": "tommi",
+                "lastName": "tommi",
+                "email": "tommi@example.fi",
+                "phone": "00000",
+            }
+        }
+
+        response = client.post(f"/v1/meetings", auth=user_1_auth, )
+        assert response.status_code == 200
 
     def test_find_meeting_times(self, client: TestClient, user_1_auth: BearerAuth):
         today = datetime.date.today()

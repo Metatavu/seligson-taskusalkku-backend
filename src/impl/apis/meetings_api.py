@@ -10,7 +10,7 @@ from datetime import *
 from spec.models.extra_models import TokenModel
 from fastapi import HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from ...app.app import email_conf
+from app.app import email_conf
 
 @cbv(meetings_api_router)
 class MeetingsApiImpl(MeetingsApiSpec):
@@ -20,6 +20,8 @@ class MeetingsApiImpl(MeetingsApiSpec):
         meeting: Meeting,
         token_bearer: TokenModel
     ) -> Meeting:
+        import pdb
+        pdb.set_trace()
         email_body = ""
         email_body += f"Päivämäärä ja aika: {str(meeting.time.date())} klo {str(meeting.time.time())}"
         email_body += f"\nKielivalinta: {meeting.language}"
@@ -37,17 +39,16 @@ class MeetingsApiImpl(MeetingsApiSpec):
         email_body += f"\nPuhelinnumero: {meeting.contact.phone}"
         email_body += f"\n\nViesti: {meeting.additionalInformation}"
 
-        # TODO why the email is nullable
         message = MessageSchema(
             subject="UUSI AJANVARAUS (Taskusalkun kautta)",
-            recipients="tommi@example.fi",
+            recipients=os.environ["MAIL_TO"],
             body=email_body,
             subtype="html"
             )
 
         fm = FastMail(email_conf)
         await fm.send_message(message)
-        return
+        return meeting
 
     async def list_meeting_times(self,
                                  start_date: date,
