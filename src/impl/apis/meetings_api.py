@@ -63,7 +63,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
         fm = FastMail(email_conf)
         try:
             await fm.send_message(message)
-        except:
+        except Exception:
             raise HTTPException(
                                 status_code=403,
                                 detail="Failed to send email due to invalid credentials."
