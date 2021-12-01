@@ -9,13 +9,10 @@ from datetime import date, datetime
 
 logger = logging.getLogger(__name__)
 
-uuid_namespace = UUID("409C9B21-6711-4134-8BA9-C48DD0B5C9EC")
-
 
 class FundMeta(TypedDict, total=False):
     """Defines a fund meta entry"""
 
-    id: UUID
     fund_id: str
     fund_code: str
     name: List[str]
@@ -82,8 +79,8 @@ class FundsMetaController:
       "passive": "PASSIVE"
     }
 
-    def get_fund_meta_by_fund_id(self, fund_id: UUID) -> Optional[FundMeta]:
-        """Returns fund meta entry for given fund id
+    def get_fund_meta_by_fund_code(self, fund_code: str) -> Optional[FundMeta]:
+        """Returns fund meta entry for given fund code
 
         Args:
             fund_id (uuid): Fund id
@@ -91,22 +88,7 @@ class FundsMetaController:
         Returns:
             FundMeta: fund meta
         """
-        return next((entry for entry in self.get_all_fund_metas() if entry["id"] == fund_id), None)
-
-    def list_fund_metas(self,
-                        first_result: int,
-                        max_results: int,
-                        ) -> List[FundMeta]:
-        """Returns fund metas
-
-        Args:
-            first_result (int): first result.
-            max_results (int): max results.
-
-        Returns:
-            List[FundMeta]: Fund metas
-        """
-        return list(self.get_all_fund_metas()[first_result:first_result + max_results])
+        return next((entry for entry in self.get_all_fund_metas() if entry["fund_code"] == fund_code), None)
 
     def get_all_fund_metas(self) -> List[FundMeta]:
         """Returns all fund metas
@@ -166,7 +148,6 @@ class FundsMetaController:
         )
 
         return FundMeta(
-                        id=self.create_id(fund_code=code),
                         fund_code=code,
                         fund_id=fund_id,
                         color=fund_json_entry["color"],
@@ -320,14 +301,3 @@ class FundsMetaController:
                     self.fund_values_basic.append(basic_value)
 
         return self.fund_values_basic
-
-    def create_id(self, fund_code: str) -> UUID:
-        """Creates UUID from fund code
-
-        Args:
-            fund_code (str): fund code
-
-        Returns:
-            UUID: [description]
-        """
-        return uuid3(uuid_namespace, fund_code)

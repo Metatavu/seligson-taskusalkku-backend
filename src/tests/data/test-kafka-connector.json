@@ -1,0 +1,21 @@
+{
+  "name": "test-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "tasks.max": "1",
+    "database.hostname": "xxx",
+    "database.port": "xxx",
+    "database.user": "xxx",
+    "database.password": "xxx",
+    "database.server.id": "1",
+    "database.server.name": "dbserver1",
+    "database.include.list": "test",
+    "database.history.kafka.bootstrap.servers": "xxx:xxx",
+    "database.history.kafka.topic": "schema-changes.test",
+    "transforms": "route",
+    "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.route.regex": "([^.]+)\\.([^.]+)\\.([^.]+)",
+    "transforms.route.replacement": "$3",
+    "decimal.handling.mode": "string"
+  }
+}
