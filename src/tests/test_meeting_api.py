@@ -7,9 +7,8 @@ from .fixtures.users import *  # noqa
 from .fixtures.smtp import *  # noqa
 import json
 
-
-class TestMeetingTimes:
-    """Tests for meeting times endpoints"""
+class TestMeeting:
+    """Tests for meeting endpoints"""
 
     def test_create_meeting(self, client: TestClient, user_1_auth: BearerAuth, smtp: SmtpContainer):
         meeting = {
