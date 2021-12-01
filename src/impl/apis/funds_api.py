@@ -19,7 +19,7 @@ from spec.models.localized_value import LocalizedValue
 from spec.models.change_data import ChangeData
 
 from database.models import Fund as DbFund
-from src.database.models import FundRate
+from database.models import FundRate
 
 logger = logging.getLogger(__name__)
 

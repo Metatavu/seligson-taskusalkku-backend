@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class SyncHandler:
+    """Handler for Kafka sync messages"""
 
     def __init__(self):
         """Constructor"""
