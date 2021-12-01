@@ -7,6 +7,7 @@ from sqlalchemy.types import TypeDecorator
 class SqlAlchemyUuid(TypeDecorator):
     """SQL Alchemy type for storing UUID as BINARY(16)"""
     impl = BINARY(16)
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         try:

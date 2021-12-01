@@ -22,7 +22,7 @@ def upgrade():
     op.create_table(
         'fund_rate',
         Column("id", BINARY(16), primary_key=True, nullable=False),
-        Column("fund_id", BINARY(16), ForeignKey('fund.id')),
+        Column("fund_id", BINARY(16), ForeignKey('fund.id', name="FK_FUND_RATE_FUND")),
         Column("rate_date", Date),
         Column("rate_close", DECIMAL(19, 6), nullable=False)
     )
