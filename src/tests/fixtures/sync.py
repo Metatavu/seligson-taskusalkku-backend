@@ -1,7 +1,7 @@
 import pytest
 
-from tests.testcontainers.kafka_connect import KafkaConnectContainer
-from tests.testcontainers.kafka import KafkaContainer
+from ..testcontainers.kafka_connect import KafkaConnectContainer
+from ..testcontainers.kafka import KafkaContainer
 
 from ..testcontainers.sync import SyncContainer
 from testcontainers.mysql import MySqlContainer

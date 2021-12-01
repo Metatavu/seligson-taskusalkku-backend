@@ -3,7 +3,7 @@ import os
 import logging
 
 from testcontainers.mysql import MySqlContainer
-from ..utils.database import mysql_import_sql
+from ..utils.database import mysql_exec_sql
 
 logger = logging.getLogger(__name__)
 data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
@@ -27,7 +27,7 @@ def salkku_mysql(request):
     mysql.start()
     os.environ["SQLALCHEMY_DATABASE_URL"] = mysql.get_connection_url()
 
-    mysql_import_sql(mysql, 'salkku-db.sql')
+    mysql_exec_sql(mysql, 'salkku-db.sql')
 
     def teardown():
         """Stops the containers after session

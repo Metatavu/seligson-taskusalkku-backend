@@ -162,6 +162,7 @@ class SyncHandler:
 
         session.add(fund_rate)
         session.flush()
+        session.commit()
 
         if created:
             logger.info("Created new fund value for %s / %s", security_id, rate_date)

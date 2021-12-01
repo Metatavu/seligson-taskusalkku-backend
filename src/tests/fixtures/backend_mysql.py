@@ -5,7 +5,6 @@ import logging
 from alembic.config import Config
 from alembic import command
 from testcontainers.mysql import MySqlContainer
-from ..utils.database import mysql_import_sql
 
 logger = logging.getLogger(__name__)
 data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
@@ -30,9 +29,6 @@ def backend_mysql(request):
     os.environ["DATABASE_URL"] = mysql.get_connection_url()
     alembic_cfg = Config(alembicini)
     command.upgrade(alembic_cfg, 'head')
-
-    mysql_import_sql(mysql, "backend-funds.sql")
-    mysql_import_sql(mysql, "backend-fund-rates.sql")
 
     def teardown():
         """Stops the containers after session
