@@ -25,15 +25,18 @@ class SyncHandler:
         Args:
             record (ConsumerRecord): record
         """
-        topic = record.topic
-        logger.info(f"Handling message to topic: {topic}")
+        try:
+            topic = record.topic
+            logger.info("Handling message to topic: %s", topic)
 
-        if (topic == "FundSecurities"):
-            await self.sync_fund_securities(record=record)
-        elif (topic == "RATErah"):
-            await self.sync_raterah(record=record)
-        else:
-            logger.warning(f"Unknown message from topic {topic}")
+            if (topic == "FundSecurities"):
+                await self.sync_fund_securities(record=record)
+            elif (topic == "RATErah"):
+                await self.sync_raterah(record=record)
+            else:
+                logger.warning("Unknown message from topic %s", topic)
+        except Exception as e:
+            logger.error("Failed to handle Kafka message %s", e)
 
     async def sync_fund_securities(self, record: ConsumerRecord):
         """Syncs fund from Kafka message
@@ -99,9 +102,9 @@ class SyncHandler:
         session.commit()
 
         if created:
-            logger.info(f"Created new fund for security {fund.security_id}")
+            logger.info("Created new fund for security %s", fund.security_id)
         else:
-            logger.info(f"Updated fund for security {fund.security_id}")
+            logger.info("Updated fund for security %s", fund.security_id)
 
     def delete_fund(self, session: Session, before: Dict):
         """Deletes fund according to Kafka message
@@ -114,7 +117,7 @@ class SyncHandler:
         if fund_id:
             session.query(Fund).filter(Fund.fund_id == fund_id).delete()
             session.flush()
-            logger.info("Deleted fund with fund id {fund_id}")
+            logger.info("Deleted fund with fund id %s", fund_id)
 
     def upsert_fund_rate(self, session: Session, before: Dict, after: Dict):
         """Updates fund rate from Kafka message
@@ -127,30 +130,26 @@ class SyncHandler:
         fund_rate = None
         created = False
 
-        logger.info(json.dumps(after))
-
         security_id = after["SECID"]
         if security_id is None:
-            raise Exception("Invalid fund date message, SECID is not defined")
+            raise Exception("Invalid fund rate message, SECID is not defined")
 
         rdate = after["RDATE"]
         if rdate is None:
-            raise Exception("Invalid fund date message, RDATE is not defined")
+            raise Exception("Invalid fund rate message, RDATE is not defined")
 
         rclose = after["RCLOSE"]
         if rclose is None:
-            raise Exception("Invalid fund date message, RCLOSE is not defined")
+            raise Exception("Invalid fund rate message, RCLOSE is not defined")
 
         rate_date = date.fromtimestamp(rdate / 1000.0)
-
-        logger.warning("FUNDS:" + str(session.query(Fund).count()))
 
         fund: Fund = session.query(Fund) \
             .filter(Fund.security_id == security_id) \
             .one_or_none()
 
         if fund is None:
-            raise Exception(f"Unable to sync fund rate, fund for SECID {security_id} not foud")
+            raise Exception("Unable to sync fund rate, fund for SECID %s not foud", security_id)
 
         fund_rate = session.query(FundRate) \
             .filter(FundRate.fund_id == fund.id) \
@@ -169,9 +168,9 @@ class SyncHandler:
         session.flush()
 
         if created:
-            logger.info(f"Created new fund value for {security_id} / {rate_date}")
+            logger.info("Created new fund value for %s / %s", security_id, rate_date)
         else:
-            logger.info(f"Updated fund value for {security_id} / {rate_date}")
+            logger.info("Updated fund value for %s / %s", security_id, rate_date)
 
     def delete_fund_rate(self, session: Session, before: Dict):
         """Deletes fund rate according to Kafka message
@@ -180,4 +179,28 @@ class SyncHandler:
             session (Session): database session
             before (Dict): data before delete
         """
-        pass
+
+        security_id = before["SECID"]
+        if security_id is None:
+            raise Exception("Invalid fund rate message, SECID is not defined")
+
+        fund: Fund = session.query(Fund) \
+            .filter(Fund.security_id == security_id) \
+            .one_or_none()
+
+        if fund is None:
+            raise Exception("Unable to sync fund rate, fund for SECID %s not foud", security_id)
+
+        rdate = before["RDATE"]
+        if rdate is None:
+            raise Exception("Invalid fund rate message, RDATE is not defined")
+
+        rate_date = date.fromtimestamp(rdate / 1000.0)
+
+        session.query(FundRate) \
+            .filter(FundRate.fund_id == fund.id) \
+            .filter(FundRate.rate_date == rate_date) \
+            .delete()
+
+        session.flush()
+        logger.info("Deleted fund rate for %s / %s", security_id, rate_date)
