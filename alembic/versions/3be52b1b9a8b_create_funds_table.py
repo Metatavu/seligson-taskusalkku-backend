@@ -19,16 +19,14 @@ depends_on = None
 
 def upgrade():
     op.create_table(
-        'Fund',
+        'fund',
         Column("id", BINARY(16), primary_key=True, nullable=False),
-        Column("fundId", Integer, index=True, unique=True),
-        Column("securityId", String(24), index=True, unique=True),
-        Column("securityNameFi", String(191), nullable=False),
-        Column("securityNameSv", String(191), nullable=False),
-        Column("classType", String(191), nullable=False),
-        Column("minimumPurchase", DECIMAL(19, 6), nullable=False, default=0.000)
+        Column("fund_id", Integer, index=True, unique=True),
+        Column("security_id", String(24), index=True, unique=True),
+        Column("security_name_fi", String(191), nullable=False),
+        Column("security_name_sv", String(191), nullable=False)
     )
 
 
 def downgrade():
-    op.drop_table('Fund')
+    op.drop_table('fund')

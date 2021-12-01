@@ -34,8 +34,6 @@ def salkku_mysql(request):
     os.environ["SQLALCHEMY_DATABASE_URL"] = mysql.get_connection_url()
 
     salkku_import_sql(mysql, 'salkku-db.sql')
-    ### 
-    ### mysql_import_sql(mysql, 'salkku-raterah.sql')
 
     def teardown():
         """Stops the containers after session
