@@ -30,46 +30,39 @@ class SyncHandler:
             topic = record.topic
             logger.info("Handling message to topic: %s", topic)
 
+            message = json.loads(record.value)
+            payload = message["payload"]
+            before = payload.get("before", None)
+            after = payload.get("after", None)
+
             if (topic == "FundSecurities"):
-                await self.sync_fund_securities(record=record)
+                await self.sync_fund_securities(before=before, after=after)
             elif (topic == "RATErah"):
-                await self.sync_raterah(record=record)
+                await self.sync_raterah(before=before, after=after)
             else:
                 logger.warning("Unknown message from topic %s", topic)
         except Exception as e:
             logger.error("Failed to handle Kafka message %s", e)
 
-    async def sync_fund_securities(self, record: ConsumerRecord):
+    async def sync_fund_securities(self, before: Dict, after: Dict):
         """Syncs fund from Kafka message
 
         Args:
             record (ConsumerRecord): record
         """
         with Session(self.engine) as session:
-            message = json.loads(record.value)
-
-            payload = message["payload"]
-            before = payload["before"]
-            after = payload["after"]
-
             if after is None:
                 self.delete_fund(session, before)
             else:
                 self.upsert_fund(session, before, after)
 
-    async def sync_raterah(self, record: ConsumerRecord):
+    async def sync_raterah(self, before: Dict, after: Dict):
         """Syncs fund rate from Kafka message
 
         Args:
             record (ConsumerRecord): record
         """
         with Session(self.engine) as session:
-            message = json.loads(record.value)
-
-            payload = message["payload"]
-            before = payload["before"]
-            after = payload["after"]
-
             if after is None:
                 self.delete_fund_rate(session, before)
             else:
@@ -87,7 +80,8 @@ class SyncHandler:
         created = False
 
         if before is not None:
-            fund = session.query(Fund).filter(Fund.fund_id == before["fundID"]).one_or_none()
+            fund_id = before["fundID"]
+            fund = session.query(Fund).filter(Fund.fund_id == fund_id).one_or_none()
 
         if fund is None:
             fund = Fund()
@@ -118,6 +112,7 @@ class SyncHandler:
         if fund_id:
             session.query(Fund).filter(Fund.fund_id == fund_id).delete()
             session.flush()
+            session.commit()
             logger.info("Deleted fund with fund id %s", fund_id)
 
     def upsert_fund_rate(self, session: Session, before: Dict, after: Dict):
