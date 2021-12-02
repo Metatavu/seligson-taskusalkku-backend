@@ -5,6 +5,8 @@ from .fixtures.client import *  # noqa
 from .auth.auth import BearerAuth  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.smtp import *  # noqa
+from .fixtures.client import *  # noqa
+
 import json
 
 class TestMeeting:
@@ -27,6 +29,7 @@ class TestMeeting:
         response = client.post(f"/v1/meetings", auth=user_1_auth, data=json.dumps(meeting))
 
         assert response.status_code == 200
+        assert meeting == response.json()
 
     def test_find_meeting_times(self, client: TestClient, user_1_auth: BearerAuth):
         today = datetime.date.today()

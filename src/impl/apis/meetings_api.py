@@ -56,9 +56,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
         message = MessageSchema(
             subject="UUSI AJANVARAUS (Taskusalkun kautta)",
             recipients=os.environ["MAIL_TO"].split(","),
-            body=email_body,
-            subtype="html"
-            )
+            body=email_body)
 
         fm = FastMail(email_conf)
         try:
