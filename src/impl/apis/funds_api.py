@@ -2,6 +2,7 @@
 
 import logging
 import uuid
+import database.operations as database
 
 from typing import List, Optional
 from fastapi import HTTPException
@@ -17,8 +18,8 @@ from funds.funds_meta import FundMeta
 from spec.models.localized_value import LocalizedValue
 from spec.models.change_data import ChangeData
 
-from database.operations import query_raterah
-from database.sqlalchemy_models import RATErah
+from database.models import Fund as DbFund
+from database.models import FundRate
 
 logger = logging.getLogger(__name__)
 
@@ -32,14 +33,19 @@ class FundsApiImpl(FundsApiSpec):
                         fund_id: uuid,
                         token_bearer: TokenModel
                         ) -> Fund:
-        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id)
-        if not fund_meta:
+
+        fund = database.find_fund(
+            database=self.database,
+            id=fund_id
+        )
+
+        if not fund:
             raise HTTPException(
                                 status_code=404,
                                 detail="Fund {fund_id} not found"
                               )
 
-        return self.translate_fund(fund_meta=fund_meta)
+        return self.translate_fund(fund=fund)
 
     async def list_funds(self,
                          first_result: int,
@@ -65,40 +71,46 @@ class FundsApiImpl(FundsApiSpec):
                                  detail="Invalid max results parameter cannot be negative"
                                )
 
-        fund_metas = self.fundsMetaController.list_fund_metas(
-            first_result=first_result,
-            max_results=max_results
+        funds = database.list_funds(
+          database=self.database,
+          first_result=first_result,
+          max_result=max_results
         )
 
-        return list(map(self.translate_fund, fund_metas))
+        return list(map(self.translate_fund, funds))
 
     async def list_historical_values(self,
                                      fund_id: str,
-                                     first_result: int,
-                                     max_results: int,
-                                     start_date: date,
-                                     end_date: date,
+                                     first_result: Optional[int],
+                                     max_results: Optional[int],
+                                     start_date: Optional[date],
+                                     end_date: Optional[date],
                                      token_bearer: TokenModel
                                      ) -> List[HistoricalValue]:
-        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id)
-        if not fund_meta:
+
+        fund = database.find_fund(
+            database=self.database,
+            id=fund_id
+        )
+
+        if not fund:
             raise HTTPException(
                                 status_code=404,
                                 detail="Fund {fund_id} not found"
-                              )
+                               )
 
-        values = query_raterah(
+        values = database.query_fund_rates(
             database=self.database,
-            secid=fund_meta["fund_code"],
-            rdate_min=start_date,
-            rdate_max=end_date,
+            fund_id=fund.id,
+            rate_date_min=start_date,
+            rate_date_max=end_date,
             first_result=first_result,
             max_result=max_results
         )
 
         return list(map(self.translate_historical_value, values))
 
-    def translate_fund(self, fund_meta: FundMeta) -> Fund:
+    def translate_fund(self, fund: DbFund) -> Fund:
         """Translates fund to REST resource
 
         Args:
@@ -107,12 +119,26 @@ class FundsApiImpl(FundsApiSpec):
         Returns:
             Fund: Translated REST resource
         """
+
+        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_code(fund_code=fund.security_id)
+        if fund_meta is None:
+            raise HTTPException(
+                                status_code=404,
+                                detail="Fund meta for fund {fund_id} not found"
+                              )
+
+        name = LocalizedValue(
+            fi=fund.security_name_fi,
+            sv=fund.security_name_sv
+        )
+
         long_name = self.translate_meta_locale(fund_meta["long_name"])
         short_name = self.translate_meta_locale(fund_meta["short_name"])
+
         kiid = self.translate_meta_locale(fund_meta.get("kiid",  None))
         result = Fund(
-                      id=str(fund_meta["id"]),
-                      name=self.translate_meta_locale(fund_meta["name"]),
+                      id=str(fund.id),
+                      name=name,
                       longName=long_name,
                       shortName=short_name,
                       KIID=kiid,
@@ -130,8 +156,7 @@ class FundsApiImpl(FundsApiSpec):
 
         return result
 
-    @staticmethod
-    def translate_change_date(fund_meta: FundMeta) -> ChangeData:
+    def translate_change_date(self, fund_meta: FundMeta) -> ChangeData:
         """Translates change data from fund meta object
 
         Args:
@@ -151,8 +176,8 @@ class FundsApiImpl(FundsApiSpec):
             change20y=fund_meta["_20y_change"],
         )
 
-    @staticmethod
-    def translate_meta_locale(meta_locale: Optional[List[str]]
+    def translate_meta_locale(self,
+                              meta_locale: Optional[List[str]]
                               ) -> Optional[LocalizedValue]:
         """Translates localized value from fund meta to LocalizedValue
 
@@ -173,8 +198,7 @@ class FundsApiImpl(FundsApiSpec):
             sv=sv
         )
 
-    @staticmethod
-    def translate_historical_value(rate_rah: RATErah) -> HistoricalValue:
+    def translate_historical_value(self, fund_rate: FundRate) -> HistoricalValue:
         """Translates historical value
 
         Args:
@@ -184,6 +208,6 @@ class FundsApiImpl(FundsApiSpec):
             HistoricalValue: REST resource
         """
         result = HistoricalValue()
-        result.value = rate_rah.RCLOSE
-        result.date = rate_rah.RDATE
+        result.value = fund_rate.rate_close
+        result.date = fund_rate.rate_date
         return result

@@ -30,8 +30,11 @@ from sqlalchemy.orm import Session
 from spec.models.extra_models import TokenModel  # noqa: F401
 from spec.models.error import Error
 from spec.models.portfolio import Portfolio
+from spec.models.portfolio_fund import PortfolioFund
 from spec.models.portfolio_history_value import PortfolioHistoryValue
 from spec.models.portfolio_summary import PortfolioSummary
+from spec.models.portfolio_transaction import PortfolioTransaction
+from spec.models.transaction_type import TransactionType
 from impl.security_api import get_token_bearer
 
 router = InferringRouter()
@@ -83,11 +86,19 @@ class PortfoliosApiSpec(ABC):
         summary="Find a portfolio.",
     )
     async def find_portfolio_spec(
+<<<<<<< HEAD
             self,
             portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
             token_bearer: TokenModel = Security(
                 get_token_bearer
             ),
+=======
+        self,
+        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
+>>>>>>> develop
     ) -> Portfolio:
         """Finds a portfolio by id."""
         return await self.find_portfolio(
@@ -96,14 +107,52 @@ class PortfoliosApiSpec(ABC):
         )
 
     @abstractmethod
+    async def find_portfolio_transactions(
+        self,
+        portfolioId: UUID,
+        transactionId: UUID,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
+    ) -> PortfolioTransaction:
+        ...
+
+    @router.get(
+        "/v1/portfolios/{portfolioId}/transactions/{transactionId}",
+        responses={
+            200: {"model": PortfolioTransaction, "description": "Found portfolio transaction"},
+            400: {"model": Error, "description": "Invalid request was sent to the server"},
+            403: {"model": Error, "description": "Attempted to make a call with unauthorized client"},
+            404: {"model": Error, "description": "Not found"},
+            500: {"model": Error, "description": "Internal server error"},
+        },
+        tags=["Portfolios"],
+        summary="Finds portfolio transactions",
+    )
+    async def find_portfolio_transactions_spec(
+        self,
+        portfolioId: str = Path(None, description="Portfolio id", alias="portfolioId"),
+        transactionId: str = Path(None, description="Transaction id", alias="transactionId"),
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
+    ) -> PortfolioTransaction:
+        """Returns found portfolio transaction"""
+        return await self.find_portfolio_transactions(
+            self.to_uuid(portfolioId),
+            self.to_uuid(transactionId),
+            token_bearer
+        )
+
+    @abstractmethod
     async def get_portfolio_h_summary(
-            self,
-            portfolioId: UUID,
-            start_date: date,
-            end_date: date,
-            token_bearer: TokenModel = Security(
-                get_token_bearer
-            ),
+        self,
+        portfolioId: UUID,
+        start_date: date,
+        end_date: date,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
     ) -> PortfolioSummary:
         ...
 
@@ -116,16 +165,16 @@ class PortfoliosApiSpec(ABC):
             500: {"model": Error, "description": "Internal server error"},
         },
         tags=["Portfolios"],
-        summary="Smmary for portfolio summary",
+        summary="Summary for portfolio summary",
     )
     async def get_portfolio_h_summary_spec(
-            self,
-            portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
-            start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
-            end_date: str = Query(None, description="End date for the date range", alias="endDate"),
-            token_bearer: TokenModel = Security(
-                get_token_bearer
-            ),
+        self,
+        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
+        end_date: str = Query(None, description="End date for the date range", alias="endDate"),
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
     ) -> PortfolioSummary:
         """Returns summary a portfolio history for given time range"""
         return await self.get_portfolio_h_summary(
@@ -136,14 +185,49 @@ class PortfoliosApiSpec(ABC):
         )
 
     @abstractmethod
+    async def list_portfolio_funds(
+        self,
+        portfolioId: UUID,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
+    ) -> List[PortfolioFund]:
+        ...
+
+    @router.get(
+        "/v1/portfolios/{portfolioId}/funds",
+        responses={
+            200: {"model": List[PortfolioFund], "description": "List of portfolio funds"},
+            400: {"model": Error, "description": "Invalid request was sent to the server"},
+            403: {"model": Error, "description": "Attempted to make a call with unauthorized client"},
+            404: {"model": Error, "description": "Not found"},
+            500: {"model": Error, "description": "Internal server error"},
+        },
+        tags=["Portfolios"],
+        summary="Lists portfolio funds",
+    )
+    async def list_portfolio_funds_spec(
+        self,
+        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
+    ) -> List[PortfolioFund]:
+        """Returns list of portfolio funds"""
+        return await self.list_portfolio_funds(
+            self.to_uuid(portfolioId),
+            token_bearer
+        )
+
+    @abstractmethod
     async def list_portfolio_history_values(
-            self,
-            portfolioId: UUID,
-            start_date: date,
-            end_date: date,
-            token_bearer: TokenModel = Security(
-                get_token_bearer
-            ),
+        self,
+        portfolioId: UUID,
+        start_date: date,
+        end_date: date,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
     ) -> List[PortfolioHistoryValue]:
         ...
 
@@ -159,13 +243,13 @@ class PortfoliosApiSpec(ABC):
         summary="List portfolio history values.",
     )
     async def list_portfolio_history_values_spec(
-            self,
-            portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
-            start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
-            end_date: str = Query(None, description="End date for the date range", alias="endDate"),
-            token_bearer: TokenModel = Security(
-                get_token_bearer
-            ),
+        self,
+        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
+        end_date: str = Query(None, description="End date for the date range", alias="endDate"),
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
     ) -> List[PortfolioHistoryValue]:
         """Lists portfolio history values"""
         return await self.list_portfolio_history_values(
@@ -176,11 +260,55 @@ class PortfoliosApiSpec(ABC):
         )
 
     @abstractmethod
+    async def list_portfolio_transactions(
+        self,
+        portfolioId: UUID,
+        start_date: date,
+        end_date: date,
+        type: ,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
+    ) -> List[PortfolioTransaction]:
+        ...
+
+    @router.get(
+        "/v1/portfolios/{portfolioId}/transactions",
+        responses={
+            200: {"model": List[PortfolioTransaction], "description": "List of portfolio transactions"},
+            400: {"model": Error, "description": "Invalid request was sent to the server"},
+            403: {"model": Error, "description": "Attempted to make a call with unauthorized client"},
+            404: {"model": Error, "description": "Not found"},
+            500: {"model": Error, "description": "Internal server error"},
+        },
+        tags=["Portfolios"],
+        summary="Lists portfolio transactions",
+    )
+    async def list_portfolio_transactions_spec(
+        self,
+        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
+        end_date: str = Query(None, description="End date for the date range", alias="endDate"),
+        type:  = Query(None, description="Transaction type", alias="type"),
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
+    ) -> List[PortfolioTransaction]:
+        """Returns list of portfolio transactions"""
+        return await self.list_portfolio_transactions(
+            self.to_uuid(portfolioId),
+            self.to_date(start_date),
+            self.to_date(end_date),
+            type,
+            token_bearer
+        )
+
+    @abstractmethod
     async def list_portfolios(
-            self,
-            token_bearer: TokenModel = Security(
-                get_token_bearer
-            ),
+        self,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
     ) -> List[Portfolio]:
         ...
 
@@ -196,10 +324,10 @@ class PortfoliosApiSpec(ABC):
         summary="List portfolios.",
     )
     async def list_portfolios_spec(
-            self,
-            token_bearer: TokenModel = Security(
-                get_token_bearer
-            ),
+        self,
+        token_bearer: TokenModel = Security(
+            get_token_bearer
+        ),
     ) -> List[Portfolio]:
         """Lists portfolios logged user has access to"""
         return await self.list_portfolios(

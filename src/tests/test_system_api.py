@@ -1,7 +1,7 @@
 from starlette.testclient import TestClient
 
 from .fixtures.client import *  # noqa
-
+from .fixtures.backend_mysql import *  # noqa
 
 class TestSystem:
     """Tests for system endpoints"""

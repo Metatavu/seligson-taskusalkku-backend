@@ -2,7 +2,7 @@
 import os
 
 from functools import lru_cache
-from typing import Dict, List, Iterator  # noqa: F401
+from typing import Dict, List, Iterator, Optional  # noqa: F401
 from abc import ABC, abstractmethod
 from uuid import UUID
 from datetime import date
@@ -52,7 +52,7 @@ def _get_fastapi_sessionmaker() -> FastAPISessionMaker:
     Returns:
         FastAPISessionMaker: FastAPI session maker
     """
-    database_uri = os.environ["SQLALCHEMY_DATABASE_URL"]
+    database_uri = os.environ["DATABASE_URL"]
     return FastAPISessionMaker(database_uri)
 
 
@@ -64,7 +64,7 @@ class FundsApiSpec(ABC):
     @abstractmethod
     async def find_fund(
         self,
-        fundId: UUID,
+        fund_id: UUID,
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -84,22 +84,29 @@ class FundsApiSpec(ABC):
     )
     async def find_fund_spec(
         self,
-        fundId: str = Path(None, description="fund id", alias="fundId"),
+        fund_id: str = Path(None, description="fund id", alias="fundId"),
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
     ) -> Fund:
         """Finds a fund by id."""
+
+        if fund_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter fundId"
+            )
+
         return await self.find_fund(
-            self.to_uuid(fundId),
-            token_bearer
+            fund_id=self.to_uuid(fund_id),
+            token_bearer=token_bearer
         )
 
     @abstractmethod
     async def list_funds(
         self,
-        first_result: int,
-        max_results: int,
+        first_result: Optional[int],
+        max_results: Optional[int],
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -126,20 +133,21 @@ class FundsApiSpec(ABC):
         ),
     ) -> List[Fund]:
         """Lists funds."""
+
         return await self.list_funds(
-            first_result,
-            max_results,
-            token_bearer
+            first_result=first_result,
+            max_results=max_results,
+            token_bearer=token_bearer
         )
 
     @abstractmethod
     async def list_historical_values(
         self,
-        fundId: UUID,
-        first_result: int,
-        max_results: int,
-        start_date: date,
-        end_date: date,
+        fund_id: UUID,
+        first_result: Optional[int],
+        max_results: Optional[int],
+        start_date: Optional[date],
+        end_date: Optional[date],
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -159,7 +167,7 @@ class FundsApiSpec(ABC):
     )
     async def list_historical_values_spec(
         self,
-        fundId: str = Path(None, description="fund id", alias="fundId"),
+        fund_id: str = Path(None, description="fund id", alias="fundId"),
         first_result: int = Query(None, description="First result. Defaults to 0", alias="firstResult"),
         max_results: int = Query(None, description="Max results. Defaults to 10", alias="maxResults"),
         start_date: str = Query(None, description="Filter starting from this date", alias="startDate"),
@@ -169,16 +177,23 @@ class FundsApiSpec(ABC):
         ),
     ) -> List[HistoricalValue]:
         """Lists historical values"""
+
+        if fund_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter fundId"
+            )
+
         return await self.list_historical_values(
-            self.to_uuid(fundId),
-            first_result,
-            max_results,
-            self.to_date(start_date),
-            self.to_date(end_date),
-            token_bearer
+            fund_id=self.to_uuid(fund_id),
+            first_result=first_result,
+            max_results=max_results,
+            start_date=self.to_date(start_date),
+            end_date=self.to_date(end_date),
+            token_bearer=token_bearer
         )
 
-    def to_date(self, isodate: str) -> date:
+    def to_date(self, isodate: str) -> Optional[date]:
         """Translates given string to date
 
         Args:
@@ -190,6 +205,9 @@ class FundsApiSpec(ABC):
         Returns:
             date: parsed date object
         """
+        if not isodate:
+            return None
+
         try:
             return date.fromisoformat(isodate)
         except ValueError:
@@ -198,7 +216,7 @@ class FundsApiSpec(ABC):
                 detail=f"Invalid date {isodate}"
             )
 
-    def to_uuid(self, hexadecimal_uuid: str) -> UUID:
+    def to_uuid(self, hexadecimal_uuid: str) -> Optional[UUID]:
         """Translates given hex to UUID
 
         Args:
@@ -210,6 +228,9 @@ class FundsApiSpec(ABC):
         Returns:
             UUID: UUID
         """
+        if not hexadecimal_uuid:
+            return None
+
         try:
             return UUID(hex=hexadecimal_uuid)
         except ValueError:

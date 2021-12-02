@@ -1,4 +1,4 @@
-fastapi>=0.68.0,<0.69.0
+fastapi>=0.68.0,<=0.70.0
 pydantic>=1.8.0,<2.0.0
 uvicorn>=0.15.0,<0.16.0
 cryptography
@@ -6,4 +6,9 @@ requests==2.25.1
 pyjwt
 fastapi-utils
 mysqlclient
-python-keycloak==0.25
+pymysql
+aiokafka
+alembic
+sqlalchemy-utils
+email-validator
+fastapi-mail
