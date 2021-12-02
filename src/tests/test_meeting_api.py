@@ -5,9 +5,11 @@ from .fixtures.client import *  # noqa
 from .auth.auth import BearerAuth  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.smtp import *  # noqa
+from .fixtures.backend_mysql import *  # noqa
 from .fixtures.client import *  # noqa
 
 import json
+
 
 class TestMeeting:
     """Tests for meeting endpoints"""

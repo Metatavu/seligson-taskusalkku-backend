@@ -17,6 +17,14 @@ def smtp(request):
     smtp = SmtpContainer()
 
     smtp.start()
+    os.environ["MAIL_USERNAME"] = ""
+    os.environ["MAIL_PASSWORD"] = ""
+    os.environ["MAIL_FROM"] = "test@example.com"
+    os.environ["MAIL_TO"] = "test2@example.com"
+    os.environ["MAIL_PORT"] = smtp.get_smtp_port()
+    os.environ["MAIL_SERVER"] = smtp.get_smtp_host()
+    os.environ["MAIL_TLS"] = "False"
+    os.environ["MAIL_SSL"] = "False"
 
     def teardown():
         """Stops the containers after session
