@@ -31,15 +31,6 @@ HEALTHCHECK --start-period=5s --interval=30s --timeout=5s CMD curl -f http://loc
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 
-FROM base AS test
-COPY ./requirements-dev.txt /usr/src/app/requirements-dev.txt
-RUN set -eux \
-    && pip install -r /usr/src/app/requirements-dev.txt \
-    && rm -rf /root/.cache/pip
-COPY . /usr/src/app/
-CMD ["pytest"]
-
-
 FROM base AS production
 COPY . /usr/src/app/
 HEALTHCHECK --start-period=5s --interval=30s --timeout=5s CMD curl -f http://localhost:8000/v1/system/ping || exit 1
