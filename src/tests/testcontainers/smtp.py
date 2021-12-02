@@ -15,7 +15,7 @@ class SmtpContainer(DockerContainer):
         """
         super(SmtpContainer, self).__init__(image)
         self.port_to_expose = 2500
-        self.with_bind_ports(self.port_to_expose, self.port_to_expose)
+        self.with_exposed_ports(self.port_to_expose)
 
     def start(self, timeout=60):
         """Starts the Keycloak and waits for it to be ready.
@@ -26,3 +26,19 @@ class SmtpContainer(DockerContainer):
         super().start()
         wait_for_logs(self, r'HTTP admin listener running', timeout=timeout)
         return self
+
+    def get_smtp_host(self) -> str:
+        """Returns SMTP server host
+
+        Returns:
+            str: SMTP server host
+        """
+        return self.get_container_host_ip()
+
+    def get_smtp_port(self) -> int:
+        """Returns SMTP server port
+
+        Returns:
+            int: SMTP server port
+        """
+        return self.get_exposed_port(self.port_to_expose)
