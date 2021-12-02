@@ -93,7 +93,6 @@ class SyncHandler:
         fund.security_name_sv = after["securityName_sv"]
 
         session.add(fund)
-        session.flush()
         session.commit()
 
         if created:
@@ -111,7 +110,6 @@ class SyncHandler:
         fund_id = before["fundID"]
         if fund_id:
             session.query(Fund).filter(Fund.fund_id == fund_id).delete()
-            session.flush()
             session.commit()
             logger.info("Deleted fund with fund id %s", fund_id)
 
@@ -161,7 +159,7 @@ class SyncHandler:
         fund_rate.rate_close = rclose
 
         session.add(fund_rate)
-        session.flush()
+        session.commit()
 
         if created:
             logger.info("Created new fund value for %s / %s", security_id, rate_date)
@@ -198,5 +196,5 @@ class SyncHandler:
             .filter(FundRate.rate_date == rate_date) \
             .delete()
 
-        session.flush()
+        session.commit()
         logger.info("Deleted fund rate for %s / %s", security_id, rate_date)
