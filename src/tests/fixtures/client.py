@@ -11,6 +11,7 @@ fund_options_json = os.path.join(data_folder, 'fund-options.json')
 fund_values_basic_csv = os.path.join(data_folder, 'fund-values-basic.csv')
 holidays_csv = os.path.join(data_folder, 'holidays.csv')
 
+
 @pytest.fixture()
 def client(backend_mysql: MySqlContainer) -> TestClient:
     """Fixture for test REST client

@@ -4,11 +4,12 @@ from sqlalchemy import create_engine
 from ..database.models import Fund, FundRate
 
 from .utils.database import wait_for_row_count, sql_backend_funds, sql_backend_fund_rates, sql_salkku_fund_securities, \
-    sql_salkku_raterah, mysql_exec_sql
+    sql_funds_raterah
 
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.salkku_mysql import *  # noqa
+from .fixtures.funds_mssql import *  # noqa
 from .fixtures.backend_mysql import *  # noqa
 from .fixtures.sync import *  # noqa
 from .fixtures.kafka import *  # noqa
@@ -162,15 +163,16 @@ class TestFunds:
                              client: TestClient,
                              backend_mysql: MySqlContainer,
                              salkku_mysql: MySqlContainer,
+                             funds_mssql: SqlServerContainer,
                              kafka_connect: KafkaConnectContainer,
                              sync: SyncContainer,
                              user_1_auth: BearerAuth
-                        ):
+                             ):
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_salkku_fund_securities(mysql=salkku_mysql):
             wait_for_row_count(engine=engine, entity=Fund, count=6)
 
-            with sql_salkku_raterah(mysql=salkku_mysql):
+            with sql_funds_raterah(mssql=funds_mssql):
                 wait_for_row_count(engine=engine, entity=FundRate, count=546)
                 fund_id = client.get("/v1/funds?max_results=1", auth=user_1_auth).json()[0]["id"]
                 assert fund_id is not None

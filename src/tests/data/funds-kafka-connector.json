@@ -1,0 +1,19 @@
+{
+  "name": "funds-connector",
+  "config": {
+    "connector.class" : "io.debezium.connector.sqlserver.SqlServerConnector",
+    "tasks.max" : "1",
+    "database.server.name" : "funds",
+    "database.hostname" : "xxx",
+    "database.port" : "xxx",
+    "database.user" : "xxx",
+    "database.dbname" : "testDB",
+    "database.history.kafka.bootstrap.servers" : "xxx:xxx",
+    "database.history.kafka.topic": "schema-changes.funds",
+    "transforms": "route",
+    "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.route.regex": "([^.]+)\\.([^.]+)\\.([^.]+)",
+    "transforms.route.replacement": "$3",
+    "decimal.handling.mode": "string"
+    }
+}
