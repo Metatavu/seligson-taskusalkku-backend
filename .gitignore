@@ -30,3 +30,5 @@ bin/utils/*.jar
 staging-data
 src/tests/data/*.js
 .DS_Store
+/src/tests/data/table.txt
+/src/tests/data/table-mapping.txt

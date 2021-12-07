@@ -80,9 +80,9 @@ def sql_salkku_raterah(mysql: MySqlContainer):
 @contextlib.contextmanager
 def sql_funds_raterah(mssql: SqlServerContainer):
     try:
-        yield mssql_exec_sql(mssql=mssql, sql_file="funds-raterah.sql")
+        yield mssql_exec_sql(mssql=mssql, sql_file="funds-rate.sql")
     finally:
-        mssql_exec_sql(mssql=mssql, sql_file="funds-raterah-teardown.sql")
+        mssql_exec_sql(mssql=mssql, sql_file="funds-rate-teardown.sql")
 
 
 def wait_for_row_count(engine, entity: Any, count: int):

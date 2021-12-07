@@ -640,29 +640,6 @@ LOCK TABLES `RATELASTrah` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `RATErah`
---
-
-DROP TABLE IF EXISTS `RATErah`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `RATErah` (
-  `SECID` varchar(20) DEFAULT NULL,
-  `RDATE` datetime DEFAULT NULL,
-  `RCLOSE` decimal(16,6) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `RATErah`
---
-
-LOCK TABLES `RATErah` WRITE;
-/*!40000 ALTER TABLE `RATErah` DISABLE KEYS */;
-/*!40000 ALTER TABLE `RATErah` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `SECURITYrah`
 --
 

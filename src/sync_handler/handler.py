@@ -6,8 +6,9 @@ from datetime import date
 from typing import Dict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from database.models import Fund, FundRate
 from aiokafka import ConsumerRecord
+
+from database.models import Fund, FundRate
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +36,10 @@ class SyncHandler:
             before = payload.get("before", None)
             after = payload.get("after", None)
 
-            if (topic == "FundSecurities"):
+            if topic == "FundSecurities":
                 await self.sync_fund_securities(before=before, after=after)
-            elif (topic == "RATErah"):
-                await self.sync_raterah(before=before, after=after)
+            elif topic == "TABLE_RATE":
+                await self.sync_rate(before=before, after=after)
             else:
                 logger.warning("Unknown message from topic %s", topic)
         except Exception as e:
@@ -48,7 +49,8 @@ class SyncHandler:
         """Syncs fund from Kafka message
 
         Args:
-            record (ConsumerRecord): record
+            before: data before
+            after: data after
         """
         with Session(self.engine) as session:
             if after is None:
@@ -56,11 +58,12 @@ class SyncHandler:
             else:
                 self.upsert_fund(session, before, after)
 
-    async def sync_raterah(self, before: Dict, after: Dict):
+    async def sync_rate(self, before: Dict, after: Dict):
         """Syncs fund rate from Kafka message
 
         Args:
-            record (ConsumerRecord): record
+            before: data before
+            after: data after
         """
         with Session(self.engine) as session:
             if after is None:
