@@ -35,9 +35,9 @@ class SyncHandler:
             before = payload.get("before", None)
             after = payload.get("after", None)
 
-            if (topic == "FundSecurities"):
+            if topic == "FundSecurities":
                 await self.sync_fund_securities(before=before, after=after)
-            elif (topic == "RATErah"):
+            elif topic == "RATErah":
                 await self.sync_raterah(before=before, after=after)
             else:
                 logger.warning("Unknown message from topic %s", topic)
@@ -48,7 +48,8 @@ class SyncHandler:
         """Syncs fund from Kafka message
 
         Args:
-            record (ConsumerRecord): record
+            before (Dict): data before update
+            after (Dict): data after update
         """
         with Session(self.engine) as session:
             if after is None:
@@ -60,13 +61,14 @@ class SyncHandler:
         """Syncs fund rate from Kafka message
 
         Args:
-            record (ConsumerRecord): record
+            before (Dict): data before update
+            after (Dict): data after update
         """
         with Session(self.engine) as session:
             if after is None:
                 self.delete_fund_rate(session, before)
             else:
-                self.upsert_fund_rate(session, before, after)
+                self.upsert_fund_rate(session, after)
 
     def upsert_fund(self, session: Session, before: Dict, after: Dict):
         """Updates fund from Kafka message
@@ -113,12 +115,11 @@ class SyncHandler:
             session.commit()
             logger.info("Deleted fund with fund id %s", fund_id)
 
-    def upsert_fund_rate(self, session: Session, before: Dict, after: Dict):
+    def upsert_fund_rate(self, session: Session, after: Dict):
         """Updates fund rate from Kafka message
 
         Args:
             session (Session): database session
-            before (Dict): data before update
             after (Dict): data after update
         """
         fund_rate = None

@@ -26,12 +26,14 @@ def mysql_exec_sql(mysql: MySqlContainer, sql_file: str):
 
     assert import_result.exit_code == 0
 
+
 @contextlib.contextmanager
 def sql_backend_funds(mysql: MySqlContainer):
     try:
         yield mysql_exec_sql(mysql=mysql, sql_file="backend-funds.sql")
     finally:
         mysql_exec_sql(mysql=mysql, sql_file="backend-funds-teardown.sql")
+
 
 @contextlib.contextmanager
 def sql_backend_fund_rates(mysql: MySqlContainer):
@@ -40,6 +42,7 @@ def sql_backend_fund_rates(mysql: MySqlContainer):
     finally:
         mysql_exec_sql(mysql=mysql, sql_file="backend-fund-rates-teardown.sql")
 
+
 @contextlib.contextmanager
 def sql_salkku_fund_securities(mysql: MySqlContainer):
     try:
@@ -47,12 +50,22 @@ def sql_salkku_fund_securities(mysql: MySqlContainer):
     finally:
         mysql_exec_sql(mysql=mysql, sql_file="salkku-fund-securities-teardown.sql")
 
+
 @contextlib.contextmanager
 def sql_salkku_raterah(mysql: MySqlContainer):
     try:
         yield mysql_exec_sql(mysql=mysql, sql_file="salkku-raterah.sql")
     finally:
         mysql_exec_sql(mysql=mysql, sql_file="salkku-raterah-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_portfolios(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-portfolios.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-teardown.sql")
+
 
 def wait_for_row_count(engine, entity: Any, count: int):
     """Waits for table row count to match given count

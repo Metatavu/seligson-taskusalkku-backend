@@ -1,4 +1,4 @@
 pip-tools
-pytest==6.2.3
+pytest
 testcontainers[mysql]
-factory-boy==3.2.1
+factory-boy

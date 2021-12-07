@@ -12,3 +12,4 @@ alembic
 sqlalchemy-utils
 email-validator
 fastapi-mail
+python-keycloak==0.25

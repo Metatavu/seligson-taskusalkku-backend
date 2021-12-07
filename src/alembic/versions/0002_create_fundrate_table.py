@@ -1,19 +1,18 @@
-"""create FundRate table
+"""create fund_rate table
 
-Revision ID: fc1166e7bafa
-Revises: 3be52b1b9a8b
+Revision ID: 0002
+Revises: 0001
 Create Date: 2021-12-01 07:30:27.848794
 
 """
 from alembic import op
-from sqlalchemy import Column, DECIMAL, Integer, String, Date
+from sqlalchemy import Column, DECIMAL, Date
 from sqlalchemy.dialects.mysql import BINARY
 from sqlalchemy.sql.schema import ForeignKey
 
-
 # revision identifiers, used by Alembic.
-revision = 'fc1166e7bafa'
-down_revision = '3be52b1b9a8b'
+revision = '0002'
+down_revision = '0001'
 branch_labels = None
 depends_on = None
 
@@ -26,6 +25,7 @@ def upgrade():
         Column("rate_date", Date),
         Column("rate_close", DECIMAL(19, 6), nullable=False)
     )
+
 
 def downgrade():
     op.drop_table('fund_rate')

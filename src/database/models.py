@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from .sqlalchemy_uuid import SqlAlchemyUuid
-from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date
+from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -28,3 +28,58 @@ class FundRate(Base):
     rate_date = Column("rate_date", Date)
     rate_close = Column(DECIMAL(19, 6), nullable=False)
     fund = relationship("Fund", back_populates="rates", lazy=True)
+
+
+class Company(Base):
+    __tablename__ = 'company'
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    company_code = Column(String(20), index=True, unique=True)
+    user_id = Column(SqlAlchemyUuid, default=uuid4)
+
+
+class Security(Base):
+    __tablename__ = 'security'
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    security_id = Column(String(20), index=True, primary_key=True)
+    currency = Column(CHAR(3))
+    pe_corr = Column(DECIMAL(8, 4))
+    isin = Column(String(12))
+
+
+class LastRate(Base):
+    __tablename__ = 'last_rate'
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    security_id = Column(String(20), index=True, unique=True)
+    rate_close = Column(DECIMAL(16, 6))
+
+
+class Portfolio(Base):
+    __tablename__ = 'portfolio'
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    # portfolio_id is either equal to company_code or it has a format like c_n where c is company_code value
+    # and n is a number with maximum value of 8
+    portfolio_id = Column(String(20), unique=True)
+    company_code = Column(String(20), index=True)
+
+
+class PortfolioLog(Base):
+    __tablename__ = 'portfolio_log'
+
+    transaction_number = Column(Integer, index=True, primary_key=True)
+    transaction_code = Column(CHAR(2), index=True)
+    transaction_date = Column(DateTime, index=True)
+    company_code = Column(String(20), index=True)
+    portfolio_id = Column(String(20), index=True)
+
+
+class PortfolioTransaction(Base):
+    __tablename__ = 'portfolio_transaction'
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    transaction_number = Column(Integer, unique=True)
+    company_code = Column(String(20), index=True)
+
+    portfolio_id = Column(String(20), index=True)
+    security_id = Column(String(20), index=True)
+    transaction_date = Column(DateTime)
+    amount = Column(DECIMAL(19, 6))
+    purchase_c_value = Column(DECIMAL(15, 2))

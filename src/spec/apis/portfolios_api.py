@@ -86,19 +86,11 @@ class PortfoliosApiSpec(ABC):
         summary="Find a portfolio.",
     )
     async def find_portfolio_spec(
-<<<<<<< HEAD
             self,
             portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
             token_bearer: TokenModel = Security(
                 get_token_bearer
             ),
-=======
-        self,
-        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
->>>>>>> develop
     ) -> Portfolio:
         """Finds a portfolio by id."""
         return await self.find_portfolio(

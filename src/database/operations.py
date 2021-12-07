@@ -1,7 +1,8 @@
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy.orm import Session
-from .models import Fund, FundRate
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy.sql import func
+from .models import Fund, FundRate, Company, PortfolioTransaction, LastRate, Security, Portfolio, PortfolioLog
 from datetime import date
 
 
@@ -40,7 +41,7 @@ def query_fund_rates(database: Session,
         max_result (int, optional): max results. Defaults to 100.
 
     Returns:
-        List[RATErah]: list of matching RATErah table rows
+        List[FundRate]: list of matching FundRate table rows
     """
     return database.query(FundRate) \
         .filter(FundRate.fund_id == fund_id) \
@@ -52,20 +53,20 @@ def query_fund_rates(database: Session,
         .all()
 
 
-def get_company_rahs(database: Session, ssn: str) -> List[COMPANYrah]:
-    """Queries the COMPANYrah table
+def get_companies(database: Session, user_id: str) -> List[Company]:
+    """Queries the company table
 
     Args:
         database (Session): database session
-        ssn (str): ssn of user
+        ssn (str): ssn of user/ or company id
     Returns:
-        List[COMPANYrah]: list of matching COMPANYrah table rows
+        List[Company]: list of matching Company table rows
     """
 
-    return database.query(COMPANYrah).filter(COMPANYrah.SO_SEC_NR == ssn).all()
+    return database.query(Company).filter(Company.user_id == user_id).all()
 
 
-def get_portfolio(database: Session, com_code: str):
+def find_portfolio(database: Session, company_code: str):
     """Queries the PORTRANSrah, RATELASTrah, SECURITYrah tables
 
         Args:
@@ -75,28 +76,29 @@ def get_portfolio(database: Session, com_code: str):
             List[Portfolio]: list of matching Portfolio objects
         """
 
-    portfolio_id = PORTRANSrah.PORID.label("id")
-    total_amount = func.sum(PORTRANSrah.AMOUNT * 100).label("totalAmount")
-    purchase_total = func.sum(PORTRANSrah.PUR_CVALUE * 100).label("purchaseTotal")
-    market_value_total_eur = func.sum(RATELASTrah.RCLOSE * PORTRANSrah.AMOUNT * 100).label("marketValueTotal")
-    rate_last_rah_b = aliased(RATELASTrah)
-    market_value_total_non_eur = func.sum(RATELASTrah.RCLOSE / rate_last_rah_b.RCLOSE * PORTRANSrah.AMOUNT * 100) \
+    portfolio_id = PortfolioTransaction.PORID.label("id")
+    total_amount = func.sum(PortfolioTransaction.amount).label("totalAmount")
+    purchase_total = func.sum(PortfolioTransaction.purchase_c_value).label("purchaseTotal")
+    market_value_total_eur = func.sum(LastRate.rate_close * PortfolioTransaction.amount).label("marketValueTotal")
+    rate_last_rah_b = aliased(LastRate)
+    market_value_total_non_eur = func.sum(
+        LastRate.rate_close / rate_last_rah_b.rate_close * PortfolioTransaction.amount) \
         .label("marketValueTotal")
 
     query_eur_funds = database. \
         query(portfolio_id, total_amount, market_value_total_eur, purchase_total) \
-        .join(RATELASTrah, PORTRANSrah.SECID == RATELASTrah.SECID) \
-        .join(SECURITYrah, PORTRANSrah.SECID == SECURITYrah.SECID) \
-        .filter(SECURITYrah.CURRENCY == "EUR") \
-        .filter(PORTRANSrah.COM_CODE == com_code) \
+        .join(PortfolioTransaction, PortfolioTransaction.security_id == LastRate.security_id) \
+        .join(Security, PortfolioTransaction.security_id == Security.security_id) \
+        .filter(Security.currency == "EUR") \
+        .filter(PortfolioTransaction.company_code == company_code) \
         .group_by(portfolio_id)
 
     query_non_eur_funds = database.query(portfolio_id, total_amount, market_value_total_non_eur, purchase_total) \
-        .join(RATELASTrah, PORTRANSrah.SECID == RATELASTrah.SECID) \
-        .join(SECURITYrah, PORTRANSrah.SECID == SECURITYrah.SECID) \
-        .join(rate_last_rah_b, SECURITYrah.CURRENCY == rate_last_rah_b.SECID) \
-        .filter(SECURITYrah.CURRENCY != "EUR") \
-        .filter(PORTRANSrah.COM_CODE == com_code) \
+        .join(LastRate, PortfolioTransaction.security_id == LastRate.security_id) \
+        .join(Security, PortfolioTransaction.security_id == Security.security_id) \
+        .join(rate_last_rah_b, Security.currency == rate_last_rah_b.security_id) \
+        .filter(Security.CURRENCY != "EUR") \
+        .filter(PortfolioTransaction.company_code == company_code) \
         .group_by(portfolio_id)
     query_portfolio = query_eur_funds.union_all(query_non_eur_funds).subquery()
     result = database.query(
@@ -109,7 +111,7 @@ def get_portfolio(database: Session, com_code: str):
     return result
 
 
-def get_com_code_for_portfolio(database: Session, come_codes: [str], portfolio_id: str) -> str:
+def get_company_code_of_portfolio(database: Session, company_codes: [str], portfolio_id: str) -> str:
     """Queries the PORTFOLrah table
 
         Args:
@@ -121,9 +123,9 @@ def get_com_code_for_portfolio(database: Session, come_codes: [str], portfolio_i
         """
 
     result = database \
-        .query(PORTFOLrah.COM_CODE) \
-        .filter(PORTFOLrah.COM_CODE.in_(come_codes)) \
-        .filter(PORTFOLrah.PORID == portfolio_id) \
+        .query(Portfolio.company_code) \
+        .filter(Portfolio.company_code.in_(company_codes)) \
+        .filter(Portfolio.portfolio_id == portfolio_id) \
         .scalar()
     return result
 
@@ -142,11 +144,11 @@ def get_portfolio_summary(database: Session, por_id: str, start_date: date, end_
         """
 
     result = database \
-        .query(PORTLOGrah) \
-        .filter(PORTLOGrah.TRANS_CODE.in_(trans_codes)) \
-        .filter(PORTLOGrah.TRANS_DATE >= start_date) \
-        .filter(PORTLOGrah.TRANS_DATE <= end_date) \
-        .filter(PORTLOGrah.PORID == por_id) \
+        .query(PortfolioLog) \
+        .filter(PortfolioLog.TRANS_CODE.in_(trans_codes)) \
+        .filter(PortfolioLog.TRANS_DATE >= start_date) \
+        .filter(PortfolioLog.TRANS_DATE <= end_date) \
+        .filter(PortfolioLog.PORID == por_id) \
         .all()
     return result
 

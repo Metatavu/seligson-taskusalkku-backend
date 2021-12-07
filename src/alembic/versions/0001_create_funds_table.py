@@ -1,17 +1,17 @@
 """create funds table
 
-Revision ID: 3be52b1b9a8b
+Revision ID: 0001
 Revises: 
 Create Date: 2021-11-30 16:35:24.133973
 
 """
 
 from alembic import op
-from sqlalchemy import Column, DECIMAL, Integer, String
+from sqlalchemy import Column, Integer, String
 from sqlalchemy.dialects.mysql import BINARY
 
 # revision identifiers, used by Alembic.
-revision = '3be52b1b9a8b'
+revision = '0001'
 down_revision = None
 branch_labels = None
 depends_on = None
