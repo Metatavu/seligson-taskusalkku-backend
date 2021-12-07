@@ -34,7 +34,7 @@ def mssql_exec_sql(mssql: SqlServerContainer, sql_file: str):
     """
     logger.info(f"Importing SQL file {sql_file}...")
     import_file = f"{container_import_folder}/{sql_file}"
-    import_command = f'bash -c "/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P $SA_PASSWORD -i {import_file}"'
+    import_command = f'bash -c "/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P Test1234. -i {import_file}"'
     import_result = mssql.exec(import_command)
     assert import_result.exit_code == 0, import_result.output.decode("utf-8")
 
