@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from ..database.models import Fund, FundRate
 
 from .utils.database import wait_for_row_count, sql_backend_funds, sql_backend_fund_rates, sql_salkku_fund_securities, \
-    sql_funds_raterah
+    sql_funds_rate
 
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
@@ -172,7 +172,7 @@ class TestFunds:
         with sql_salkku_fund_securities(mysql=salkku_mysql):
             wait_for_row_count(engine=engine, entity=Fund, count=6)
 
-            with sql_funds_raterah(mssql=funds_mssql):
+            with sql_funds_rate(mssql=funds_mssql):
                 wait_for_row_count(engine=engine, entity=FundRate, count=546)
                 fund_id = client.get("/v1/funds?max_results=1", auth=user_1_auth).json()[0]["id"]
                 assert fund_id is not None
