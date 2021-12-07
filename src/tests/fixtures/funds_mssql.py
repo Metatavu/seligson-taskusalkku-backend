@@ -21,7 +21,7 @@ def funds_mssql(request):
         SqlServerContainer: Reference to SQL Server container
     """
 
-    mssql = SqlServerContainer(password="Test1234.")
+    mssql = SqlServerContainer(password="Test1234.")  # NOSONAR
     mssql.with_volume_mapping(data_dir, container_import_folder)
     mssql.start()
 

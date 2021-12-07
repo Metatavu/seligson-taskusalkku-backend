@@ -48,7 +48,7 @@ def kafka_connect(request, salkku_mysql: MySqlContainer, funds_mssql: SqlServerC
             result["config"]["database.hostname"] = salkku_mysql.get_docker_client().bridge_ip(db_container_id)
             result["config"]["database.port"] = 3306
             result["config"]["database.user"] = "root"
-            result["config"]["database.password"] = "test"
+            result["config"]["database.password"] = "test"  # NOSONAR
             result["config"]["database.history.kafka.bootstrap.servers"] = kafka.get_kafka_url()
             return result
 
@@ -59,7 +59,7 @@ def kafka_connect(request, salkku_mysql: MySqlContainer, funds_mssql: SqlServerC
             result["config"]["database.hostname"] = funds_mssql.get_docker_client().bridge_ip(db_container_id)
             result["config"]["database.port"] = 1433
             result["config"]["database.user"] = "sa"
-            result["config"]["database.password"] = "Test1234."
+            result["config"]["database.password"] = "Test1234."  # NOSONAR
             result["config"]["database.history.kafka.bootstrap.servers"] = kafka.get_kafka_url()
             return result
 
