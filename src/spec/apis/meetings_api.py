@@ -2,7 +2,7 @@
 import os
 
 from functools import lru_cache
-from typing import Dict, List, Iterator  # noqa: F401
+from typing import Dict, List, Iterator, Optional  # noqa: F401
 from abc import ABC, abstractmethod
 from uuid import UUID
 from datetime import date
@@ -52,7 +52,7 @@ def _get_fastapi_sessionmaker() -> FastAPISessionMaker:
     Returns:
         FastAPISessionMaker: FastAPI session maker
     """
-    database_uri = os.environ["SQLALCHEMY_DATABASE_URL"]
+    database_uri = os.environ["DATABASE_URL"]
     return FastAPISessionMaker(database_uri)
 
 
@@ -90,16 +90,23 @@ class MeetingsApiSpec(ABC):
         ),
     ) -> Meeting:
         """Creates a new meeting."""
+
+        if meeting is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter Meeting"
+            )
+
         return await self.create_meeting(
-            meeting,
-            token_bearer
+            meeting=meeting,
+            token_bearer=token_bearer
         )
 
     @abstractmethod
     async def list_meeting_times(
         self,
-        start_date: date,
-        end_date: date,
+        start_date: Optional[date],
+        end_date: Optional[date],
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -126,13 +133,14 @@ class MeetingsApiSpec(ABC):
         ),
     ) -> List[MeetingTime]:
         """Returns list of meeting times"""
+
         return await self.list_meeting_times(
-            self.to_date(start_date),
-            self.to_date(end_date),
-            token_bearer
+            start_date=self.to_date(start_date),
+            end_date=self.to_date(end_date),
+            token_bearer=token_bearer
         )
 
-    def to_date(self, isodate: str) -> date:
+    def to_date(self, isodate: str) -> Optional[date]:
         """Translates given string to date
 
         Args:
@@ -144,6 +152,9 @@ class MeetingsApiSpec(ABC):
         Returns:
             date: parsed date object
         """
+        if not isodate:
+            return None
+
         try:
             return date.fromisoformat(isodate)
         except ValueError:
@@ -152,7 +163,7 @@ class MeetingsApiSpec(ABC):
                 detail=f"Invalid date {isodate}"
             )
 
-    def to_uuid(self, hexadecimal_uuid: str) -> UUID:
+    def to_uuid(self, hexadecimal_uuid: str) -> Optional[UUID]:
         """Translates given hex to UUID
 
         Args:
@@ -164,6 +175,9 @@ class MeetingsApiSpec(ABC):
         Returns:
             UUID: UUID
         """
+        if not hexadecimal_uuid:
+            return None
+
         try:
             return UUID(hex=hexadecimal_uuid)
         except ValueError:

@@ -60,11 +60,51 @@ def sql_salkku_raterah(mysql: MySqlContainer):
 
 
 @contextlib.contextmanager
-def sql_backend_portfolios(mysql: MySqlContainer):
+def sql_backend_company(mysql: MySqlContainer):
     try:
-        yield mysql_exec_sql(mysql=mysql, sql_file="backend-portfolios.sql")
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-company.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-company-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_securtiy(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-security.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-security-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_last_rate(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-last-rate.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-last-rate-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_portfolio(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio.sql")
     finally:
         mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_portfolio_transaction(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-transaction.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-transaction-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_portfolio_log(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-log.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-log-teardown.sql")
 
 
 def wait_for_row_count(engine, entity: Any, count: int):
@@ -81,9 +121,10 @@ def wait_for_row_count(engine, entity: Any, count: int):
     while current != count:
         time.sleep(0.5)
         with Session(engine) as session:
-          current = session.query(entity).count()
+            current = session.query(entity).count()
         logger.info("Waiting for count to be %s...", count)
         if datetime.now() >= timeout:
+            # todo verify why this debugger exists in here.
             import pdb
             pdb.set_trace()
 

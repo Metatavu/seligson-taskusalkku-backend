@@ -25,8 +25,7 @@ def upgrade():
     op.create_table('company',
                     sa.Column('id', BINARY(16), nullable=False),
                     sa.Column('company_code', sa.String(length=20), nullable=True),
-                    sa.Column('user_id', BINARY(16), nullable=True),
-                    sa.Column('user_id', BINARY(16), nullable=True),
+                    sa.Column('ssn', sa.String(length=11), nullable=False),
                     sa.PrimaryKeyConstraint('id')
                     )
     op.create_index(op.f('ix_company_company_code'), 'company', ['company_code'], unique=True)

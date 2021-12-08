@@ -34,7 +34,7 @@ class Company(Base):
     __tablename__ = 'company'
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     company_code = Column(String(20), index=True, unique=True)
-    user_id = Column(SqlAlchemyUuid, default=uuid4)
+    ssn = Column(String(11))
 
 
 class Security(Base):
@@ -64,8 +64,8 @@ class Portfolio(Base):
 
 class PortfolioLog(Base):
     __tablename__ = 'portfolio_log'
-
-    transaction_number = Column(Integer, index=True, primary_key=True)
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    transaction_number = Column(Integer, index=True, unique=True)
     transaction_code = Column(CHAR(2), index=True)
     transaction_date = Column(DateTime, index=True)
     company_code = Column(String(20), index=True)

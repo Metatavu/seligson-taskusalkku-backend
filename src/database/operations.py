@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session, aliased
@@ -53,7 +54,7 @@ def query_fund_rates(database: Session,
         .all()
 
 
-def get_companies(database: Session, user_id: str) -> List[Company]:
+def get_companies(database: Session, ssn: str) -> List[Company]:
     """Queries the company table
 
     Args:
@@ -63,7 +64,7 @@ def get_companies(database: Session, user_id: str) -> List[Company]:
         List[Company]: list of matching Company table rows
     """
 
-    return database.query(Company).filter(Company.user_id == user_id).all()
+    return database.query(Company).filter(Company.ssn == ssn).all()
 
 
 def find_portfolio(database: Session, company_code: str):
@@ -76,7 +77,7 @@ def find_portfolio(database: Session, company_code: str):
             List[Portfolio]: list of matching Portfolio objects
         """
 
-    portfolio_id = PortfolioTransaction.PORID.label("id")
+    portfolio_id = PortfolioTransaction.portfolio_id.label("id")
     total_amount = func.sum(PortfolioTransaction.amount).label("totalAmount")
     purchase_total = func.sum(PortfolioTransaction.purchase_c_value).label("purchaseTotal")
     market_value_total_eur = func.sum(LastRate.rate_close * PortfolioTransaction.amount).label("marketValueTotal")
@@ -97,7 +98,7 @@ def find_portfolio(database: Session, company_code: str):
         .join(LastRate, PortfolioTransaction.security_id == LastRate.security_id) \
         .join(Security, PortfolioTransaction.security_id == Security.security_id) \
         .join(rate_last_rah_b, Security.currency == rate_last_rah_b.security_id) \
-        .filter(Security.CURRENCY != "EUR") \
+        .filter(Security.currency != "EUR") \
         .filter(PortfolioTransaction.company_code == company_code) \
         .group_by(portfolio_id)
     query_portfolio = query_eur_funds.union_all(query_non_eur_funds).subquery()
@@ -111,7 +112,10 @@ def find_portfolio(database: Session, company_code: str):
     return result
 
 
-def get_company_code_of_portfolio(database: Session, company_codes: [str], portfolio_id: str) -> str:
+def get_portfolio_uuid_from_portfolio_id(database: Session, portfolio_id: str):
+    return database.query(Portfolio.id).filter(Portfolio.portfolio_id == portfolio_id).scalar()
+
+def get_company_code_of_portfolio(database: Session, company_codes: [str], portfolio_id: UUID) -> str:
     """Queries the PORTFOLrah table
 
         Args:
@@ -122,12 +126,11 @@ def get_company_code_of_portfolio(database: Session, company_codes: [str], portf
             come_code (str) the com_code for the portfolio
         """
 
-    result = database \
+    return database \
         .query(Portfolio.company_code) \
         .filter(Portfolio.company_code.in_(company_codes)) \
-        .filter(Portfolio.portfolio_id == portfolio_id) \
+        .filter(Portfolio.id == portfolio_id) \
         .scalar()
-    return result
 
 
 def get_portfolio_summary(database: Session, por_id: str, start_date: date, end_date: date, trans_codes: [str]):
@@ -143,14 +146,13 @@ def get_portfolio_summary(database: Session, por_id: str, start_date: date, end_
             rows of PORTLOGrah
         """
 
-    result = database \
+    return database \
         .query(PortfolioLog) \
         .filter(PortfolioLog.TRANS_CODE.in_(trans_codes)) \
         .filter(PortfolioLog.TRANS_DATE >= start_date) \
         .filter(PortfolioLog.TRANS_DATE <= end_date) \
         .filter(PortfolioLog.PORID == por_id) \
         .all()
-    return result
 
 
 def get_portfolio_history():

@@ -11,6 +11,7 @@ data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
 container_import_folder = "/tmp/import"  # NOSONAR
 alembicini = os.path.join(os.path.dirname(__file__), '..', '..', 'alembic.ini')
 
+
 @pytest.fixture(scope="session")
 def backend_mysql(request):
     """MySQL Fixture.

@@ -22,9 +22,9 @@ class Portfolio(BaseModel):
         purchaseTotal: The purchaseTotal of this Portfolio [Optional].
     """
     id: Optional[str] = None
-    totalAmount: Optional[int] = None
-    marketValueTotal: Optional[int] = None
-    purchaseTotal: Optional[int] = None
+    totalAmount: Optional[float] = None
+    marketValueTotal: Optional[float] = None
+    purchaseTotal: Optional[float] = None
 
 
 Portfolio.update_forward_refs()

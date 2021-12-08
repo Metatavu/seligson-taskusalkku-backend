@@ -20,7 +20,7 @@ class PortfolioTransaction(BaseModel):
         id: The id of this PortfolioTransaction [Optional].
         fundId: The fundId of this PortfolioTransaction.
         targetFundId: The targetFundId of this PortfolioTransaction [Optional].
-        type: The type of this PortfolioTransaction.
+        transactionType: The transactionType of this PortfolioTransaction.
         valueDate: The valueDate of this PortfolioTransaction.
         value: The value of this PortfolioTransaction.
         shareAmount: The shareAmount of this PortfolioTransaction.
@@ -32,7 +32,7 @@ class PortfolioTransaction(BaseModel):
     id: Optional[str] = None
     fundId: str
     targetFundId: Optional[str] = None
-    type: TransactionType
+    transactionType: TransactionType
     valueDate: date
     value: int
     shareAmount: float

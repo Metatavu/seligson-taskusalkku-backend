@@ -13,8 +13,10 @@ from admin.keycloak_admin import KeycloakAdminAccess
 from spec.models.portfolio_summary import PortfolioSummary
 from spec.models.portfolio_history_value import PortfolioHistoryValue
 from database import operations
-from database.sqlalchemy_models import COMPANYrah
 from business_logics import business_logics
+from decimal import Decimal
+from database.models import PortfolioTransaction,Company
+from spec.models.portfolio_fund import PortfolioFund
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +30,10 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         get user ssn from keycloak admin
         """
         keycloak_admin_access = KeycloakAdminAccess()
-        return keycloak_admin_access.get_user_id(token_bearer.get("sub", ""))
+        return keycloak_admin_access.get_user_ssn(token_bearer.get("sub", ""))
 
-    def get_valid_company_codes(self, user_id: str) -> [str]:
-        valid_company_codes_result = operations.get_company(self.database, user_id)
+    def get_valid_company_codes(self, user_ssn: str) -> [str]:
+        valid_company_codes_result = operations.get_companies(self.database, user_ssn)
         return list(map(self.com_code_deserializer, valid_company_codes_result))
 
     async def find_portfolio(
@@ -42,10 +44,10 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         """
         find a portfolio
         """
-        user_id = self.get_user_id(token_bearer)
+        user_ssn = self.get_user_ssn(token_bearer)
         portfolio = Portfolio()
-        if user_id:
-            valid_company_codes = self.get_valid_company_codes(user_id)
+        if user_ssn:
+            valid_company_codes = self.get_valid_company_codes(user_ssn)
             company_code = operations.get_company_code_of_portfolio(self.database, valid_company_codes, portfolio_id)
             if company_code:
                 portfolio_query_result = operations.find_portfolio(self.database, company_code)
@@ -53,7 +55,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                     portfolio = self.portfolios_deserializer(portfolio_query_result[0])
         return portfolio
 
-    async def get_portfolio_h_summary(
+    async def get_portfolio_summary(
             self,
             portfolio_id: uuid,
             start_date: date,
@@ -82,7 +84,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
     async def list_portfolio_history_values(
             self,
-            portfolioId: uuid,
+            portfolio_id: uuid,
             start_date: date,
             end_date: date,
             token_bearer: TokenModel
@@ -96,35 +98,56 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         """ list portfolios
         """
 
-        user_id = self.get_user_id(token_bearer)
+        user_ssn = self.get_user_ssn(token_bearer)
         portfolios: List[Portfolio] = []
-        if user_id:
-            valid_company_codes = self.get_valid_company_codes(user_id)
+        if user_ssn:
+            valid_company_codes = self.get_valid_company_codes(user_ssn)
             for com_code in valid_company_codes:
-                values = operations.get_portfolio(self.database, com_code)
-
+                values = operations.find_portfolio(self.database, com_code)
                 if values:
                     portfolio = list(map(self.portfolios_deserializer, values))
                     portfolios.extend(portfolio)
         return portfolios
 
-    @staticmethod
-    def com_code_deserializer(companyrah: COMPANYrah) -> str:
-        """
-        deserialize input to get com_code
-        """
-        com_code = companyrah.COM_CODE
-        return com_code
+    async def list_portfolio_transactions(
+        self,
+        portfolio_id: uuid,
+        start_date: date,
+        end_date: date,
+        type: str,
+        token_bearer: TokenModel
+    ) -> List[PortfolioTransaction]:
+        pass
 
-    @staticmethod
-    def portfolios_deserializer(values) -> Portfolio:
+    async def find_portfolio_transactions(
+        self,
+        portfolio_id: uuid,
+        transactionId: uuid,
+        token_bearer: TokenModel
+    ) -> PortfolioTransaction:
+        pass
+
+    async def list_portfolio_funds(
+        self,
+        portfolio_id: uuid,
+        token_bearer: TokenModel
+    ) -> List[PortfolioFund]:
+        pass
+
+    def portfolios_deserializer(self, values) -> Portfolio:
         """
         desrialize input and creates portfolio
         """
         result = Portfolio()
-        result.id = values.id
-        result.totalAmount = int(values.totalAmount)
-        result.marketValueTotal = int(values.marketValueTotal)
-        result.purchaseTotal = int(values.purchaseTotal)
-
+        result.id = str(operations.get_portfolio_uuid_from_portfolio_id(self.database, values.id))
+        result.totalAmount = float(values.totalAmount)
+        result.marketValueTotal = float(values.marketValueTotal)
+        result.purchaseTotal = float(values.purchaseTotal)
         return result
+
+    @staticmethod
+    def com_code_deserializer(company: Company) -> str:
+        """
+        deserialize input to get com_code
+        """
+        return company.company_code
