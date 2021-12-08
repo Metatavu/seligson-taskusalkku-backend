@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 from .utils.database import sql_backend_company, sql_backend_securtiy, sql_backend_portfolio_log, \
     sql_backend_portfolio_transaction, sql_backend_last_rate, sql_backend_portfolio, wait_for_row_count
 from ..database.models import Company, Security, LastRate, Portfolio, PortfolioTransaction, PortfolioLog
+from ..spec.models.portfolio import Portfolio as SpecPortfolio
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +57,9 @@ class TestPortfolio:
 
             assert 4 == len(values)
             assert portfolio_table_id == values["id"]
-            assert expected_sum_total_amounts == values["totalAmount"]
-            assert expected_sum_market_value_total == values["marketValueTotal"]
-            assert expected_sum_purchase_total == values["purchaseTotal"]
-            assert type(values) == Portfolio
+            assert expected_sum_total_amounts == Decimal(values["totalAmount"])
+            assert expected_sum_market_value_total == Decimal(values["marketValueTotal"])
+            assert expected_sum_purchase_total == Decimal(values["purchaseTotal"])
 
     @pytest.mark.skip
     def test_get_portfolio_summary(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
