@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
@@ -18,7 +19,7 @@ def list_funds(database: Session,
                max_result: int
                ) -> List[Fund]:
     return database.query(Fund) \
-        .order_by(Fund.fund_id)  \
+        .order_by(Fund.fund_id) \
         .offset(first_result) \
         .limit(max_result) \
         .all()
@@ -30,7 +31,7 @@ def query_fund_rates(database: Session,
                      rate_date_max: date,
                      first_result: int = 0,
                      max_result: int = 100
-                    ) -> List[FundRate]:
+                     ) -> List[FundRate]:
     """Queries the fund rate table
 
     Args:
@@ -50,7 +51,7 @@ def query_fund_rates(database: Session,
         .filter(FundRate.rate_date <= rate_date_max) \
         .offset(first_result) \
         .limit(max_result) \
-        .order_by(FundRate.rate_date)  \
+        .order_by(FundRate.rate_date) \
         .all()
 
 
@@ -115,6 +116,11 @@ def find_portfolio(database: Session, company_code: str):
 def get_portfolio_uuid_from_portfolio_id(database: Session, portfolio_id: str):
     return database.query(Portfolio.id).filter(Portfolio.portfolio_id == portfolio_id).scalar()
 
+
+def get_portfolio_id_from_portfolio_uuid(database: Session, portfolio_uuid: UUID):
+    return database.query(Portfolio.portfolio_id).filter(Portfolio.id == portfolio_uuid).scalar()
+
+
 def get_company_code_of_portfolio(database: Session, company_codes: [str], portfolio_id: UUID) -> str:
     """Queries the PORTFOLrah table
 
@@ -133,26 +139,24 @@ def get_company_code_of_portfolio(database: Session, company_codes: [str], portf
         .scalar()
 
 
-def get_portfolio_summary(database: Session, por_id: str, start_date: date, end_date: date, trans_codes: [str]):
+def get_portfolio_summary(database: Session, portfolio_original_id: str, start_date: date, end_date: date,
+                          transaction_codes: [str]):
     """Queries the PORTLOGrah table
 
         Args:
             database (Session): database session
             trans_codes ([str]): list of valid trans_codes for the operation
             start_date (date): filter results from this date
-            end_date (date): filter resultsto this date
+            end_date (date): filter results to this date
             por_id (str): id of Portfolio
         Returns:
             rows of PORTLOGrah
         """
 
-    return database \
-        .query(PortfolioLog) \
-        .filter(PortfolioLog.TRANS_CODE.in_(trans_codes)) \
-        .filter(PortfolioLog.TRANS_DATE >= start_date) \
-        .filter(PortfolioLog.TRANS_DATE <= end_date) \
-        .filter(PortfolioLog.PORID == por_id) \
-        .all()
+    return database.query(PortfolioLog).filter(PortfolioLog.transaction_code.in_(transaction_codes)).filter(
+        PortfolioLog.transaction_date >= start_date.isoformat()).filter(
+        PortfolioLog.transaction_date <= end_date.isoformat()).filter(
+        PortfolioLog.portfolio_id == portfolio_original_id).all()
 
 
 def get_portfolio_history():

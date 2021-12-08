@@ -323,7 +323,7 @@ class PortfoliosApiSpec(ABC):
         portfolio_id: UUID,
         start_date: Optional[date],
         end_date: Optional[date],
-        transaction_type: Optional[str],
+        transaction_type: Optional[TransactionType],
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -347,7 +347,7 @@ class PortfoliosApiSpec(ABC):
         portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
         start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
         end_date: str = Query(None, description="End date for the date range", alias="endDate"),
-        transaction_type: str = Query(None, description="Transaction type", alias="transactionType"),
+        transaction_type: TransactionType = Query(None, description="Transaction type", alias="transactionType"),
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),

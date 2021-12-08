@@ -18,6 +18,8 @@ from decimal import Decimal
 from database.models import PortfolioTransaction,Company
 from spec.models.portfolio_fund import PortfolioFund
 
+from spec.models.transaction_type import TransactionType
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,17 +68,20 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         """
 
         transaction_codes = business_logics.get_transaction_codes_for_subscription_redemption()
-        query_result = operations.get_portfolio_summary(self.database, portfolio_id, start_date,
+        portfolio_original_id = operations.get_portfolio_id_from_portfolio_uuid(self.database, portfolio_id)
+        query_result = operations.get_portfolio_summary(self.database, portfolio_original_id, start_date,
                                                         end_date,
                                                         transaction_codes)
-        redemptions = decimal.Decimal("0")
-        subscriptions = decimal.Decimal("0")
-        for result in query_result:
-            if business_logics.transaction_is_subscription(result.TRANS_CODE):
-                subscriptions += result.CTOT_VALUE * 100
-            else:
-                redemptions += result.CTOT_VALUE * 100
 
+        redemptions = 0
+        subscriptions = 0
+        for result in query_result:
+            if business_logics.transaction_is_subscription(result.transaction_code):
+                subscriptions += result.c_total_value
+            else:
+                redemptions += result.c_total_value
+        import pdb
+        pdb.set_trace()
         result = PortfolioSummary(subscriptions=subscriptions,
                                   redemptions=redemptions)
 
@@ -89,7 +94,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             end_date: date,
             token_bearer: TokenModel
     ) -> List[PortfolioHistoryValue]:
-        pass
+        raise NotImplementedError
 
     async def list_portfolios(
             self,
@@ -114,10 +119,10 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         portfolio_id: uuid,
         start_date: date,
         end_date: date,
-        type: str,
+        transaction_type: TransactionType,
         token_bearer: TokenModel
     ) -> List[PortfolioTransaction]:
-        pass
+        raise NotImplementedError
 
     async def find_portfolio_transactions(
         self,
@@ -125,14 +130,14 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         transactionId: uuid,
         token_bearer: TokenModel
     ) -> PortfolioTransaction:
-        pass
+        raise NotImplementedError
 
     async def list_portfolio_funds(
         self,
         portfolio_id: uuid,
         token_bearer: TokenModel
     ) -> List[PortfolioFund]:
-        pass
+        raise NotImplementedError
 
     def portfolios_deserializer(self, values) -> Portfolio:
         """

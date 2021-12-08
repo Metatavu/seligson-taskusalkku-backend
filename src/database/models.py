@@ -70,6 +70,7 @@ class PortfolioLog(Base):
     transaction_date = Column(DateTime, index=True)
     company_code = Column(String(20), index=True)
     portfolio_id = Column(String(20), index=True)
+    c_total_value = Column(DECIMAL(15, 2))
 
 
 class PortfolioTransaction(Base):

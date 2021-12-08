@@ -24,7 +24,7 @@ def upgrade():
                     sa.Column('company_code', sa.String(length=20), nullable=True),
                     sa.Column('portfolio_id', sa.String(length=20), nullable=True),
                     sa.Column('security_id', sa.String(length=20), nullable=True),
-                    sa.Column('transaction_date', sa.DateTime(), nullable=True),
+                    sa.Column('transaction_date', sa.Date(), nullable=True),
                     sa.Column('amount', sa.DECIMAL(precision=19, scale=6), nullable=True),
                     sa.Column('purchase_c_value', sa.DECIMAL(precision=15, scale=2), nullable=True),
                     sa.PrimaryKeyConstraint('id'),

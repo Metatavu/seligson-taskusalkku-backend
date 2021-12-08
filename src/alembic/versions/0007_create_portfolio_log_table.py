@@ -22,9 +22,10 @@ def upgrade():
                     sa.Column('id', BINARY(16), nullable=False),
                     sa.Column('transaction_number', sa.Integer(), nullable=False),
                     sa.Column('transaction_code', sa.CHAR(length=2), nullable=True),
-                    sa.Column('transaction_date', sa.DateTime(), nullable=True),
+                    sa.Column('transaction_date', sa.Date(), nullable=True),
                     sa.Column('company_code', sa.String(length=20), nullable=True),
                     sa.Column('portfolio_id', sa.String(length=20), nullable=True),
+                    sa.Column('c_total_value', sa.DECIMAL(precision=15, scale=2), nullable=True),
                     sa.PrimaryKeyConstraint('id'),
                     sa.UniqueConstraint('transaction_number')
                     )
