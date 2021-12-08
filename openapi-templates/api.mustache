@@ -65,7 +65,7 @@ class {{classname}}Spec(ABC):
     async def {{operationId}}(
         self,
         {{#allParams}}
-        {{paramName}}: {{^required}}Optional[{{/required}}{{#isString}}{{#isUuid}}UUID{{/isUuid}}{{^isUuid}}str{{/isUuid}}{{/isString}}{{#isInteger}}int{{/isInteger}}{{#isLong}}int{{/isLong}}{{#isFloat}}float{{/isFloat}}{{#isDouble}}float{{/isDouble}}{{#isByteArray}}str{{/isByteArray}}{{#isBinary}}str{{/isBinary}}{{#isBoolean}}bool{{/isBoolean}}{{#isDate}}date{{/isDate}}{{#isDateTime}}str{{/isDateTime}}{{#isModel}}{{#isEnum}}str{{/isEnum}}{{^isEnum}}{{dataType}}{{/isEnum}}{{/isModel}}{{#isContainer}}{{dataType}}{{/isContainer}}{{^required}}]{{/required}},
+        {{paramName}}: {{^required}}Optional[{{/required}}{{#isString}}{{#isUuid}}UUID{{/isUuid}}{{^isUuid}}str{{/isUuid}}{{/isString}}{{#isInteger}}int{{/isInteger}}{{#isLong}}int{{/isLong}}{{#isFloat}}float{{/isFloat}}{{#isDouble}}float{{/isDouble}}{{#isByteArray}}str{{/isByteArray}}{{#isBinary}}str{{/isBinary}}{{#isBoolean}}bool{{/isBoolean}}{{#isDate}}date{{/isDate}}{{#isDateTime}}str{{/isDateTime}}{{#isModel}}{{#isEnum}}str{{/isEnum}}{{^isEnum}}{{dataType}}{{/isEnum}}{{/isModel}}{{^isModel}}{{#allowableValues}}{{dataType}}{{/allowableValues}}{{/isModel}}{{#isContainer}}{{dataType}}{{/isContainer}}{{^required}}]{{/required}},
         {{/allParams}}
         {{#hasAuthMethods}}
         {{#authMethods}}
