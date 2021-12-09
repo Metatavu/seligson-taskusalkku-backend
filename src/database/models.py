@@ -29,6 +29,7 @@ class Security(Base):
     last_rate = relationship("LastRate", back_populates="security", lazy=True)
     fund = relationship("Fund", back_populates="securities", lazy=True)
     fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'))
+    portfolio_transactions = relationship("PortfolioTransaction", back_populates="security", lazy=True)
 
 
 class SecurityRate(Base):
@@ -72,6 +73,8 @@ class Portfolio(Base):
     company_id = Column("company_id", SqlAlchemyUuid, ForeignKey('company.id'), index=True)
     companies = relationship("Company", back_populates="portfolios", lazy=True)
     portfolio_logs = relationship("PortfolioLog", back_populates="portfolio", lazy=True)
+    portfolio_transactions = relationship("PortfolioTransaction", back_populates="portfolio", lazy=True)
+
 
 class PortfolioLog(Base):
     __tablename__ = 'portfolio_log'
@@ -87,14 +90,14 @@ class PortfolioLog(Base):
 
 class PortfolioTransaction(Base):
     __tablename__ = 'portfolio_transaction'
-    # todo foreign key to company portfolio security
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     transaction_number = Column(Integer, unique=True)
-    company_code = Column(String(20), index=True)
 
-    portfolio_id = Column(String(20), index=True)
-    security_id = Column(String(20), index=True)
     transaction_date = Column(DateTime)
     amount = Column(DECIMAL(19, 6))
     purchase_c_value = Column(DECIMAL(15, 2))
+    portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True)
+    portfolio = relationship("Portfolio", back_populates="portfolio_transactions", lazy=True)
+    security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True)
+    security = relationship("Security", back_populates="portfolio_transactions", lazy=True)
