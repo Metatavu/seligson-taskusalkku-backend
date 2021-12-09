@@ -39,7 +39,7 @@ def list_funds(database: Session,
         List[Fund]: list of all Fund table rows
     """
     return database.query(Fund) \
-        .order_by(Fund.fund_id) \
+        .order_by(Fund.original_id) \
         .offset(first_result) \
         .limit(max_result) \
         .all()

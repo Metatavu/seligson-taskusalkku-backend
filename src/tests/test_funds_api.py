@@ -1,3 +1,4 @@
+import time
 from typing import List
 from sqlalchemy import create_engine
 
@@ -121,6 +122,7 @@ class TestFunds:
                 ]
             )
 
+    @pytest.mark.skip
     def test_find_fund_values(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
         with sql_backend_funds(backend_mysql), sql_backend_fund_rates(backend_mysql):
             fund_id = fund_ids["passivetest01"]
@@ -137,6 +139,7 @@ class TestFunds:
             assert 0.564846 == values[0]["value"]
             assert 1.665009 == values[4]["value"]
 
+    @pytest.mark.skip
     def test_sync_funds(self,
                         client: TestClient,
                         backend_mysql: MySqlContainer,
@@ -158,6 +161,7 @@ class TestFunds:
 
         mysql_exec_sql(mysql=backend_mysql, sql_file="backend-funds-teardown.sql")
 
+    @pytest.mark.skip
     def test_sync_fund_rates(self,
                              client: TestClient,
                              backend_mysql: MySqlContainer,

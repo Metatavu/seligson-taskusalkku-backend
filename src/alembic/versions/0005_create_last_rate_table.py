@@ -9,8 +9,8 @@ from alembic import op
 from sqlalchemy import Column, PrimaryKeyConstraint, ForeignKeyConstraint, BINARY, DECIMAL
 
 # revision identifiers, used by Alembic.
-revision = '0006'
-down_revision = '0005'
+revision = '0005'
+down_revision = '0004'
 branch_labels = None
 depends_on = None
 

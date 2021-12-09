@@ -79,7 +79,7 @@ class FundsMetaController:
       "passive": "PASSIVE"
     }
 
-    def get_fund_meta_by_fund_code(self, fund_code: str) -> Optional[FundMeta]:
+    def get_fund_meta_by_fund_id(self, fund_id: str) -> Optional[FundMeta]:
         """Returns fund meta entry for given fund code
 
         Args:
@@ -88,7 +88,7 @@ class FundsMetaController:
         Returns:
             FundMeta: fund meta
         """
-        return next((entry for entry in self.get_all_fund_metas() if entry["fund_code"] == fund_code), None)
+        return next((entry for entry in self.get_all_fund_metas() if entry["fund_id"] == fund_id), None)
 
     def get_all_fund_metas(self) -> List[FundMeta]:
         """Returns all fund metas
@@ -123,9 +123,13 @@ class FundsMetaController:
         Returns:
             FundMeta: FundMeta entry
         """
+        print(f"get_fund_id == {code}")
+
         fund_id = self.get_fund_id(fund_code=code)
         if not fund_id:
             return None
+
+        print(f"fund_id == {fund_id}")
 
         group = self.get_fund_group(fund_code=code)
         values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
