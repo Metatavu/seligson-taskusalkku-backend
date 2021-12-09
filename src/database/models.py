@@ -32,6 +32,7 @@ class FundRate(Base):
 
 class Company(Base):
     __tablename__ = 'company'
+
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     company_code = Column(String(20), index=True, unique=True)
     ssn = Column(String(11))
@@ -39,6 +40,7 @@ class Company(Base):
 
 class Security(Base):
     __tablename__ = 'security'
+
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     security_id = Column(String(20), index=True, primary_key=True)
     currency = Column(CHAR(3))
@@ -48,6 +50,7 @@ class Security(Base):
 
 class LastRate(Base):
     __tablename__ = 'last_rate'
+
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     security_id = Column(String(20), index=True, unique=True)
     rate_close = Column(DECIMAL(16, 6))
@@ -55,6 +58,7 @@ class LastRate(Base):
 
 class Portfolio(Base):
     __tablename__ = 'portfolio'
+
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     # portfolio_id is either equal to company_code or it has a format like c_n where c is company_code value
     # and n is a number with maximum value of 8
@@ -64,6 +68,7 @@ class Portfolio(Base):
 
 class PortfolioLog(Base):
     __tablename__ = 'portfolio_log'
+
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     transaction_number = Column(Integer, index=True, unique=True)
     transaction_code = Column(CHAR(2), index=True)

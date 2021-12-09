@@ -5,12 +5,22 @@ from uuid import UUID
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import func
 from .models import Fund, FundRate, Company, PortfolioTransaction, LastRate, Security, Portfolio, PortfolioLog
+from spec.models.portfolio import Portfolio as SpecPortfolio
 from datetime import date
 
 
-def find_fund(database: Session, id: UUID) -> Optional[Fund]:
+def find_fund(database: Session, fund_id: UUID) -> Optional[Fund]:
+    """Queries the fund table
+
+        Args:
+            database (Session): database session
+            fund_id (UUID): fund id
+
+        Returns:
+            Optional[Fund]: matching Fund row or none
+        """
     return database.query(Fund) \
-        .filter(Fund.id == id) \
+        .filter(Fund.id == fund_id) \
         .one_or_none()
 
 
@@ -18,6 +28,16 @@ def list_funds(database: Session,
                first_result: int,
                max_result: int
                ) -> List[Fund]:
+    """Queries the fund table
+
+    Args:
+        database (Session): database session
+        first_result (int, optional): first result. Defaults to 0.
+        max_result (int, optional): max results. Defaults to 100.
+
+    Returns:
+        List[Fund]: list of all Fund table rows
+    """
     return database.query(Fund) \
         .order_by(Fund.fund_id) \
         .offset(first_result) \
@@ -68,14 +88,14 @@ def get_companies(database: Session, ssn: str) -> List[Company]:
     return database.query(Company).filter(Company.ssn == ssn).all()
 
 
-def find_portfolio(database: Session, company_code: str):
-    """Queries the PORTRANSrah, RATELASTrah, SECURITYrah tables
+def find_portfolio(database: Session, company_code: str) -> List[SpecPortfolio]:
+    """Queries the portfolio_transaction, lastrate, security tables
 
         Args:
             database (Session): database session
-            com_code (str): com_code of user
+            company_code (str): com_code of user
         Returns:
-            List[Portfolio]: list of matching Portfolio objects
+            List[SpecPortfolio]: list of matching Portfolio(spec model) objects
         """
 
     portfolio_id = PortfolioTransaction.portfolio_id.label("id")
@@ -113,23 +133,39 @@ def find_portfolio(database: Session, company_code: str):
     return result
 
 
-def get_portfolio_uuid_from_portfolio_id(database: Session, portfolio_id: str):
+def get_portfolio_uuid_from_portfolio_id(database: Session, portfolio_id: str) -> str:
+    """Queries the portfolio table
+
+        Args:
+            database (Session): database session
+            portfolio_id (str): id of Portfolio
+        Returns:
+             uuid of portfolio (str)
+        """
     return database.query(Portfolio.id).filter(Portfolio.portfolio_id == portfolio_id).scalar()
 
 
-def get_portfolio_id_from_portfolio_uuid(database: Session, portfolio_uuid: UUID):
+def get_portfolio_id_from_portfolio_uuid(database: Session, portfolio_uuid: UUID) -> str:
+    """Queries the portfolio table
+
+        Args:
+            database (Session): database session
+            portfolio_uuid (str): id of Portfolio
+        Returns:
+            portfolio_id (str): id of Portfolio
+        """
     return database.query(Portfolio.portfolio_id).filter(Portfolio.id == portfolio_uuid).scalar()
 
 
 def get_company_code_of_portfolio(database: Session, company_codes: [str], portfolio_id: UUID) -> str:
-    """Queries the PORTFOLrah table
+    """Queries the portfolio table
 
         Args:
             database (Session): database session
-            come_codes ([str]): list of valid com_codes for the user
+            company_codes ([str]): list of valid com_codes for the user
             portfolio_id (str): id of Portfolio
         Returns:
-            come_code (str) the com_code for the portfolio
+            come_code (str): the com_code for the portfolio
         """
 
     return database \
@@ -140,17 +176,17 @@ def get_company_code_of_portfolio(database: Session, company_codes: [str], portf
 
 
 def get_portfolio_summary(database: Session, portfolio_original_id: str, start_date: date, end_date: date,
-                          transaction_codes: [str]):
-    """Queries the PORTLOGrah table
+                          transaction_codes: [str]) -> List[PortfolioLog]:
+    """Queries the portfolio_log table
 
         Args:
             database (Session): database session
-            trans_codes ([str]): list of valid trans_codes for the operation
+            transaction_codes ([str]): list of valid transaction_code for the operation
             start_date (date): filter results from this date
             end_date (date): filter results to this date
-            por_id (str): id of Portfolio
+            portfolio_original_id (str): id of Portfolio
         Returns:
-            rows of PORTLOGrah
+             List[PortfolioLog]: rows of portfolio_log
         """
 
     return database.query(PortfolioLog).filter(PortfolioLog.transaction_code.in_(transaction_codes)).filter(

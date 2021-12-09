@@ -1,5 +1,4 @@
 # coding: utf-8
-import decimal
 import logging
 import uuid
 
@@ -14,10 +13,8 @@ from spec.models.portfolio_summary import PortfolioSummary
 from spec.models.portfolio_history_value import PortfolioHistoryValue
 from database import operations
 from business_logics import business_logics
-from decimal import Decimal
 from database.models import PortfolioTransaction,Company
 from spec.models.portfolio_fund import PortfolioFund
-
 from spec.models.transaction_type import TransactionType
 
 logger = logging.getLogger(__name__)
@@ -80,8 +77,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                 subscriptions += result.c_total_value
             else:
                 redemptions += result.c_total_value
-        import pdb
-        pdb.set_trace()
+
         result = PortfolioSummary(subscriptions=subscriptions,
                                   redemptions=redemptions)
 
@@ -127,7 +123,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
     async def find_portfolio_transactions(
         self,
         portfolio_id: uuid,
-        transactionId: uuid,
+        transaction_id: uuid,
         token_bearer: TokenModel
     ) -> PortfolioTransaction:
         raise NotImplementedError

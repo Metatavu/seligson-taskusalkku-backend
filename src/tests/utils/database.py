@@ -123,9 +123,5 @@ def wait_for_row_count(engine, entity: Any, count: int):
         with Session(engine) as session:
             current = session.query(entity).count()
         logger.info("Waiting for count to be %s...", count)
-        if datetime.now() >= timeout:
-            # todo verify why this debugger exists in here.
-            import pdb
-            pdb.set_trace()
 
         assert datetime.now() < timeout, f"Timed out waiting for count to be {count}, current count is {current}"

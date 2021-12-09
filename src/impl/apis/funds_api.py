@@ -36,7 +36,7 @@ class FundsApiImpl(FundsApiSpec):
 
         fund = database.find_fund(
             database=self.database,
-            id=fund_id
+            fund_id=fund_id
         )
 
         if not fund:
@@ -90,7 +90,7 @@ class FundsApiImpl(FundsApiSpec):
 
         fund = database.find_fund(
             database=self.database,
-            id=fund_id
+            fund_id=fund_id
         )
 
         if not fund:
