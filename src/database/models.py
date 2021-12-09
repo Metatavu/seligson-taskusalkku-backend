@@ -11,6 +11,7 @@ metadata = Base.metadata
 
 class Fund(Base):
     __tablename__ = 'fund'
+
     # a fund contains one or more securities
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     original_id = Column(Integer, index=True, unique=True)
@@ -44,10 +45,9 @@ class SecurityRate(Base):
 
 class Company(Base):
     __tablename__ = 'company'
+
     # A user can have multiple portfolios with the same company code, company code represents the user.
-
     # original id = company_code
-
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     original_id = Column(String(20), index=True, unique=True)
     ssn = Column(String(11))
@@ -82,7 +82,7 @@ class PortfolioLog(Base):
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     transaction_number = Column(Integer, index=True, unique=True)
     transaction_code = Column(CHAR(2), index=True)
-    transaction_date = Column(DateTime, index=True)
+    transaction_date = Column(Date, index=True)
     c_total_value = Column(DECIMAL(15, 2))
     portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True)
     portfolio = relationship("Portfolio", back_populates="portfolio_logs", lazy=True)
@@ -93,8 +93,7 @@ class PortfolioTransaction(Base):
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     transaction_number = Column(Integer, unique=True)
-
-    transaction_date = Column(DateTime)
+    transaction_date = Column(Date)
     amount = Column(DECIMAL(19, 6))
     purchase_c_value = Column(DECIMAL(15, 2))
     portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True)
