@@ -6,7 +6,7 @@ from datetime import date
 from typing import Dict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from database.models import Fund, FundRate
+from database.models import Fund, SecurityRate
 from aiokafka import ConsumerRecord
 
 logger = logging.getLogger(__name__)
@@ -146,13 +146,13 @@ class SyncHandler:
         if fund is None:
             raise Exception("Unable to sync fund rate, fund for SECID %s not foud", security_id)
 
-        fund_rate = session.query(FundRate) \
-            .filter(FundRate.fund_id == fund.id) \
-            .filter(FundRate.rate_date == rate_date) \
+        fund_rate = session.query(SecurityRate) \
+            .filter(SecurityRate.fund_id == fund.id) \
+            .filter(SecurityRate.rate_date == rate_date) \
             .one_or_none()
 
         if fund_rate is None:
-            fund_rate = FundRate()
+            fund_rate = SecurityRate()
             fund_rate.fund_id = fund.id
             fund_rate.rate_date = rate_date
             created = True
@@ -192,9 +192,9 @@ class SyncHandler:
 
         rate_date = date.fromtimestamp(rdate / 1000.0)
 
-        session.query(FundRate) \
-            .filter(FundRate.fund_id == fund.id) \
-            .filter(FundRate.rate_date == rate_date) \
+        session.query(SecurityRate) \
+            .filter(SecurityRate.fund_id == fund.id) \
+            .filter(SecurityRate.rate_date == rate_date) \
             .delete()
 
         session.commit()

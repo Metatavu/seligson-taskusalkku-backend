@@ -19,7 +19,7 @@ from spec.models.localized_value import LocalizedValue
 from spec.models.change_data import ChangeData
 
 from database.models import Fund as DbFund
-from database.models import FundRate
+from database.models import SecurityRate
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +198,7 @@ class FundsApiImpl(FundsApiSpec):
             sv=sv
         )
 
-    def translate_historical_value(self, fund_rate: FundRate) -> HistoricalValue:
+    def translate_historical_value(self, fund_rate: SecurityRate) -> HistoricalValue:
         """Translates historical value
 
         Args:

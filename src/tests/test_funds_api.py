@@ -1,7 +1,7 @@
 from typing import List
 from sqlalchemy import create_engine
 
-from ..database.models import Fund, FundRate
+from ..database.models import Fund, SecurityRate
 
 from .utils.database import wait_for_row_count, sql_backend_funds, sql_backend_fund_rates, sql_salkku_fund_securities, \
     sql_salkku_raterah, mysql_exec_sql
@@ -171,7 +171,7 @@ class TestFunds:
             wait_for_row_count(engine=engine, entity=Fund, count=6)
 
             with sql_salkku_raterah(mysql=salkku_mysql):
-                wait_for_row_count(engine=engine, entity=FundRate, count=546)
+                wait_for_row_count(engine=engine, entity=SecurityRate, count=546)
                 fund_id = client.get("/v1/funds?max_results=1", auth=user_1_auth).json()[0]["id"]
                 assert fund_id is not None
 
