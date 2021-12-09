@@ -11,60 +11,67 @@ metadata = Base.metadata
 
 class Fund(Base):
     __tablename__ = 'fund'
-
+    # a fund contains one or more securities
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
-    fund_id = Column(Integer, index=True, unique=True)
-    security_id = Column(String(24), index=True, unique=True)
-    security_name_fi = Column(String(191), nullable=False)
-    security_name_sv = Column(String(191), nullable=False)
-    rates = relationship("FundRate", back_populates="fund", lazy=True)
-
-
-class FundRate(Base):
-    __tablename__ = 'fund_rate'
-
-    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
-    fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'))
-    rate_date = Column("rate_date", Date)
-    rate_close = Column(DECIMAL(19, 6), nullable=False)
-    fund = relationship("Fund", back_populates="rates", lazy=True)
-
-
-class Company(Base):
-    __tablename__ = 'company'
-
-    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
-    company_code = Column(String(20), index=True, unique=True)
-    ssn = Column(String(11))
+    original_id = Column(Integer, index=True, unique=True)
+    securities = relationship("Security", back_populates="fund", lazy=True)
 
 
 class Security(Base):
     __tablename__ = 'security'
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
-    security_id = Column(String(20), index=True, primary_key=True)
+    original_id = Column(String(20), index=True, unique=True)
     currency = Column(CHAR(3))
-    pe_corr = Column(DECIMAL(8, 4))
-    isin = Column(String(12))
+    name_fi = Column(String(191), nullable=False)
+    name_sv = Column(String(191), nullable=False)
+    rates = relationship("SecurityRate", back_populates="security", lazy=True)
+    last_rate = relationship("LastRate", back_populates="security", lazy=True)
+    fund = relationship("Fund", back_populates="securities", lazy=True)
+    fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'))
+
+
+class SecurityRate(Base):
+    __tablename__ = 'fund_rate'
+
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'))
+    security = relationship("Security", back_populates="rates", lazy=True)
+    rate_date = Column("rate_date", Date)
+    rate_close = Column(DECIMAL(19, 6), nullable=False)
+
+
+class Company(Base):
+    __tablename__ = 'company'
+    # A user can have multiple portfolios with the same company code, company code represents the user.
+
+    # original id = company_code
+
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    original_id = Column(String(20), index=True, unique=True)
+    ssn = Column(String(11))
+    portfolios = relationship("Portfolio", back_populates="companies", lazy=True)
 
 
 class LastRate(Base):
     __tablename__ = 'last_rate'
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
-    security_id = Column(String(20), index=True, unique=True)
+    security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'))
+    security = relationship("Security", back_populates="last_rate", lazy=True)
     rate_close = Column(DECIMAL(16, 6))
 
 
 class Portfolio(Base):
     __tablename__ = 'portfolio'
+    # original_id is either equal to company_code or it has a format like c_n where c is company_code value
+    # and n is a number with maximum value of 8
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
-    # portfolio_id is either equal to company_code or it has a format like c_n where c is company_code value
-    # and n is a number with maximum value of 8
-    portfolio_id = Column(String(20), unique=True)
-    company_code = Column(String(20), index=True)
-
+    original_id = Column(String(20), unique=True)
+    company_id = Column("company_id", SqlAlchemyUuid, ForeignKey('company.id'), index=True)
+    companies = relationship("Company", back_populates="portfolios", lazy=True)
+    portfolio_logs = relationship("PortfolioLog", back_populates="portfolio", lazy=True)
 
 class PortfolioLog(Base):
     __tablename__ = 'portfolio_log'
@@ -73,13 +80,15 @@ class PortfolioLog(Base):
     transaction_number = Column(Integer, index=True, unique=True)
     transaction_code = Column(CHAR(2), index=True)
     transaction_date = Column(DateTime, index=True)
-    company_code = Column(String(20), index=True)
-    portfolio_id = Column(String(20), index=True)
     c_total_value = Column(DECIMAL(15, 2))
+    portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True)
+    portfolio = relationship("Portfolio", back_populates="portfolio_logs", lazy=True)
 
 
 class PortfolioTransaction(Base):
     __tablename__ = 'portfolio_transaction'
+    # todo foreign key to company portfolio security
+
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     transaction_number = Column(Integer, unique=True)
     company_code = Column(String(20), index=True)
