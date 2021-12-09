@@ -46,7 +46,7 @@ class TestPortfolio:
         expected_sum_market_value_total = sum(market_value_total)
         expected_sum_purchase_total = sum(purchase_total)
 
-        tables = [(Company, 4), (Security, 5), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 6), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 30)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_securtiy(backend_mysql), sql_backend_last_rate(
@@ -85,7 +85,7 @@ class TestPortfolio:
         expected_redemption = Decimal("35000.00")
         expected_subscription = Decimal("30099.17")
 
-        tables = [(Company, 4), (Security, 5), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 6), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 30)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_securtiy(backend_mysql), sql_backend_last_rate(
@@ -167,7 +167,7 @@ class TestPortfolio:
         expected_sum_market_values_total = [sum(market_values_total) for market_values_total in market_values_total]
         expected_sum_purchases_total = [sum(purchase_total) for purchase_total in purchases_total]
 
-        tables = [(Company, 4), (Security, 5), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 6), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 30)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_securtiy(backend_mysql), sql_backend_last_rate(
