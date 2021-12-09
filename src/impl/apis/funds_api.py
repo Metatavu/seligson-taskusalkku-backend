@@ -42,7 +42,7 @@ class FundsApiImpl(FundsApiSpec):
         if not fund:
             raise HTTPException(
                                 status_code=404,
-                                detail="Fund {fund_id} not found"
+                                detail=f"Fund {fund_id} not found"
                               )
 
         return self.translate_fund(fund=fund)
@@ -120,18 +120,14 @@ class FundsApiImpl(FundsApiSpec):
             Fund: Translated REST resource
         """
 
-        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_code(fund_code=fund.security_id)
+        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id=str(fund.original_id))
         if fund_meta is None:
             raise HTTPException(
                                 status_code=404,
-                                detail="Fund meta for fund {fund_id} not found"
+                                detail=f"Fund meta for fund id {fund.original_id} not found"
                               )
 
-        name = LocalizedValue(
-            fi=fund.security_name_fi,
-            sv=fund.security_name_sv
-        )
-
+        name = self.translate_meta_locale(fund_meta["name"])
         long_name = self.translate_meta_locale(fund_meta["long_name"])
         short_name = self.translate_meta_locale(fund_meta["short_name"])
 
