@@ -19,11 +19,11 @@ depends_on = None
 def upgrade():
     op.create_table('security',
                     Column('id', BINARY(16), nullable=False),
-                    Column('original_id', String(length=20), nullable=True),
+                    Column('original_id', String(length=20), nullable=False),
                     Column('currency', CHAR(length=3), nullable=True),
                     Column('name_fi', String(length=191), nullable=False),
                     Column('name_sv', String(length=191), nullable=False),
-                    Column('fund_id', BINARY(16), nullable=True),
+                    Column('fund_id', BINARY(16), nullable=False),
                     ForeignKeyConstraint(['fund_id'], ['fund.id'], ),
                     PrimaryKeyConstraint('id')
                     )

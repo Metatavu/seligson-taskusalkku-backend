@@ -22,14 +22,14 @@ class Security(Base):
     __tablename__ = 'security'
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
-    original_id = Column(String(20), index=True, unique=True)
+    original_id = Column(String(20), index=True, unique=True, nullable=False)
     currency = Column(CHAR(3))
     name_fi = Column(String(191), nullable=False)
     name_sv = Column(String(191), nullable=False)
     rates = relationship("SecurityRate", back_populates="security", lazy=True)
     last_rate = relationship("LastRate", back_populates="security", lazy=True)
     fund = relationship("Fund", back_populates="securities", lazy=True)
-    fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'))
+    fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'), nullable=False)
     portfolio_transactions = relationship("PortfolioTransaction", back_populates="security", lazy=True)
 
 
@@ -58,7 +58,7 @@ class LastRate(Base):
     __tablename__ = 'last_rate'
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
-    security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'))
+    security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), nullable=False)
     security = relationship("Security", back_populates="last_rate", lazy=True)
     rate_close = Column(DECIMAL(16, 6))
 
