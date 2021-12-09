@@ -33,7 +33,7 @@ class Security(Base):
 
 
 class SecurityRate(Base):
-    __tablename__ = 'fund_rate'
+    __tablename__ = 'security_rate'
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'))

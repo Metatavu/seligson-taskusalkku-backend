@@ -1,4 +1,4 @@
-"""create fund_rate table
+"""create security_rate table
 
 Revision ID: 0002
 Revises: 0001

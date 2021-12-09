@@ -33,11 +33,11 @@ def sql_backend_funds(mysql: MySqlContainer):
 
 
 @contextlib.contextmanager
-def sql_backend_fund_rates(mysql: MySqlContainer):
+def sql_backend_security_rates(mysql: MySqlContainer):
     try:
-        yield mysql_exec_sql(mysql=mysql, sql_file="backend-fund-rates.sql")
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-security-rates.sql")
     finally:
-        mysql_exec_sql(mysql=mysql, sql_file="backend-fund-rates-teardown.sql")
+        mysql_exec_sql(mysql=mysql, sql_file="backend-security-rates-teardown.sql")
 
 
 @contextlib.contextmanager

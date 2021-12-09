@@ -4,8 +4,8 @@ from sqlalchemy import create_engine
 
 from ..database.models import Fund, SecurityRate
 
-from .utils.database import wait_for_row_count, sql_backend_funds, sql_backend_fund_rates, sql_salkku_fund_securities, \
-    sql_salkku_raterah, mysql_exec_sql
+from .utils.database import wait_for_row_count, sql_backend_funds, sql_backend_security_rates, sql_salkku_fund_securities, \
+    sql_salkku_raterah, sql_backend_securtiy
 
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
@@ -122,14 +122,14 @@ class TestFunds:
                 ]
             )
 
-    @pytest.mark.skip
     def test_find_fund_values(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql), sql_backend_fund_rates(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_securtiy(backend_mysql), sql_backend_security_rates(backend_mysql):
             fund_id = fund_ids["passivetest01"]
             start_date = "2020-01-01"
             end_date = "2020-01-05"
             response = client.get(f"/v1/funds/{fund_id}/historicalValues/?startDate={start_date}&endDate={end_date}",
                                   auth=user_1_auth)
+
             assert response.status_code == 200
 
             values = response.json()
@@ -194,7 +194,7 @@ class TestFunds:
                 assert 0.654115 == values[0]["value"]
                 assert 4.743263 == values[4]["value"]
 
-            mysql_exec_sql(mysql=backend_mysql, sql_file="backend-fund-rates-teardown.sql")
+            mysql_exec_sql(mysql=backend_mysql, sql_file="backend-security-rates-teardown.sql")
             mysql_exec_sql(mysql=backend_mysql, sql_file="backend-funds-teardown.sql")
 
     @staticmethod

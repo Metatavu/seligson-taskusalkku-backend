@@ -99,7 +99,7 @@ class FundsApiImpl(FundsApiSpec):
                                 detail="Fund {fund_id} not found"
                                )
 
-        values = database.query_fund_rates(
+        values = database.query_security_rates(
             database=self.database,
             fund_id=fund.id,
             rate_date_min=start_date,
@@ -194,7 +194,7 @@ class FundsApiImpl(FundsApiSpec):
             sv=sv
         )
 
-    def translate_historical_value(self, fund_rate: SecurityRate) -> HistoricalValue:
+    def translate_historical_value(self, security_rate: SecurityRate) -> HistoricalValue:
         """Translates historical value
 
         Args:
@@ -204,6 +204,6 @@ class FundsApiImpl(FundsApiSpec):
             HistoricalValue: REST resource
         """
         result = HistoricalValue()
-        result.value = fund_rate.rate_close
-        result.date = fund_rate.rate_date
+        result.value = security_rate.rate_close
+        result.date = security_rate.rate_date
         return result

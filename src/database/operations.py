@@ -45,7 +45,7 @@ def list_funds(database: Session,
         .all()
 
 
-def query_fund_rates(database: Session,
+def query_security_rates(database: Session,
                      fund_id: UUID,
                      rate_date_min: date,
                      rate_date_max: date,
@@ -65,10 +65,12 @@ def query_fund_rates(database: Session,
     Returns:
         List[SecurityRate]: list of matching SecurityRate table rows
     """
+
     return database.query(SecurityRate) \
-        .filter(SecurityRate.fund_id == fund_id) \
+        .join(Security, SecurityRate.security_id == Security.id) \
         .filter(SecurityRate.rate_date >= rate_date_min) \
         .filter(SecurityRate.rate_date <= rate_date_max) \
+        .filter(Security.fund_id == fund_id) \
         .offset(first_result) \
         .limit(max_result) \
         .order_by(SecurityRate.rate_date) \

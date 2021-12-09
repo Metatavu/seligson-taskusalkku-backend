@@ -123,13 +123,9 @@ class FundsMetaController:
         Returns:
             FundMeta: FundMeta entry
         """
-        print(f"get_fund_id == {code}")
-
         fund_id = self.get_fund_id(fund_code=code)
         if not fund_id:
             return None
-
-        print(f"fund_id == {fund_id}")
 
         group = self.get_fund_group(fund_code=code)
         values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
