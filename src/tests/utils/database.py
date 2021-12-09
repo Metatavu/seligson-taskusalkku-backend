@@ -65,7 +65,7 @@ def sql_backend_company(mysql: MySqlContainer):
 
 
 @contextlib.contextmanager
-def sql_backend_securtiy(mysql: MySqlContainer):
+def sql_backend_security(mysql: MySqlContainer):
     try:
         yield mysql_exec_sql(mysql=mysql, sql_file="backend-security.sql")
     finally:

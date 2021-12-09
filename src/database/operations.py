@@ -1,12 +1,18 @@
-import datetime
-from decimal import Decimal
+from dataclasses import dataclass
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import func
 from .models import Fund, SecurityRate, Company, PortfolioTransaction, LastRate, Security, Portfolio, PortfolioLog
-from spec.models.portfolio import Portfolio as SpecPortfolio
 from datetime import date
+
+
+@dataclass
+class PortfolioValues:
+    """Data class for portfolio values query result"""
+    totalAmount: str
+    purchaseTotal: str
+    marketValueTotal: str
 
 
 def find_fund(database: Session, fund_id: UUID) -> Optional[Fund]:
@@ -46,12 +52,12 @@ def list_funds(database: Session,
 
 
 def query_security_rates(database: Session,
-                     fund_id: UUID,
-                     rate_date_min: date,
-                     rate_date_max: date,
-                     first_result: int = 0,
-                     max_result: int = 100
-                     ) -> List[SecurityRate]:
+                         fund_id: UUID,
+                         rate_date_min: date,
+                         rate_date_max: date,
+                         first_result: int = 0,
+                         max_result: int = 100
+                         ) -> List[SecurityRate]:
     """Queries the fund rate table
 
     Args:
@@ -90,14 +96,26 @@ def get_companies(database: Session, ssn: str) -> List[Company]:
     return database.query(Company).filter(Company.ssn == ssn).all()
 
 
-def find_portfolio(database: Session, company_code: str) -> List[SpecPortfolio]:
-    """Queries the portfolio_transaction, lastrate, security tables
+def find_portfolio(database: Session, portfolio_id: UUID) -> Optional[Portfolio]:
+    """Finds portfolio from the database
+
+    Args:
+            database (Session): database session
+            portfolio_id (UUID): portfolio id
+    """
+    return database.query(Portfolio) \
+        .filter(Portfolio.id == portfolio_id) \
+        .one_or_none()
+
+
+def find_portfolio_values(database: Session, portfolio: Portfolio) -> PortfolioValues:
+    """Queries the portfolio values from database
 
         Args:
             database (Session): database session
-            company_code (str): com_code of user
+            portfolio (Portfolio): portfolio
         Returns:
-            List[SpecPortfolio]: list of matching Portfolio(spec model) objects
+            PortfolioValues: portfolio values
         """
 
     portfolio_id = PortfolioTransaction.portfolio_id.label("id")
@@ -112,27 +130,33 @@ def find_portfolio(database: Session, company_code: str) -> List[SpecPortfolio]:
     query_eur_funds = database. \
         query(portfolio_id, total_amount, market_value_total_eur, purchase_total) \
         .join(PortfolioTransaction, PortfolioTransaction.security_id == LastRate.security_id) \
-        .join(Security, PortfolioTransaction.security_id == Security.security_id) \
+        .join(Security, PortfolioTransaction.security_id == Security.id) \
         .filter(Security.currency == "EUR") \
-        .filter(PortfolioTransaction.company_code == company_code) \
+        .filter(PortfolioTransaction.portfolio == portfolio) \
         .group_by(portfolio_id)
 
     query_non_eur_funds = database.query(portfolio_id, total_amount, market_value_total_non_eur, purchase_total) \
         .join(LastRate, PortfolioTransaction.security_id == LastRate.security_id) \
-        .join(Security, PortfolioTransaction.security_id == Security.security_id) \
+        .join(Security, PortfolioTransaction.security_id == Security.id) \
         .join(rate_last_rah_b, Security.currency == rate_last_rah_b.security_id) \
         .filter(Security.currency != "EUR") \
-        .filter(PortfolioTransaction.company_code == company_code) \
+        .filter(PortfolioTransaction.portfolio == portfolio) \
         .group_by(portfolio_id)
+
     query_portfolio = query_eur_funds.union_all(query_non_eur_funds).subquery()
+
     result = database.query(
         query_portfolio.c.id.label("id"),
         func.sum(query_portfolio.c.totalAmount).label("totalAmount"),
         func.sum(query_portfolio.c.purchaseTotal).label("purchaseTotal"),
-        func.sum(query_portfolio.c.marketValueTotal).label("marketValueTotal")).group_by(query_portfolio.c.id) \
-        .all()
+        func.sum(query_portfolio.c.marketValueTotal).label("marketValueTotal")) \
+        .one()
 
-    return result
+    return PortfolioValues(
+        totalAmount=result.totalAmount,
+        purchaseTotal=result.purchaseTotal,
+        marketValueTotal=result.marketValueTotal
+    )
 
 
 def get_portfolio_uuid_from_portfolio_id(database: Session, portfolio_id: str) -> str:

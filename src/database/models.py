@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from .sqlalchemy_uuid import SqlAlchemyUuid
-from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime
+from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -51,7 +51,7 @@ class Company(Base):
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     original_id = Column(String(20), index=True, unique=True)
     ssn = Column(String(11))
-    portfolios = relationship("Portfolio", back_populates="companies", lazy=True)
+    portfolios = relationship("Portfolio", back_populates="company", lazy=True)
 
 
 class LastRate(Base):
@@ -71,7 +71,7 @@ class Portfolio(Base):
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     original_id = Column(String(20), unique=True)
     company_id = Column("company_id", SqlAlchemyUuid, ForeignKey('company.id'), index=True)
-    companies = relationship("Company", back_populates="portfolios", lazy=True)
+    company = relationship("Company", back_populates="portfolios", lazy=True)
     portfolio_logs = relationship("PortfolioLog", back_populates="portfolio", lazy=True)
     portfolio_transactions = relationship("PortfolioTransaction", back_populates="portfolio", lazy=True)
 

@@ -3,6 +3,7 @@ import logging
 import uuid
 
 from typing import List
+from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
 from spec.apis.portfolios_api import PortfoliosApiSpec, router as portfolios_api_router
 from datetime import date
@@ -13,7 +14,7 @@ from spec.models.portfolio_summary import PortfolioSummary
 from spec.models.portfolio_history_value import PortfolioHistoryValue
 from database import operations
 from business_logics import business_logics
-from database.models import PortfolioTransaction,Company
+from database.models import PortfolioTransaction, Company, Portfolio as DbPortfolio
 from spec.models.portfolio_fund import PortfolioFund
 from spec.models.transaction_type import TransactionType
 
@@ -40,19 +41,33 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             portfolio_id: uuid,
             token_bearer: TokenModel
     ) -> Portfolio:
-        """
-        find a portfolio
-        """
-        user_ssn = self.get_user_ssn(token_bearer)
-        portfolio = Portfolio()
-        if user_ssn:
-            valid_company_codes = self.get_valid_company_codes(user_ssn)
-            company_code = operations.get_company_code_of_portfolio(self.database, valid_company_codes, portfolio_id)
-            if company_code:
-                portfolio_query_result = operations.find_portfolio(self.database, company_code)
-                if portfolio_query_result:
-                    portfolio = self.portfolios_deserializer(portfolio_query_result[0])
-        return portfolio
+        portfolio = operations.find_portfolio(
+            database=self.database,
+            portfolio_id=portfolio_id
+        )
+
+        if not portfolio:
+            raise HTTPException(
+                                status_code=404,
+                                detail=f"Portfolio {portfolio_id} not found"
+                              )
+
+        ssn = self.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        if portfolio.company.ssn != ssn:
+            raise HTTPException(
+                status_code=403,
+                detail=f"No permission to find this portfolio"
+            )
+
+        return self.translate_portfolio(
+            portfolio=portfolio
+        )
 
     async def get_portfolio_summary(
             self,
@@ -135,15 +150,21 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
     ) -> List[PortfolioFund]:
         raise NotImplementedError
 
-    def portfolios_deserializer(self, values) -> Portfolio:
+    def translate_portfolio(self, portfolio: DbPortfolio) -> Portfolio:
         """
-        desrialize input and creates portfolio
+        Translates portfolio into REST resource
         """
+        portfolio_values = operations.find_portfolio_values(
+            database=self.database,
+            portfolio=portfolio
+        )
+
         result = Portfolio()
-        result.id = str(operations.get_portfolio_uuid_from_portfolio_id(self.database, values.id))
-        result.totalAmount = float(values.totalAmount)
-        result.marketValueTotal = float(values.marketValueTotal)
-        result.purchaseTotal = float(values.purchaseTotal)
+        result.id = str(portfolio.id)
+        result.totalAmount = portfolio_values.totalAmount
+        result.marketValueTotal = portfolio_values.marketValueTotal
+        result.purchaseTotal = portfolio_values.purchaseTotal
+
         return result
 
     @staticmethod
@@ -151,4 +172,4 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         """
         deserialize input to get com_code
         """
-        return company.company_code
+        return company.original_id

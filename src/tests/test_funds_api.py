@@ -1,11 +1,10 @@
-import time
 from typing import List
 from sqlalchemy import create_engine
 
 from ..database.models import Fund, SecurityRate
 
-from .utils.database import wait_for_row_count, sql_backend_funds, sql_backend_security_rates, sql_salkku_fund_securities, \
-    sql_salkku_raterah, sql_backend_securtiy
+from .utils.database import wait_for_row_count, sql_backend_funds, sql_backend_security_rates, \
+    sql_salkku_fund_securities, sql_salkku_raterah, sql_backend_security
 
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
@@ -123,7 +122,8 @@ class TestFunds:
             )
 
     def test_find_fund_values(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql), sql_backend_securtiy(backend_mysql), sql_backend_security_rates(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
+                sql_backend_security_rates(backend_mysql):
             fund_id = fund_ids["passivetest01"]
             start_date = "2020-01-01"
             end_date = "2020-01-05"
@@ -169,7 +169,7 @@ class TestFunds:
                              kafka_connect: KafkaConnectContainer,
                              sync: SyncContainer,
                              user_1_auth: BearerAuth
-                        ):
+                             ):
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_salkku_fund_securities(mysql=salkku_mysql):
             wait_for_row_count(engine=engine, entity=Fund, count=6)
