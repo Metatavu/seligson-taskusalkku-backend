@@ -2,6 +2,7 @@
 import logging
 import uuid
 
+from functools import reduce
 from typing import List
 from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
@@ -20,6 +21,7 @@ from spec.models.transaction_type import TransactionType
 
 logger = logging.getLogger(__name__)
 
+flat_map = lambda f, xs: reduce(lambda a, b: a + b, map(f, xs))
 
 @cbv(portfolios_api_router)
 class PortfoliosApiImpl(PortfoliosApiSpec):
@@ -111,19 +113,26 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             self,
             token_bearer: TokenModel,
     ) -> List[Portfolio]:
-        """ list portfolios
-        """
+        """ list portfolios"""
 
-        user_ssn = self.get_user_ssn(token_bearer)
-        portfolios: List[Portfolio] = []
-        if user_ssn:
-            valid_company_codes = self.get_valid_company_codes(user_ssn)
-            for com_code in valid_company_codes:
-                values = operations.find_portfolio(self.database, com_code)
-                if values:
-                    portfolio = list(map(self.portfolios_deserializer, values))
-                    portfolios.extend(portfolio)
-        return portfolios
+        ssn = self.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        companies = operations.get_companies(
+            database=self.database,
+            ssn=ssn
+        )
+
+        portfolios = []
+
+        for company in companies:
+            portfolios = portfolios + company.portfolios
+
+        return list(map(self.translate_portfolio, portfolios))
 
     async def list_portfolio_transactions(
         self,
@@ -161,9 +170,10 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
         result = Portfolio()
         result.id = str(portfolio.id)
-        result.totalAmount = portfolio_values.totalAmount
-        result.marketValueTotal = portfolio_values.marketValueTotal
-        result.purchaseTotal = portfolio_values.purchaseTotal
+        result.totalAmount = portfolio_values.totalAmount if portfolio_values.totalAmount is not None else "0"
+        result.marketValueTotal = portfolio_values.marketValueTotal if portfolio_values.marketValueTotal is not None \
+            else "0"
+        result.purchaseTotal = portfolio_values.purchaseTotal if portfolio_values.purchaseTotal is not None else "0"
 
         return result
 

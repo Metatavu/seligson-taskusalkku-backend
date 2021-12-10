@@ -21,7 +21,7 @@ def mysql_exec_sql(mysql: MySqlContainer, sql_file: str):
     logger.info(f"Importing SQL file {sql_file}...")
     import_command = f'bash -c "mysql -uroot -ptest test < {container_import_folder}/{sql_file}"'
     import_result = mysql.exec(import_command)
-    assert import_result.exit_code == 0, import_result.output.decode("utf-8")
+    assert import_result.exit_code == 0, f"Error while importing {sql_file}: {import_result.output.decode('utf-8')}"
 
 
 @contextlib.contextmanager
