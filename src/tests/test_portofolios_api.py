@@ -1,3 +1,5 @@
+import json
+
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.salkku_mysql import *  # noqa
@@ -83,6 +85,15 @@ portfolio_values = {
     }
 }
 
+security_ids = {
+    "PASSIVETEST01": "9bed2c6f-8f2c-4e6d-a711-d75cb2474616",
+    "ACTIVETEST01": "d84dfb1a-3230-4d0e-abcb-2a9f9b118afa",
+    "BALANCEDTEST01": "87c526df-c4b0-42d2-8202-07c990c725db",
+    "FIXEDTEST01": "a2c14970-161b-407a-9961-d1b14739ec2a",
+    "DIMETEST01": "49d73d12-3061-469a-ba67-0b4a906dd4fc",
+    "SPILTAN TEST": "b01f0d42-e133-44f1-a3c2-d0b560b868ae"
+}
+
 
 class TestPortfolio:
 
@@ -101,7 +112,7 @@ class TestPortfolio:
         sub_expected_sum_market_value_total = sum(portfolio_values[sub_portfolio_id]["market_value_total"])
         sub_expected_sum_purchase_total = sum(portfolio_values[sub_portfolio_id]["purchase_total"])
 
-        tables = [(Company, 4), (Security, 6), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 30)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_funds(backend_mysql), sql_backend_company(backend_mysql), \
@@ -148,7 +159,7 @@ class TestPortfolio:
         expected_redemption = Decimal("35000.00")
         expected_subscription = Decimal("30099.17")
 
-        tables = [(Company, 4), (Security, 6), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 30)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
@@ -182,7 +193,7 @@ class TestPortfolio:
         portfolio_table_ids = ["6bb05ba3-2b4f-4031-960f-0f20d5244440", "84da0adf-db11-4be9-8c51-fcebc05a1d4f",
                                "10b9cf58-669a-492a-9fb4-91e18129916d", "ba4869f3-dff4-409f-9208-69503f88f228"]
 
-        tables = [(Company, 4), (Security, 6), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 30)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
@@ -207,6 +218,71 @@ class TestPortfolio:
                 assert expected_sum_total_amounts == Decimal(result["totalAmount"])
                 assert expected_sum_market_value_total == Decimal(result["marketValueTotal"])
                 assert expected_sum_purchase_total == Decimal(result["purchaseTotal"])
+
+    def test_list_portfolio_securities(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
+        """
+        +-------------------------------------------------------------+-------------+
+        | security          | totalAmount | purchaseTotal | marketValueTotal        |
+        +-------------------------------------------------------------+-------------+
+        | PASSIVETEST01     |  490.812000 |      20000.00 |  43214.1805956000000000 |
+        | ACTIVETEST01      | 1503.145300 |      20000.00 |  21218.8499983900000000 |
+        | BALANCEDTEST01    |  230.527500 |      15000.00 |   2829.6559042500000000 |
+        | DIMETEST01        |  614.740000 |      40000.00 | 807405.6634000000000000 |
+        | SPILTAN TEST      |  233.527500 |      15000.00 |      0.7417133780667051 |
+        +-------------------------------------------------------------+-------------+
+        """
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
+                  (PortfolioLog, 30)]
+        engine = create_engine(backend_mysql.get_connection_url())
+        with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
+                sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
+                sql_backend_portfolio_log(backend_mysql):
+            for table in tables:
+                wait_for_row_count(engine=engine, entity=table[0], count=table[1])
+
+            portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
+
+            response = client.get(f"/v1/portfolios/{portfolio_id}/securities", auth=user_1_auth)
+
+            expected_values_map = {
+                security_ids["PASSIVETEST01"]: {
+                    "amount": Decimal("490.812000"),
+                    "purchaseValue": Decimal("20000.00"),
+                    "totalValue": Decimal("43214.1805956000000000")
+                },
+                security_ids["ACTIVETEST01"]: {
+                    "amount": Decimal("1503.145300"),
+                    "purchaseValue": Decimal("20000.00"),
+                    "totalValue": Decimal("21218.8499983900000000")
+                },
+                security_ids["BALANCEDTEST01"]: {
+                    "amount": Decimal("230.527500"),
+                    "purchaseValue": Decimal("15000.00"),
+                    "totalValue": Decimal("2829.6559042500000000")
+                },
+                security_ids["DIMETEST01"]: {
+                    "amount": Decimal("614.740000"),
+                    "purchaseValue": Decimal("40000.00"),
+                    "totalValue": Decimal("807405.6634000000000000")
+                },
+                security_ids["SPILTAN TEST"]: {
+                    "amount": Decimal("233.527500"),
+                    "purchaseValue": Decimal("15000.00"),
+                    "totalValue": Decimal("0.7417133780667051")
+                }
+            }
+
+            assert response.status_code == 200
+            responses = response.json()
+            assert 5 == len(responses)
+            for response in responses:
+                expected_values = expected_values_map[response["id"]]
+
+                assert expected_values is not None
+                assert expected_values["amount"] == Decimal(response["amount"]), f"amount does not match on {response['id']} fund"
+                assert expected_values["totalValue"] == Decimal(response["totalValue"]), f"totalValue does not match on {response['id']} fund"
+                assert expected_values["purchaseValue"] == Decimal(response["purchaseValue"]), f"purchaseValue does not match on {response['id']} fund"
 
     @staticmethod
     def get_portfolio(client: TestClient, portfolio_id: str, auth: BearerAuth) -> Portfolio:

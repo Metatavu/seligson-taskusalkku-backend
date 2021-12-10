@@ -16,12 +16,11 @@ from spec.models.portfolio_history_value import PortfolioHistoryValue
 from database import operations
 from business_logics import business_logics
 from database.models import PortfolioTransaction, Company, Portfolio as DbPortfolio
-from spec.models.portfolio_fund import PortfolioFund
+from spec.models.portfolio_security import PortfolioSecurity
 from spec.models.transaction_type import TransactionType
 
 logger = logging.getLogger(__name__)
 
-flat_map = lambda f, xs: reduce(lambda a, b: a + b, map(f, xs))
 
 @cbv(portfolios_api_router)
 class PortfoliosApiImpl(PortfoliosApiSpec):
@@ -179,12 +178,41 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
     ) -> PortfolioTransaction:
         raise NotImplementedError
 
-    async def list_portfolio_funds(
+    async def list_portfolio_securities(
         self,
         portfolio_id: uuid,
         token_bearer: TokenModel
-    ) -> List[PortfolioFund]:
-        raise NotImplementedError
+    ) -> List[PortfolioSecurity]:
+        portfolio = operations.find_portfolio(
+            database=self.database,
+            portfolio_id=portfolio_id
+        )
+
+        if not portfolio:
+            raise HTTPException(
+                                status_code=404,
+                                detail=f"Portfolio {portfolio_id} not found"
+                              )
+
+        ssn = self.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        if portfolio.company.ssn != ssn:
+            raise HTTPException(
+                status_code=403,
+                detail=f"No permission to find this portfolio"
+            )
+
+        portfolio_securities = operations.get_portfolio_security_values(
+            database=self.database,
+            portfolio=portfolio
+        )
+
+        return list(map(self.translate_portfolio_security, portfolio_securities))
 
     def translate_portfolio(self, portfolio: DbPortfolio) -> Portfolio:
         """
@@ -203,6 +231,18 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         result.purchaseTotal = portfolio_values.purchaseTotal if portfolio_values.purchaseTotal is not None else "0"
 
         return result
+
+    @staticmethod
+    def translate_portfolio_security(portfolio_security_values: operations.PortfolioSecurityValues) -> Portfolio:
+        """
+        Translates portfolio security into REST resource
+        """
+        return PortfolioSecurity(
+            id=str(portfolio_security_values.security_id),
+            amount=str(portfolio_security_values.totalAmount),
+            totalValue=str(portfolio_security_values.marketValueTotal),
+            purchaseValue=str(portfolio_security_values.purchaseTotal)
+        )
 
     @staticmethod
     def com_code_deserializer(company: Company) -> str:

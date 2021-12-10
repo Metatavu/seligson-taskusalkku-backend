@@ -5,11 +5,20 @@ from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import func
 from .models import Fund, SecurityRate, Company, PortfolioTransaction, LastRate, Security, Portfolio, PortfolioLog
 from datetime import date
-
+from sqlalchemy.dialects import mysql
 
 @dataclass
 class PortfolioValues:
     """Data class for portfolio values query result"""
+    totalAmount: str
+    purchaseTotal: str
+    marketValueTotal: str
+
+
+@dataclass
+class PortfolioSecurityValues:
+    """Data class for portfolio security values query result"""
+    security_id: UUID
     totalAmount: str
     purchaseTotal: str
     marketValueTotal: str
@@ -159,30 +168,6 @@ def find_portfolio_values(database: Session, portfolio: Portfolio) -> PortfolioV
     )
 
 
-def get_portfolio_uuid_from_portfolio_id(database: Session, portfolio_id: str) -> str:
-    """Queries the portfolio table
-
-        Args:
-            database (Session): database session
-            portfolio_id (str): id of Portfolio
-        Returns:
-             uuid of portfolio (str)
-        """
-    return database.query(Portfolio.id).filter(Portfolio.portfolio_id == portfolio_id).scalar()
-
-
-def get_portfolio_id_from_portfolio_uuid(database: Session, portfolio_uuid: UUID) -> str:
-    """Queries the portfolio table
-
-        Args:
-            database (Session): database session
-            portfolio_uuid (str): id of Portfolio
-        Returns:
-            portfolio_id (str): id of Portfolio
-        """
-    return database.query(Portfolio.portfolio_id).filter(Portfolio.id == portfolio_uuid).scalar()
-
-
 def get_portfolio_summary(database: Session, portfolio: Portfolio, start_date: date, end_date: date,
                           transaction_codes: [str]) -> List[PortfolioLog]:
     """Queries the portfolio_log table
@@ -201,6 +186,62 @@ def get_portfolio_summary(database: Session, portfolio: Portfolio, start_date: d
         PortfolioLog.transaction_date >= start_date.isoformat()).filter(
         PortfolioLog.transaction_date <= end_date.isoformat()).filter(
         PortfolioLog.portfolio == portfolio).all()
+
+
+def get_portfolio_security_values(database: Session, portfolio: Portfolio) -> List[PortfolioSecurityValues]:
+    """ Queries for portfolio securities
+
+        Args:
+            database (Session): database session
+            portfolio (Portfolio): portfolio
+        Returns:
+             List[PortfolioSecurityValues]: list of portfolio securities
+    """
+    eur_security_id = PortfolioTransaction.security_id.label("security_id")
+    eur_total_amount = func.sum(PortfolioTransaction.amount).label("totalAmount")
+    eur_purchase_total = func.sum(PortfolioTransaction.purchase_c_value).label("purchaseTotal")
+    eur_market_value = func.sum(LastRate.rate_close * PortfolioTransaction.amount).label("marketValueTotal")
+
+    eur_query = database.query(Portfolio, eur_security_id, eur_total_amount, eur_purchase_total, eur_market_value) \
+        .join(PortfolioTransaction, Portfolio.id == PortfolioTransaction.portfolio_id) \
+        .join(LastRate, PortfolioTransaction.security_id == LastRate.security_id) \
+        .join(Security, PortfolioTransaction.security_id == Security.id) \
+        .filter(Portfolio.id == portfolio.id) \
+        .filter(Security.currency == "EUR") \
+        .group_by(Security.id)
+
+    security_cur: Security = aliased(Security)
+    last_rate_cur: LastRate = aliased(LastRate)
+
+    not_eur_security_id = PortfolioTransaction.security_id.label("security_id")
+    not_eur_total_amount = func.sum(PortfolioTransaction.amount).label("totalAmount")
+    not_eur_purchase_total = func.sum(PortfolioTransaction.purchase_c_value).label("purchaseTotal")
+    not_eur_market_value = func.sum(LastRate.rate_close / last_rate_cur.rate_close * PortfolioTransaction.amount).label("marketValueTotal")
+
+    not_eur_query = database.query(Portfolio, not_eur_security_id, not_eur_total_amount, not_eur_purchase_total, not_eur_market_value) \
+        .join(PortfolioTransaction, Portfolio.id == PortfolioTransaction.portfolio_id) \
+        .join(LastRate, PortfolioTransaction.security_id == LastRate.security_id) \
+        .join(Security, PortfolioTransaction.security_id == Security.id) \
+        .join(security_cur, security_cur.currency == security_cur.original_id) \
+        .join(last_rate_cur, security_cur.id == last_rate_cur.security_id) \
+        .filter(Portfolio.id == portfolio.id) \
+        .filter(Security.currency != "EUR") \
+        .group_by(Security.id)
+
+    rows = eur_query.union_all(not_eur_query).all()
+    results = []
+
+    for row in rows:
+        results.append(
+            PortfolioSecurityValues(
+                security_id=row.security_id,
+                totalAmount=row.totalAmount,
+                purchaseTotal=row.purchaseTotal,
+                marketValueTotal=row.marketValueTotal,
+            )
+        )
+
+    return results
 
 
 def get_portfolio_history():
