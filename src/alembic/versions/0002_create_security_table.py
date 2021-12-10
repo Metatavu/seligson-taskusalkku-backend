@@ -23,7 +23,7 @@ def upgrade():
                     Column('currency', CHAR(length=3), nullable=True),
                     Column('name_fi', String(length=191), nullable=False),
                     Column('name_sv', String(length=191), nullable=False),
-                    Column('fund_id', BINARY(16), nullable=False),
+                    Column('fund_id', BINARY(16), nullable=True),
                     ForeignKeyConstraint(['fund_id'], ['fund.id'], ),
                     PrimaryKeyConstraint('id')
                     )

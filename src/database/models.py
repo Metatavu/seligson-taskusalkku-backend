@@ -29,7 +29,7 @@ class Security(Base):
     rates = relationship("SecurityRate", back_populates="security", lazy=True)
     last_rate = relationship("LastRate", back_populates="security", lazy=True)
     fund = relationship("Fund", back_populates="securities", lazy=True)
-    fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'), nullable=False)
+    fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'), nullable=True)
     portfolio_transactions = relationship("PortfolioTransaction", back_populates="security", lazy=True)
 
 
