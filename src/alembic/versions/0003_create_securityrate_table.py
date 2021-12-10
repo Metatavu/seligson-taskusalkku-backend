@@ -17,7 +17,7 @@ depends_on = None
 def upgrade():
     op.create_table('security_rate',
                     Column('id', BINARY(16), nullable=False),
-                    Column('security_id', BINARY(16), nullable=True),
+                    Column('security_id', BINARY(16), nullable=False),
                     Column('rate_date', Date(), nullable=True),
                     Column('rate_close', DECIMAL(precision=19, scale=6), nullable=False),
                     ForeignKeyConstraint(['security_id'], ['security.id'], ),

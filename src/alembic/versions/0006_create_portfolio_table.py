@@ -19,8 +19,8 @@ depends_on = None
 def upgrade():
     op.create_table('portfolio',
                     sa.Column('id', BINARY(16), nullable=False),
-                    sa.Column('original_id', sa.String(length=20), nullable=True),
-                    sa.Column('company_id',  BINARY(16), nullable=True),
+                    sa.Column('original_id', sa.String(length=20), nullable=False),
+                    sa.Column('company_id',  BINARY(16), nullable=False),
                     sa.ForeignKeyConstraint(['company_id'], ['company.id'], ),
                     sa.PrimaryKeyConstraint('id'),
                     sa.UniqueConstraint('original_id')

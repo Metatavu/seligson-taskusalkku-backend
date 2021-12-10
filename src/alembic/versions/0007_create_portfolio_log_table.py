@@ -23,7 +23,7 @@ def upgrade():
                     sa.Column('transaction_code', sa.CHAR(length=2), nullable=True),
                     sa.Column('transaction_date', sa.DateTime(), nullable=True),
                     sa.Column('c_total_value', sa.DECIMAL(precision=15, scale=2), nullable=True),
-                    sa.Column('portfolio_id',  BINARY(16), nullable=True),
+                    sa.Column('portfolio_id',  BINARY(16), nullable=False),
                     sa.ForeignKeyConstraint(['portfolio_id'], ['portfolio.id'], ),
                     sa.PrimaryKeyConstraint('id')
                     )
