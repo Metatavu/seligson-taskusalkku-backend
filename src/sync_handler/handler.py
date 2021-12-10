@@ -13,6 +13,9 @@ from database.models import Security, SecurityRate
 logger = logging.getLogger(__name__)
 
 
+class SyncException(Exception):
+    pass
+
 class SyncHandler:
     """Handler for Kafka sync messages"""
 
@@ -68,15 +71,15 @@ class SyncHandler:
 
         security_original_id = after["SECID"]
         if security_original_id is None:
-            raise Exception("Invalid fund rate message, SECID is not defined")
+            raise SyncException("Invalid fund rate message, SECID is not defined")
 
         rdate = after["RDATE"]
         if rdate is None:
-            raise Exception("Invalid fund rate message, RDATE is not defined")
+            raise SyncException("Invalid fund rate message, RDATE is not defined")
 
         rclose = after["RCLOSE"]
         if rclose is None:
-            raise Exception("Invalid fund rate message, RCLOSE is not defined")
+            raise SyncException("Invalid fund rate message, RCLOSE is not defined")
 
         rate_date = date.fromtimestamp(rdate / 1000.0)
 
@@ -85,7 +88,7 @@ class SyncHandler:
             .one_or_none()
 
         if security is None:
-            raise Exception("Unable to sync security rate, security for SECID %s not foud", security_original_id)
+            raise SyncException("Unable to sync security rate, security for SECID %s not foud", security_original_id)
 
         security_rate = session.query(SecurityRate) \
             .filter(SecurityRate.security == security) \
@@ -118,18 +121,18 @@ class SyncHandler:
 
         security_original_id = before["SECID"]
         if security_original_id is None:
-            raise Exception("Invalid fund rate message, SECID is not defined")
+            raise SyncException("Invalid fund rate message, SECID is not defined")
 
         security: Security = session.query(Security) \
             .filter(Security.original_id == security_original_id) \
             .one_or_none()
 
         if security is None:
-            raise Exception("Unable to sync security rate, security for SECID %s not foud", security_original_id)
+            raise SyncException("Unable to sync security rate, security for SECID %s not foud", security_original_id)
 
         rdate = before["RDATE"]
         if rdate is None:
-            raise Exception("Invalid fund rate message, RDATE is not defined")
+            raise SyncException("Invalid fund rate message, RDATE is not defined")
 
         rate_date = date.fromtimestamp(rdate / 1000.0)
 
