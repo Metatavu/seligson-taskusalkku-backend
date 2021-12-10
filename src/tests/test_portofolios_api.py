@@ -1,6 +1,3 @@
-import json
-import time
-
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.salkku_mysql import *  # noqa
@@ -174,7 +171,6 @@ class TestPortfolio:
             assert expected_redemption == Decimal(values["redemptions"])
             assert expected_subscription == Decimal(values["subscriptions"])
 
-    @pytest.mark.skip
     def test_portfolio_history_values(self):
         pass  # todo development after new database changes
 
@@ -189,9 +185,10 @@ class TestPortfolio:
         tables = [(Company, 4), (Security, 6), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 30)]
         engine = create_engine(backend_mysql.get_connection_url())
-        with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
-                sql_backend_last_rate(backend_mysql), sql_backend_portfolio(backend_mysql), \
-                sql_backend_portfolio_transaction(backend_mysql), sql_backend_portfolio_log(backend_mysql):
+        with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
+                sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
+                sql_backend_portfolio_log(backend_mysql):
             for table in tables:
                 wait_for_row_count(engine=engine, entity=table[0], count=table[1])
 
@@ -220,7 +217,7 @@ class TestPortfolio:
             portfolio_id (str): portfolio id
             auth (BearerAuth): auth
         Returns:
-             Portfolio]: single portfolio
+             [Portfolio]: single portfolio
         """
         response = client.get(f"/v1/portfolios/{portfolio_id}", auth=auth)
         assert response.status_code == 200
