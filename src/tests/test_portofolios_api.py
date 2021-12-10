@@ -130,7 +130,6 @@ class TestPortfolio:
             assert sub_expected_sum_market_value_total == Decimal(sub_portfolio["marketValueTotal"])
             assert sub_expected_sum_purchase_total == Decimal(sub_portfolio["purchaseTotal"])
 
-    @pytest.mark.skip()
     def test_get_portfolio_summary(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
         """
         test to find portfolio history from portfolio id in a given period
@@ -155,9 +154,10 @@ class TestPortfolio:
         tables = [(Company, 4), (Security, 6), (LastRate, 6), (Portfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 30)]
         engine = create_engine(backend_mysql.get_connection_url())
-        with sql_backend_company(backend_mysql), sql_backend_security(backend_mysql), sql_backend_last_rate(
-                backend_mysql), sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(
-                backend_mysql), sql_backend_portfolio_log(backend_mysql):
+        with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
+                sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
+                sql_backend_portfolio_log(backend_mysql):
             for table in tables:
                 wait_for_row_count(engine=engine, entity=table[0], count=table[1])
             portfolio_table_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"

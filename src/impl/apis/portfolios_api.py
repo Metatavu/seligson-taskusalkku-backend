@@ -78,25 +78,52 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             end_date: date,
             token_bearer: TokenModel
     ) -> PortfolioSummary:
-        """ get portfolio history summary
-        """
+        """ get portfolio history summary"""
+
+        portfolio = operations.find_portfolio(
+            database=self.database,
+            portfolio_id=portfolio_id
+        )
+
+        if not portfolio:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Portfolio {portfolio_id} not found"
+            )
+
+        ssn = self.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        if portfolio.company.ssn != ssn:
+            raise HTTPException(
+                status_code=403,
+                detail=f"No permission to find this portfolio"
+            )
 
         transaction_codes = business_logics.get_transaction_codes_for_subscription_redemption()
-        portfolio_original_id = operations.get_portfolio_id_from_portfolio_uuid(self.database, portfolio_id)
-        query_result = operations.get_portfolio_summary(self.database, portfolio_original_id, start_date,
-                                                        end_date,
-                                                        transaction_codes)
+
+        summary = operations.get_portfolio_summary(
+            database=self.database,
+            portfolio=portfolio,
+            start_date=start_date,
+            end_date=end_date,
+            transaction_codes=transaction_codes
+        )
 
         redemptions = 0
         subscriptions = 0
-        for result in query_result:
+
+        for result in summary:
             if business_logics.transaction_is_subscription(result.transaction_code):
                 subscriptions += result.c_total_value
             else:
                 redemptions += result.c_total_value
 
-        result = PortfolioSummary(subscriptions=subscriptions,
-                                  redemptions=redemptions)
+        result = PortfolioSummary(subscriptions=subscriptions,redemptions=redemptions)
 
         return result
 

@@ -183,25 +183,7 @@ def get_portfolio_id_from_portfolio_uuid(database: Session, portfolio_uuid: UUID
     return database.query(Portfolio.portfolio_id).filter(Portfolio.id == portfolio_uuid).scalar()
 
 
-def get_company_code_of_portfolio(database: Session, company_codes: [str], portfolio_id: UUID) -> str:
-    """Queries the portfolio table
-
-        Args:
-            database (Session): database session
-            company_codes ([str]): list of valid com_codes for the user
-            portfolio_id (str): id of Portfolio
-        Returns:
-            come_code (str): the com_code for the portfolio
-        """
-
-    return database \
-        .query(Portfolio.company_code) \
-        .filter(Portfolio.company_code.in_(company_codes)) \
-        .filter(Portfolio.id == portfolio_id) \
-        .scalar()
-
-
-def get_portfolio_summary(database: Session, portfolio_original_id: str, start_date: date, end_date: date,
+def get_portfolio_summary(database: Session, portfolio: Portfolio, start_date: date, end_date: date,
                           transaction_codes: [str]) -> List[PortfolioLog]:
     """Queries the portfolio_log table
 
@@ -210,7 +192,7 @@ def get_portfolio_summary(database: Session, portfolio_original_id: str, start_d
             transaction_codes ([str]): list of valid transaction_code for the operation
             start_date (date): filter results from this date
             end_date (date): filter results to this date
-            portfolio_original_id (str): id of Portfolio
+            portfolio (Portfolio): portfolio
         Returns:
              List[PortfolioLog]: rows of portfolio_log
         """
@@ -218,7 +200,7 @@ def get_portfolio_summary(database: Session, portfolio_original_id: str, start_d
     return database.query(PortfolioLog).filter(PortfolioLog.transaction_code.in_(transaction_codes)).filter(
         PortfolioLog.transaction_date >= start_date.isoformat()).filter(
         PortfolioLog.transaction_date <= end_date.isoformat()).filter(
-        PortfolioLog.portfolio_id == portfolio_original_id).all()
+        PortfolioLog.portfolio == portfolio).all()
 
 
 def get_portfolio_history():
