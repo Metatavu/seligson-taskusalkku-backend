@@ -6,7 +6,7 @@ from datetime import date
 from typing import Dict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from database.models import Fund, FundRate
+from database.models import Fund, SecurityRate
 from aiokafka import ConsumerRecord
 
 logger = logging.getLogger(__name__)
@@ -35,9 +35,9 @@ class SyncHandler:
             before = payload.get("before", None)
             after = payload.get("after", None)
 
-            if (topic == "FundSecurities"):
+            if topic == "FundSecurities":
                 await self.sync_fund_securities(before=before, after=after)
-            elif (topic == "RATErah"):
+            elif topic == "RATErah":
                 await self.sync_raterah(before=before, after=after)
             else:
                 logger.warning("Unknown message from topic %s", topic)
@@ -48,7 +48,8 @@ class SyncHandler:
         """Syncs fund from Kafka message
 
         Args:
-            record (ConsumerRecord): record
+            before (Dict): data before update
+            after (Dict): data after update
         """
         with Session(self.engine) as session:
             if after is None:
@@ -60,13 +61,14 @@ class SyncHandler:
         """Syncs fund rate from Kafka message
 
         Args:
-            record (ConsumerRecord): record
+            before (Dict): data before update
+            after (Dict): data after update
         """
         with Session(self.engine) as session:
             if after is None:
                 self.delete_fund_rate(session, before)
             else:
-                self.upsert_fund_rate(session, before, after)
+                self.upsert_fund_rate(session, after)
 
     def upsert_fund(self, session: Session, before: Dict, after: Dict):
         """Updates fund from Kafka message
@@ -113,12 +115,11 @@ class SyncHandler:
             session.commit()
             logger.info("Deleted fund with fund id %s", fund_id)
 
-    def upsert_fund_rate(self, session: Session, before: Dict, after: Dict):
+    def upsert_fund_rate(self, session: Session, after: Dict):
         """Updates fund rate from Kafka message
 
         Args:
             session (Session): database session
-            before (Dict): data before update
             after (Dict): data after update
         """
         fund_rate = None
@@ -145,13 +146,13 @@ class SyncHandler:
         if fund is None:
             raise Exception("Unable to sync fund rate, fund for SECID %s not foud", security_id)
 
-        fund_rate = session.query(FundRate) \
-            .filter(FundRate.fund_id == fund.id) \
-            .filter(FundRate.rate_date == rate_date) \
+        fund_rate = session.query(SecurityRate) \
+            .filter(SecurityRate.fund_id == fund.id) \
+            .filter(SecurityRate.rate_date == rate_date) \
             .one_or_none()
 
         if fund_rate is None:
-            fund_rate = FundRate()
+            fund_rate = SecurityRate()
             fund_rate.fund_id = fund.id
             fund_rate.rate_date = rate_date
             created = True
@@ -191,9 +192,9 @@ class SyncHandler:
 
         rate_date = date.fromtimestamp(rdate / 1000.0)
 
-        session.query(FundRate) \
-            .filter(FundRate.fund_id == fund.id) \
-            .filter(FundRate.rate_date == rate_date) \
+        session.query(SecurityRate) \
+            .filter(SecurityRate.fund_id == fund.id) \
+            .filter(SecurityRate.rate_date == rate_date) \
             .delete()
 
         session.commit()

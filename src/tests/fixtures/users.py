@@ -12,7 +12,7 @@ def user_1_token(keycloak: KeycloakContainer) -> str:
 
     Returns:
         str: access token
-    """    
+    """
 
     access_token_provider = AccessTokenProvider(keycloak=keycloak, realm="seligson", client_id="ui")
     return access_token_provider.get_access_token(username="user1", password="test")  # NOSONAR
@@ -27,6 +27,6 @@ def user_1_auth(user_1_token: str) -> BearerAuth:
 
     Returns:
         BearerAuth: authentication
-    """    
-    
+    """
+
     return BearerAuth(token=user_1_token)

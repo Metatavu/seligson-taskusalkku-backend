@@ -1,5 +1,4 @@
 from csv import reader
-from starlette.testclient import TestClient
 import datetime
 from .fixtures.client import *  # noqa
 from .auth.auth import BearerAuth  # noqa

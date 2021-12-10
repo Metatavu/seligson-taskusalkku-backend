@@ -2,7 +2,7 @@
 import os
 
 from functools import lru_cache
-from typing import Dict, List, Iterator  # noqa: F401
+from typing import Dict, List, Iterator, Optional  # noqa: F401
 from abc import ABC, abstractmethod
 from uuid import UUID
 from datetime import date
@@ -56,7 +56,7 @@ def _get_fastapi_sessionmaker() -> FastAPISessionMaker:
     Returns:
         FastAPISessionMaker: FastAPI session maker
     """
-    database_uri = os.environ["SQLALCHEMY_DATABASE_URL"]
+    database_uri = os.environ["DATABASE_URL"]
     return FastAPISessionMaker(database_uri)
 
 
@@ -68,7 +68,7 @@ class PortfoliosApiSpec(ABC):
     @abstractmethod
     async def find_portfolio(
         self,
-        portfolioId: UUID,
+        portfolio_id: UUID,
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -88,22 +88,29 @@ class PortfoliosApiSpec(ABC):
     )
     async def find_portfolio_spec(
         self,
-        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
     ) -> Portfolio:
         """Finds a portfolio by id."""
+
+        if portfolio_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter portfolioId"
+            )
+
         return await self.find_portfolio(
-            self.to_uuid(portfolioId),
-            token_bearer
+            portfolio_id=self.to_uuid(portfolio_id),
+            token_bearer=token_bearer
         )
 
     @abstractmethod
     async def find_portfolio_transactions(
         self,
-        portfolioId: UUID,
-        transactionId: UUID,
+        portfolio_id: UUID,
+        transaction_id: UUID,
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -124,23 +131,36 @@ class PortfoliosApiSpec(ABC):
     )
     async def find_portfolio_transactions_spec(
         self,
-        portfolioId: str = Path(None, description="Portfolio id", alias="portfolioId"),
-        transactionId: str = Path(None, description="Transaction id", alias="transactionId"),
+        portfolio_id: str = Path(None, description="Portfolio id", alias="portfolioId"),
+        transaction_id: str = Path(None, description="Transaction id", alias="transactionId"),
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
     ) -> PortfolioTransaction:
         """Returns found portfolio transaction"""
+
+        if portfolio_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter portfolioId"
+            )
+
+        if transaction_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter transactionId"
+            )
+
         return await self.find_portfolio_transactions(
-            self.to_uuid(portfolioId),
-            self.to_uuid(transactionId),
-            token_bearer
+            portfolio_id=self.to_uuid(portfolio_id),
+            transaction_id=self.to_uuid(transaction_id),
+            token_bearer=token_bearer
         )
 
     @abstractmethod
-    async def get_portfolio_h_summary(
+    async def get_portfolio_summary(
         self,
-        portfolioId: UUID,
+        portfolio_id: UUID,
         start_date: date,
         end_date: date,
         token_bearer: TokenModel = Security(
@@ -160,9 +180,9 @@ class PortfoliosApiSpec(ABC):
         tags=["Portfolios"],
         summary="Summary for portfolio summary",
     )
-    async def get_portfolio_h_summary_spec(
+    async def get_portfolio_summary_spec(
         self,
-        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
         start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
         end_date: str = Query(None, description="End date for the date range", alias="endDate"),
         token_bearer: TokenModel = Security(
@@ -170,17 +190,36 @@ class PortfoliosApiSpec(ABC):
         ),
     ) -> PortfolioSummary:
         """Returns summary a portfolio history for given time range"""
-        return await self.get_portfolio_h_summary(
-            self.to_uuid(portfolioId),
-            self.to_date(start_date),
-            self.to_date(end_date),
-            token_bearer
+
+        if portfolio_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter portfolioId"
+            )
+
+        if start_date is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter startDate"
+            )
+
+        if end_date is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter endDate"
+            )
+
+        return await self.get_portfolio_summary(
+            portfolio_id=self.to_uuid(portfolio_id),
+            start_date=self.to_date(start_date),
+            end_date=self.to_date(end_date),
+            token_bearer=token_bearer
         )
 
     @abstractmethod
     async def list_portfolio_funds(
         self,
-        portfolioId: UUID,
+        portfolio_id: UUID,
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -201,21 +240,28 @@ class PortfoliosApiSpec(ABC):
     )
     async def list_portfolio_funds_spec(
         self,
-        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
     ) -> List[PortfolioFund]:
         """Returns list of portfolio funds"""
+
+        if portfolio_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter portfolioId"
+            )
+
         return await self.list_portfolio_funds(
-            self.to_uuid(portfolioId),
-            token_bearer
+            portfolio_id=self.to_uuid(portfolio_id),
+            token_bearer=token_bearer
         )
 
     @abstractmethod
     async def list_portfolio_history_values(
         self,
-        portfolioId: UUID,
+        portfolio_id: UUID,
         start_date: date,
         end_date: date,
         token_bearer: TokenModel = Security(
@@ -237,7 +283,7 @@ class PortfoliosApiSpec(ABC):
     )
     async def list_portfolio_history_values_spec(
         self,
-        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
         start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
         end_date: str = Query(None, description="End date for the date range", alias="endDate"),
         token_bearer: TokenModel = Security(
@@ -245,20 +291,39 @@ class PortfoliosApiSpec(ABC):
         ),
     ) -> List[PortfolioHistoryValue]:
         """Lists portfolio history values"""
+
+        if portfolio_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter portfolioId"
+            )
+
+        if start_date is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter startDate"
+            )
+
+        if end_date is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter endDate"
+            )
+
         return await self.list_portfolio_history_values(
-            self.to_uuid(portfolioId),
-            self.to_date(start_date),
-            self.to_date(end_date),
-            token_bearer
+            portfolio_id=self.to_uuid(portfolio_id),
+            start_date=self.to_date(start_date),
+            end_date=self.to_date(end_date),
+            token_bearer=token_bearer
         )
 
     @abstractmethod
     async def list_portfolio_transactions(
         self,
-        portfolioId: UUID,
-        start_date: date,
-        end_date: date,
-        type: ,
+        portfolio_id: UUID,
+        start_date: Optional[date],
+        end_date: Optional[date],
+        transaction_type: Optional[TransactionType],
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
@@ -279,21 +344,28 @@ class PortfoliosApiSpec(ABC):
     )
     async def list_portfolio_transactions_spec(
         self,
-        portfolioId: str = Path(None, description="portfolio id", alias="portfolioId"),
+        portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
         start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
         end_date: str = Query(None, description="End date for the date range", alias="endDate"),
-        type:  = Query(None, description="Transaction type", alias="type"),
+        transaction_type: TransactionType = Query(None, description="Transaction type", alias="transactionType"),
         token_bearer: TokenModel = Security(
             get_token_bearer
         ),
     ) -> List[PortfolioTransaction]:
         """Returns list of portfolio transactions"""
+
+        if portfolio_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required parameter portfolioId"
+            )
+
         return await self.list_portfolio_transactions(
-            self.to_uuid(portfolioId),
-            self.to_date(start_date),
-            self.to_date(end_date),
-            type,
-            token_bearer
+            portfolio_id=self.to_uuid(portfolio_id),
+            start_date=self.to_date(start_date),
+            end_date=self.to_date(end_date),
+            transaction_type=transaction_type,
+            token_bearer=token_bearer
         )
 
     @abstractmethod
@@ -323,11 +395,12 @@ class PortfoliosApiSpec(ABC):
         ),
     ) -> List[Portfolio]:
         """Lists portfolios logged user has access to"""
+
         return await self.list_portfolios(
-            token_bearer
+            token_bearer=token_bearer
         )
 
-    def to_date(self, isodate: str) -> date:
+    def to_date(self, isodate: str) -> Optional[date]:
         """Translates given string to date
 
         Args:
@@ -339,6 +412,9 @@ class PortfoliosApiSpec(ABC):
         Returns:
             date: parsed date object
         """
+        if not isodate:
+            return None
+
         try:
             return date.fromisoformat(isodate)
         except ValueError:
@@ -347,7 +423,7 @@ class PortfoliosApiSpec(ABC):
                 detail=f"Invalid date {isodate}"
             )
 
-    def to_uuid(self, hexadecimal_uuid: str) -> UUID:
+    def to_uuid(self, hexadecimal_uuid: str) -> Optional[UUID]:
         """Translates given hex to UUID
 
         Args:
@@ -359,6 +435,9 @@ class PortfoliosApiSpec(ABC):
         Returns:
             UUID: UUID
         """
+        if not hexadecimal_uuid:
+            return None
+
         try:
             return UUID(hex=hexadecimal_uuid)
         except ValueError:

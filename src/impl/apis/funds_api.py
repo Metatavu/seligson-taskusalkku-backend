@@ -19,7 +19,7 @@ from spec.models.localized_value import LocalizedValue
 from spec.models.change_data import ChangeData
 
 from database.models import Fund as DbFund
-from database.models import FundRate
+from database.models import SecurityRate
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +36,13 @@ class FundsApiImpl(FundsApiSpec):
 
         fund = database.find_fund(
             database=self.database,
-            id=fund_id
+            fund_id=fund_id
         )
 
         if not fund:
             raise HTTPException(
                                 status_code=404,
-                                detail="Fund {fund_id} not found"
+                                detail=f"Fund {fund_id} not found"
                               )
 
         return self.translate_fund(fund=fund)
@@ -90,7 +90,7 @@ class FundsApiImpl(FundsApiSpec):
 
         fund = database.find_fund(
             database=self.database,
-            id=fund_id
+            fund_id=fund_id
         )
 
         if not fund:
@@ -99,7 +99,7 @@ class FundsApiImpl(FundsApiSpec):
                                 detail="Fund {fund_id} not found"
                                )
 
-        values = database.query_fund_rates(
+        values = database.query_security_rates(
             database=self.database,
             fund_id=fund.id,
             rate_date_min=start_date,
@@ -120,18 +120,14 @@ class FundsApiImpl(FundsApiSpec):
             Fund: Translated REST resource
         """
 
-        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_code(fund_code=fund.security_id)
+        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id=str(fund.original_id))
         if fund_meta is None:
             raise HTTPException(
                                 status_code=404,
-                                detail="Fund meta for fund {fund_id} not found"
+                                detail=f"Fund meta for fund id {fund.original_id} not found"
                               )
 
-        name = LocalizedValue(
-            fi=fund.security_name_fi,
-            sv=fund.security_name_sv
-        )
-
+        name = self.translate_meta_locale(fund_meta["name"])
         long_name = self.translate_meta_locale(fund_meta["long_name"])
         short_name = self.translate_meta_locale(fund_meta["short_name"])
 
@@ -198,7 +194,7 @@ class FundsApiImpl(FundsApiSpec):
             sv=sv
         )
 
-    def translate_historical_value(self, fund_rate: FundRate) -> HistoricalValue:
+    def translate_historical_value(self, security_rate: SecurityRate) -> HistoricalValue:
         """Translates historical value
 
         Args:
@@ -208,6 +204,6 @@ class FundsApiImpl(FundsApiSpec):
             HistoricalValue: REST resource
         """
         result = HistoricalValue()
-        result.value = fund_rate.rate_close
-        result.date = fund_rate.rate_date
+        result.value = security_rate.rate_close
+        result.date = security_rate.rate_date
         return result

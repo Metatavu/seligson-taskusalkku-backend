@@ -6,7 +6,6 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 metadata = Base.metadata
 
-
 t_ADDRESSrah = Table(
     'ADDRESSrah', metadata,
     Column('CON_CODE', String(12)),
@@ -82,25 +81,25 @@ class Authorization(Base):
     deletedBy = Column(String(30))
 
 
-t_COMPANYrah = Table(
-    'COMPANYrah', metadata,
-    Column('COM_CODE', String(20), index=True),
-    Column('SHORTNAME', String(50)),
-    Column('NAME1', String(255)),
-    Column('NAME2', String(255)),
-    Column('NAME3', String(255)),
-    Column('SO_SEC_NR', String(11)),
-    Column('LANGCODE', CHAR(1)),
-    Column('CNTRY_CODE', CHAR(3)),
-    Column('COM_CLASS', CHAR(2)),
-    Column('REMARK', LONGTEXT),
-    Column('CREA_DATE', DateTime),
-    Column('REF', CHAR(3)),
-    Column('NATIONALITY', String(3)),
-    Column('FIRST_NAME', String(40)),
-    Column('LAST_NAME', String(40)),
-    Column('IDENT_METH_ID', Integer)
-)
+class COMPANYrah(Base):
+    __tablename__ = 'COMPANYrah'
+
+    COM_CODE = Column(String(20), index=True, primary_key=True)
+    SHORTNAME = Column(String(50))
+    NAME1 = Column(String(255))
+    NAME2 = Column(String(255))
+    NAME3 = Column(String(255))
+    SO_SEC_NR = Column(String(11))
+    LANGCODE = Column(CHAR(1))
+    CNTRY_CODE = Column(CHAR(3))
+    COM_CLASS = Column(CHAR(2))
+    REMARK = Column(LONGTEXT)
+    CREA_DATE = Column(DateTime)
+    REF = Column(CHAR(3))
+    NATIONALITY = Column(String(3))
+    FIRST_NAME = Column(String(40))
+    LAST_NAME = Column(String(40))
+    IDENT_METH_ID = Column(Integer)
 
 
 class LoginMobileLog(Base):
@@ -115,7 +114,8 @@ class LoginMobileLog(Base):
     COMCODE = Column(Integer)
     IP = Column(String(64))
     SUCCES = Column(Integer)
-    TIME = Column(TIMESTAMP, nullable=False, index=True, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
+    TIME = Column(TIMESTAMP, nullable=False, index=True,
+                  server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
     IPForwarded = Column(String(255))
     deviceBrowser = Column(String(255))
     denyLoginReason = Column(String(255))
@@ -132,258 +132,258 @@ t_OS_ALERT_STATUS_MOBILE = Table(
 )
 
 
-t_PORTFOLrah = Table(
-    'PORTFOLrah', metadata,
-    Column('PORID', String(20)),
-    Column('COM_CODE', String(20), index=True),
-    Column('NAME1', String(255)),
-    Column('NAME2', String(255)),
-    Column('NAME3', String(255)),
-    Column('POR_TYPE', CHAR(2)),
-    Column('POR_STATUS', CHAR(2)),
-    Column('BDATE', DateTime, index=True),
-    Column('EDATE', DateTime, index=True),
-    Column('VALUATION', Integer),
-    Column('CHARGE', CHAR(2)),
-    Column('PASSWORD', String(12)),
-    Column('TIMELIMIT', Integer),
-    Column('NOTE', String(4000)),
-    Column('COMBINED', String(20)),
-    Column('TRUSTACC', String(30)),
-    Column('BKACCOUNT', String(30)),
-    Column('CON_CODE', String(12)),
-    Column('OWN_TYPE', CHAR(1)),
-    Column('TRUSTACC2', String(30)),
-    Column('TRUSTACC3', String(30)),
-    Column('LIMITEDUSE', String(1)),
-    Column('VALUEDATE', Integer),
-    Column('MINFEE', DECIMAL(15, 2)),
-    Column('BASICFEE', DECIMAL(15, 2)),
-    Column('PCNT_CVAL', DECIMAL(8, 4)),
-    Column('TR_PRICE', DECIMAL(12, 2)),
-    Column('DRV_PRICE', DECIMAL(12, 2)),
-    Column('SEC_PRICE', DECIMAL(12, 2)),
-    Column('PHYS_PRICE', DECIMAL(12, 2)),
-    Column('FORE_PRICE', DECIMAL(12, 2)),
-    Column('FEEGROUP', CHAR(1)),
-    Column('REG1_PRICE', DECIMAL(12, 2)),
-    Column('REG2_PRICE', DECIMAL(12, 2)),
-    Column('LIMIT_IND', String(15)),
-    Column('CMPR_IND', String(20)),
-    Column('PERIOD', DateTime),
-    Column('NXTVOUCHER', Integer),
-    Column('INV_GRP', Integer),
-    Column('TRADEACCLIMITED', CHAR(1)),
-    Column('PAWN_CODE', String(10))
-)
+class PORTFOLrah(Base):
+    __tablename__ = 'PORTFOLrah'
+
+    PORID = Column(String(20), primary_key=True)
+    COM_CODE = Column(String(20), index=True)
+    NAME1 = Column(String(255))
+    NAME2 = Column(String(255))
+    NAME3 = Column(String(255))
+    POR_TYPE = Column(CHAR(2))
+    POR_STATUS = Column(CHAR(2))
+    BDATE = Column(DateTime, index=True)
+    EDATE = Column(DateTime, index=True)
+    VALUATION = Column(Integer)
+    CHARGE = Column(CHAR(2))
+    PASSWORD = Column(String(12))
+    TIMELIMIT = Column(Integer)
+    NOTE = Column(String(4000))
+    COMBINED = Column(String(20))
+    TRUSTACC = Column(String(30))
+    BKACCOUNT = Column(String(30))
+    CON_CODE = Column(String(12))
+    OWN_TYPE = Column(CHAR(1))
+    TRUSTACC2 = Column(String(30))
+    TRUSTACC3 = Column(String(30))
+    LIMITEDUSE = Column(String(1))
+    VALUEDATE = Column(Integer)
+    MINFEE = Column(DECIMAL(15, 2))
+    BASICFEE = Column(DECIMAL(15, 2))
+    PCNT_CVAL = Column(DECIMAL(8, 4))
+    TR_PRICE = Column(DECIMAL(12, 2))
+    DRV_PRICE = Column(DECIMAL(12, 2))
+    SEC_PRICE = Column(DECIMAL(12, 2))
+    PHYS_PRICE = Column(DECIMAL(12, 2))
+    FORE_PRICE = Column(DECIMAL(12, 2))
+    FEEGROUP = Column(CHAR(1))
+    REG1_PRICE = Column(DECIMAL(12, 2))
+    REG2_PRICE = Column(DECIMAL(12, 2))
+    LIMIT_IND = Column(String(15))
+    CMPR_IND = Column(String(20))
+    PERIOD = Column(DateTime)
+    NXTVOUCHER = Column(Integer)
+    INV_GRP = Column(Integer)
+    TRADEACCLIMITED = Column(CHAR(1))
+    PAWN_CODE = Column(String(10))
 
 
-t_PORTLOGrah = Table(
-    'PORTLOGrah', metadata,
-    Column('TRANS_NR', Integer, index=True),
-    Column('PREV_NR', Integer, index=True),
-    Column('ACT_NR', Integer, index=True),
-    Column('TRANS_CODE', CHAR(2), index=True),
-    Column('COM_CODE', String(20), index=True),
-    Column('CCOM_CODE', String(20), index=True),
-    Column('PORID', String(20), index=True),
-    Column('CPORID', String(20)),
-    Column('SEC_TYPE', CHAR(2), index=True),
-    Column('SECID', String(20), index=True),
-    Column('CSECID', String(20), index=True),
-    Column('ISSUE', Integer, index=True),
-    Column('OISSUE', Integer),
-    Column('BROKID', String(20)),
-    Column('TRUSTID', String(50)),
-    Column('TRUST_NMBR', Integer),
-    Column('TRANS_DATE', DateTime, index=True),
-    Column('PMT_DATE', DateTime),
-    Column('ORDER_VAL', DateTime),
-    Column('ORDER_TIME', String(8)),
-    Column('CURRENCY1', CHAR(3)),
-    Column('AMOUNT', DECIMAL(19, 6)),
-    Column('PRICE', DECIMAL(16, 6)),
-    Column('EXPENSES', DECIMAL(15, 2)),
-    Column('VALUE', DECIMAL(15, 2)),
-    Column('SPURVALUE2', DECIMAL(15, 2)),
-    Column('FEE', DECIMAL(15, 2)),
-    Column('PROVISION', DECIMAL(15, 2)),
-    Column('TAX', DECIMAL(15, 2)),
-    Column('OWN_TAX', DECIMAL(15, 2)),
-    Column('EMISSION', DECIMAL(15, 2)),
-    Column('TOT_EXP', DECIMAL(15, 2)),
-    Column('ROUNDING', DECIMAL(15, 2)),
-    Column('CURRENCY2', CHAR(3)),
-    Column('CUR_RATE', DECIMAL(16, 6)),
-    Column('SPROFIT', DECIMAL(15, 2)),
-    Column('BDATE', DateTime),
-    Column('EDATE', DateTime),
-    Column('VOUCHER', Integer),
-    Column('PAWN_CODE', String(10)),
-    Column('PAWN_AM', DECIMAL(19, 6)),
-    Column('SPL_RATIO', DECIMAL(15, 9)),
-    Column('SPL_RATIO2', DECIMAL(15, 9)),
-    Column('SPL_DATE', DateTime),
-    Column('DIV_AMNT', DECIMAL(15, 2)),
-    Column('DIV_DATE', DateTime),
-    Column('PRELIMTAX', DECIMAL(15, 2)),
-    Column('POFF_DATE', DateTime),
-    Column('POFF_PRICE', DECIMAL(16, 6)),
-    Column('POFF_VALUE', DECIMAL(15, 2)),
-    Column('ISS_PRINT', DateTime),
-    Column('TEMP_NR', String(30)),
-    Column('TRLEVEL', CHAR(1)),
-    Column('ACCOUNT', String(35)),
-    Column('CAN_NMBR', Integer),
-    Column('PREV_CODE', CHAR(2)),
-    Column('CURRENCY', CHAR(3)),
-    Column('CUR_RATE2', DECIMAL(16, 6)),
-    Column('PRINTED', Integer),
-    Column('NOTE', String(255)),
-    Column('STATUS', CHAR(1), index=True),
-    Column('CURR_CODE', Integer),
-    Column('EFF_YIELD', DECIMAL(16, 6)),
-    Column('INT_PERIOD', Integer),
-    Column('TAX_CODE', Integer),
-    Column('SCAP_DIFF', DECIMAL(15, 2)),
-    Column('INTEREST', DECIMAL(12, 6)),
-    Column('TAX_PCNT', DECIMAL(8, 4)),
-    Column('STAMP_DUTY', DECIMAL(15, 2)),
-    Column('UPD_USER', String(30)),
-    Column('UPD_DATE', DateTime),
-    Column('UPD_TIME', String(8)),
-    Column('ORIG_NMBR', Integer),
-    Column('CLEAR_CODE', CHAR(10)),
-    Column('CLEAR_DATE', DateTime),
-    Column('CLEAR_STAT', CHAR(1)),
-    Column('BE_ACCOUNT', String(20)),
-    Column('EXT_NR', String(250), index=True),
-    Column('CAGIO', DECIMAL(15, 2)),
-    Column('SBK_RETURN', DECIMAL(15, 2)),
-    Column('EXT_NAME', String(10)),
-    Column('EXT_CODE', String(15)),
-    Column('ISIN', String(12)),
-    Column('SETTLSTAT', String(4)),
-    Column('DEALTYPE', CHAR(2)),
-    Column('TR_STATUS', CHAR(2)),
-    Column('ERRORCODE', String(5)),
-    Column('SWIFT_ADDR', String(15)),
-    Column('EXT_TYPE', String(10)),
-    Column('KATIREF', String(18), index=True),
-    Column('FREECODE', CHAR(5)),
-    Column('TOT_VALUE', DECIMAL(15, 2)),
-    Column('DATE1', DateTime),
-    Column('DATE2', DateTime),
-    Column('VALUE1', DECIMAL(15, 2)),
-    Column('VALUE2', DECIMAL(15, 2)),
-    Column('VALUE3', DECIMAL(10, 6)),
-    Column('VALUE4', DECIMAL(10, 6)),
-    Column('CODE1', Integer),
-    Column('CODE2', Integer),
-    Column('CODE3', CHAR(2)),
-    Column('CODE4', String(12)),
-    Column('CODE5', String(30)),
-    Column('PMT_TRANS', CHAR(1)),
-    Column('PMTERROR', String(16)),
-    Column('BENOFSECA', String(12)),
-    Column('BENOFSECD', String(35)),
-    Column('SHORTCODE', CHAR(1)),
-    Column('STATCODE', String(10)),
-    Column('CPROFIT', DECIMAL(15, 2)),
-    Column('AVG_RATE', DECIMAL(16, 6)),
-    Column('FILTERSTAT', String(255)),
-    Column('CUR_RATE1', DECIMAL(16, 6)),
-    Column('CAMOUNT', DECIMAL(19, 6)),
-    Column('SAMOUNT', DECIMAL(19, 6)),
-    Column('CPRICE', DECIMAL(16, 6)),
-    Column('SPRICE', DECIMAL(16, 6)),
-    Column('CEXPENSES', DECIMAL(15, 2)),
-    Column('SEXPENSES', DECIMAL(15, 2)),
-    Column('CVALUE', DECIMAL(15, 2)),
-    Column('SVALUE', DECIMAL(15, 2)),
-    Column('CPURVALUE2', DECIMAL(15, 2)),
-    Column('CFEE', DECIMAL(15, 2)),
-    Column('SFEE', DECIMAL(15, 2)),
-    Column('CPROVISION', DECIMAL(15, 2)),
-    Column('SPROVISION', DECIMAL(15, 2)),
-    Column('CTAX', DECIMAL(15, 2)),
-    Column('STAX', DECIMAL(15, 2)),
-    Column('COWN_TAX', DECIMAL(15, 2)),
-    Column('SOWN_TAX', DECIMAL(15, 2)),
-    Column('CEMISSION', DECIMAL(15, 2)),
-    Column('SEMISSION', DECIMAL(15, 2)),
-    Column('CTOT_EXP', DECIMAL(15, 2)),
-    Column('STOT_EXP', DECIMAL(15, 2)),
-    Column('CROUNDING', DECIMAL(15, 2)),
-    Column('SROUNDING', DECIMAL(15, 2)),
-    Column('CDIV_AMNT', DECIMAL(15, 2)),
-    Column('SDIV_AMNT', DECIMAL(15, 2)),
-    Column('CPRELIMTAX', DECIMAL(15, 2)),
-    Column('SPRELIMTAX', DECIMAL(15, 2)),
-    Column('CSTAMPDUTY', DECIMAL(15, 2)),
-    Column('SSTAMPDUTY', DECIMAL(15, 2)),
-    Column('CTOT_VALUE', DECIMAL(15, 2)),
-    Column('STOT_VALUE', DECIMAL(15, 2)),
-    Column('SVALUE1', DECIMAL(15, 2)),
-    Column('CVALUE1', DECIMAL(15, 2)),
-    Column('SVALUE2', DECIMAL(15, 2)),
-    Column('CVALUE2', DECIMAL(15, 2)),
-    Column('OWN_DATE', DateTime),
-    Column('CCAP_DIFF', DECIMAL(15, 2)),
-    Column('CBK_RETURN', DECIMAL(15, 2)),
-    Column('UNIT', String(20)),
-    Column('ACT_CODE', Integer),
-    Column('PAWN_CURR', CHAR(3)),
-    Column('DIV_BIT', Integer),
-    Column('ACC_CODE', String(20)),
-    Column('BORROWED', Integer),
-    Column('PAID', Integer),
-    Column('SETTLAMNT', DECIMAL(19, 6)),
-    Column('T_ENTRYDATE', DateTime),
-    Column('P_ENTRYDATE', DateTime)
-)
+class PORTLOGrah(Base):
+    __tablename__ = 'PORTLOGrah'
+
+    TRANS_NR = Column(Integer, index=True, primary_key=True)
+    PREV_NR = Column(Integer, index=True)
+    ACT_NR = Column(Integer, index=True)
+    TRANS_CODE = Column(CHAR(2), index=True)
+    COM_CODE = Column(String(20), index=True)
+    CCOM_CODE = Column(String(20), index=True)
+    PORID = Column(String(20), index=True)
+    CPORID = Column(String(20))
+    SEC_TYPE = Column(CHAR(2), index=True)
+    SECID = Column(String(20), index=True)
+    CSECID = Column(String(20), index=True)
+    ISSUE = Column(Integer, index=True)
+    OISSUE = Column(Integer)
+    BROKID = Column(String(20))
+    TRUSTID = Column(String(50))
+    TRUST_NMBR = Column(Integer)
+    TRANS_DATE = Column(DateTime, index=True)
+    PMT_DATE = Column(DateTime)
+    ORDER_VAL = Column(DateTime)
+    ORDER_TIME = Column(String(8))
+    CURRENCY1 = Column(CHAR(3))
+    AMOUNT = Column(DECIMAL(19, 6))
+    PRICE = Column(DECIMAL(16, 6))
+    EXPENSES = Column(DECIMAL(15, 2))
+    VALUE = Column(DECIMAL(15, 2))
+    SPURVALUE2 = Column(DECIMAL(15, 2))
+    FEE = Column(DECIMAL(15, 2))
+    PROVISION = Column(DECIMAL(15, 2))
+    TAX = Column(DECIMAL(15, 2))
+    OWN_TAX = Column(DECIMAL(15, 2))
+    EMISSION = Column(DECIMAL(15, 2))
+    TOT_EXP = Column(DECIMAL(15, 2))
+    ROUNDING = Column(DECIMAL(15, 2))
+    CURRENCY2 = Column(CHAR(3))
+    CUR_RATE = Column(DECIMAL(16, 6))
+    SPROFIT = Column(DECIMAL(15, 2))
+    BDATE = Column(DateTime)
+    EDATE = Column(DateTime)
+    VOUCHER = Column(Integer)
+    PAWN_CODE = Column(String(10))
+    PAWN_AM = Column(DECIMAL(19, 6))
+    SPL_RATIO = Column(DECIMAL(15, 9))
+    SPL_RATIO2 = Column(DECIMAL(15, 9))
+    SPL_DATE = Column(DateTime)
+    DIV_AMNT = Column(DECIMAL(15, 2))
+    DIV_DATE = Column(DateTime)
+    PRELIMTAX = Column(DECIMAL(15, 2))
+    POFF_DATE = Column(DateTime)
+    POFF_PRICE = Column(DECIMAL(16, 6))
+    POFF_VALUE = Column(DECIMAL(15, 2))
+    ISS_PRINT = Column(DateTime)
+    TEMP_NR = Column(String(30))
+    TRLEVEL = Column(CHAR(1))
+    ACCOUNT = Column(String(35))
+    CAN_NMBR = Column(Integer)
+    PREV_CODE = Column(CHAR(2))
+    CURRENCY = Column(CHAR(3))
+    CUR_RATE2 = Column(DECIMAL(16, 6))
+    PRINTED = Column(Integer)
+    NOTE = Column(String(255))
+    STATUS = Column(CHAR(1), index=True)
+    CURR_CODE = Column(Integer)
+    EFF_YIELD = Column(DECIMAL(16, 6))
+    INT_PERIOD = Column(Integer)
+    TAX_CODE = Column(Integer)
+    SCAP_DIFF = Column(DECIMAL(15, 2))
+    INTEREST = Column(DECIMAL(12, 6))
+    TAX_PCNT = Column(DECIMAL(8, 4))
+    STAMP_DUTY = Column(DECIMAL(15, 2))
+    UPD_USER = Column(String(30))
+    UPD_DATE = Column(DateTime)
+    UPD_TIME = Column(String(8))
+    ORIG_NMBR = Column(Integer)
+    CLEAR_CODE = Column(CHAR(10))
+    CLEAR_DATE = Column(DateTime)
+    CLEAR_STAT = Column(CHAR(1))
+    BE_ACCOUNT = Column(String(20))
+    EXT_NR = Column(String(250), index=True)
+    CAGIO = Column(DECIMAL(15, 2))
+    SBK_RETURN = Column(DECIMAL(15, 2))
+    EXT_NAME = Column(String(10))
+    EXT_CODE = Column(String(15))
+    ISIN = Column(String(12))
+    SETTLSTAT = Column(String(4))
+    DEALTYPE = Column(CHAR(2))
+    TR_STATUS = Column(CHAR(2))
+    ERRORCODE = Column(String(5))
+    SWIFT_ADDR = Column(String(15))
+    EXT_TYPE = Column(String(10))
+    KATIREF = Column(String(18), index=True)
+    FREECODE = Column(CHAR(5))
+    TOT_VALUE = Column(DECIMAL(15, 2))
+    DATE1 = Column(DateTime)
+    DATE2 = Column(DateTime)
+    VALUE1 = Column(DECIMAL(15, 2))
+    VALUE2 = Column(DECIMAL(15, 2))
+    VALUE3 = Column(DECIMAL(10, 6))
+    VALUE4 = Column(DECIMAL(10, 6))
+    CODE1 = Column(Integer)
+    CODE2 = Column(Integer)
+    CODE3 = Column(CHAR(2))
+    CODE4 = Column(String(12))
+    CODE5 = Column(String(30))
+    PMT_TRANS = Column(CHAR(1))
+    PMTERROR = Column(String(16))
+    BENOFSECA = Column(String(12))
+    BENOFSECD = Column(String(35))
+    SHORTCODE = Column(CHAR(1))
+    STATCODE = Column(String(10))
+    CPROFIT = Column(DECIMAL(15, 2))
+    AVG_RATE = Column(DECIMAL(16, 6))
+    FILTERSTAT = Column(String(255))
+    CUR_RATE1 = Column(DECIMAL(16, 6))
+    CAMOUNT = Column(DECIMAL(19, 6))
+    SAMOUNT = Column(DECIMAL(19, 6))
+    CPRICE = Column(DECIMAL(16, 6))
+    SPRICE = Column(DECIMAL(16, 6))
+    CEXPENSES = Column(DECIMAL(15, 2))
+    SEXPENSES = Column(DECIMAL(15, 2))
+    CVALUE = Column(DECIMAL(15, 2))
+    SVALUE = Column(DECIMAL(15, 2))
+    CPURVALUE2 = Column(DECIMAL(15, 2))
+    CFEE = Column(DECIMAL(15, 2))
+    SFEE = Column(DECIMAL(15, 2))
+    CPROVISION = Column(DECIMAL(15, 2))
+    SPROVISION = Column(DECIMAL(15, 2))
+    CTAX = Column(DECIMAL(15, 2))
+    STAX = Column(DECIMAL(15, 2))
+    COWN_TAX = Column(DECIMAL(15, 2))
+    SOWN_TAX = Column(DECIMAL(15, 2))
+    CEMISSION = Column(DECIMAL(15, 2))
+    SEMISSION = Column(DECIMAL(15, 2))
+    CTOT_EXP = Column(DECIMAL(15, 2))
+    STOT_EXP = Column(DECIMAL(15, 2))
+    CROUNDING = Column(DECIMAL(15, 2))
+    SROUNDING = Column(DECIMAL(15, 2))
+    CDIV_AMNT = Column(DECIMAL(15, 2))
+    SDIV_AMNT = Column(DECIMAL(15, 2))
+    CPRELIMTAX = Column(DECIMAL(15, 2))
+    SPRELIMTAX = Column(DECIMAL(15, 2))
+    CSTAMPDUTY = Column(DECIMAL(15, 2))
+    SSTAMPDUTY = Column(DECIMAL(15, 2))
+    CTOT_VALUE = Column(DECIMAL(15, 2))
+    STOT_VALUE = Column(DECIMAL(15, 2))
+    SVALUE1 = Column(DECIMAL(15, 2))
+    CVALUE1 = Column(DECIMAL(15, 2))
+    SVALUE2 = Column(DECIMAL(15, 2))
+    CVALUE2 = Column(DECIMAL(15, 2))
+    OWN_DATE = Column(DateTime)
+    CCAP_DIFF = Column(DECIMAL(15, 2))
+    CBK_RETURN = Column(DECIMAL(15, 2))
+    UNIT = Column(String(20))
+    ACT_CODE = Column(Integer)
+    PAWN_CURR = Column(CHAR(3))
+    DIV_BIT = Column(Integer)
+    ACC_CODE = Column(String(20))
+    BORROWED = Column(Integer)
+    PAID = Column(Integer)
+    SETTLAMNT = Column(DECIMAL(19, 6))
+    T_ENTRYDATE = Column(DateTime)
+    P_ENTRYDATE = Column(DateTime)
 
 
-t_PORTRANSrah = Table(
-    'PORTRANSrah', metadata,
-    Column('TRANS_NR', Integer),
-    Column('COM_CODE', String(20), index=True),
-    Column('PORID', String(20), index=True),
-    Column('SECID', String(20), index=True),
-    Column('TRANS_DATE', DateTime),
-    Column('VAL_END', DateTime),
-    Column('PMT_DATE', DateTime),
-    Column('AVG_DATE', DateTime, index=True),
-    Column('AMOUNT', DECIMAL(19, 6)),
-    Column('PUR_VALUE', DECIMAL(15, 2)),
-    Column('PUR_PRICE', DECIMAL(16, 6)),
-    Column('PAWN_CODE', String(10)),
-    Column('PUR_CVALUE', DECIMAL(15, 2)),
-    Column('PAWN_AM', DECIMAL(19, 6)),
-    Column('OWN_BEGIN', DateTime),
-    Column('OWN_END', DateTime),
-    Column('PUR_CPRICE', DECIMAL(16, 6))
-)
+class PORTRANSrah(Base):
+    __tablename__ = 'PORTRANSrah'
+
+    TRANS_NR = Column(Integer, primary_key=True)
+    COM_CODE = Column(String(20), index=True)
+    PORID = Column(String(20), index=True)
+    SECID = Column(String(20), index=True)
+    TRANS_DATE = Column(DateTime)
+    VAL_END = Column(DateTime)
+    PMT_DATE = Column(DateTime)
+    AVG_DATE = Column(DateTime, index=True)
+    AMOUNT = Column(DECIMAL(19, 6))
+    PUR_VALUE = Column(DECIMAL(15, 2))
+    PUR_PRICE = Column(DECIMAL(16, 6))
+    PAWN_CODE = Column(String(10))
+    PUR_CVALUE = Column(DECIMAL(15, 2))
+    PAWN_AM = Column(DECIMAL(19, 6))
+    OWN_BEGIN = Column(DateTime)
+    OWN_END = Column(DateTime)
+    PUR_CPRICE = Column(DECIMAL(16, 6))
 
 
-t_RATELASTrah = Table(
-    'RATELASTrah', metadata,
-    Column('SECID', String(20), index=True),
-    Column('RDATE', DateTime, index=True),
-    Column('RCLOSE', DECIMAL(16, 6))
-)
+class RATELASTrah(Base):
+    __tablename__ = 'RATELASTrah'
+
+    SECID = Column(String(20), index=True, primary_key=True)
+    RDATE = Column(DateTime, index=True)
+    RCLOSE = Column(DECIMAL(16, 6))
 
 
-t_SECURITYrah = Table(
-    'SECURITYrah', metadata,
-    Column('SECID', String(20), index=True),
-    Column('NAME1', String(255)),
-    Column('NAME2', String(255)),
-    Column('NAME3', String(255)),
-    Column('CURRENCY', CHAR(3)),
-    Column('PE_CORR', DECIMAL(8, 4)),
-    Column('ISIN', String(12))
-)
+class SECURITYrah(Base):
+    __tablename__ = 'SECURITYrah'
+
+    SECID = Column(String(20), index=True, primary_key=True)
+    NAME1 = Column(String(255))
+    NAME2 = Column(String(255))
+    NAME3 = Column(String(255))
+    CURRENCY = Column(CHAR(3))
+    PE_CORR = Column(DECIMAL(8, 4))
+    ISIN = Column(String(12))
 
 
 class RATErah(Base):
@@ -447,7 +447,6 @@ t_disableMobileDevice = Table(
     Column('disabled', String(5)),
     Column('date', TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
 )
-
 
 t_lastReplicationDate = Table(
     'lastReplicationDate', metadata,

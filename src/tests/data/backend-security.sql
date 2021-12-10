@@ -1,0 +1,7 @@
+INSERT INTO security (id, original_id, currency, fund_id, name_fi, name_sv) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), 'PASSIVETEST01', 'EUR', (SELECT id FROM fund WHERE original_id = 123), 'Passive test fund 1 - fi', 'Passive test fund 1 - en');
+INSERT INTO security (id, original_id, currency, fund_id, name_fi, name_sv) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), 'ACTIVETEST01', 'EUR', (SELECT id FROM fund WHERE original_id = 234), 'Active test fund 1 - fi', 'Active test fund 1 - en');
+INSERT INTO security (id, original_id, currency, fund_id, name_fi, name_sv) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), 'BALANCEDTEST01', 'EUR', (SELECT id FROM fund WHERE original_id = 345), 'Balanced test fund 1 - fi', 'Balanced test fund 1 - en');
+INSERT INTO security (id, original_id, currency, fund_id, name_fi, name_sv) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), 'FIXEDTEST01', 'EUR', (SELECT id FROM fund WHERE original_id = 456), 'Fixed test fund 1 - fi', 'Fixed test fund 1 - en');
+INSERT INTO security (id, original_id, currency, fund_id, name_fi, name_sv) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), 'DIMETEST01', 'EUR', (SELECT id FROM fund WHERE original_id = 678), 'Dimensional test fund 1 - fi', 'Dimensional test fund 1 - en');
+INSERT INTO security (id, original_id, currency, fund_id, name_fi, name_sv) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), 'SPILTAN TEST', 'SEK', (SELECT id FROM fund WHERE original_id = 789),'Spiltan test fund 1 - fi', 'Spiltan test fund 1 - en');
+

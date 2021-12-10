@@ -26,7 +26,7 @@ class BearerAuth(requests.auth.AuthBase):
         return request
 
 
-class AccessTokenProvider():
+class AccessTokenProvider:
     """Authentication provider class for test purposes"""
 
     def __init__(self,

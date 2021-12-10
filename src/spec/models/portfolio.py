@@ -22,9 +22,27 @@ class Portfolio(BaseModel):
         purchaseTotal: The purchaseTotal of this Portfolio [Optional].
     """
     id: Optional[str] = None
-    totalAmount: Optional[int] = None
-    marketValueTotal: Optional[int] = None
-    purchaseTotal: Optional[int] = None
+    totalAmount: Optional[str] = None
+    marketValueTotal: Optional[str] = None
+    purchaseTotal: Optional[str] = None
+
+    @classmethod
+    @validator("total_amount")
+    def total_amount_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("market_value_total")
+    def market_value_total_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("purchase_total")
+    def purchase_total_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
 
 
 Portfolio.update_forward_refs()

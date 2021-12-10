@@ -21,10 +21,8 @@ def mysql_exec_sql(mysql: MySqlContainer, sql_file: str):
     logger.info(f"Importing SQL file {sql_file}...")
     import_command = f'bash -c "mysql -uroot -ptest test < {container_import_folder}/{sql_file}"'
     import_result = mysql.exec(import_command)
-    if import_result.exit_code != 0:
-        logger.error(import_result.output.decode("utf-8"))
+    assert import_result.exit_code == 0, f"Error while importing {sql_file}: {import_result.output.decode('utf-8')}"
 
-    assert import_result.exit_code == 0
 
 @contextlib.contextmanager
 def sql_backend_funds(mysql: MySqlContainer):
@@ -33,12 +31,14 @@ def sql_backend_funds(mysql: MySqlContainer):
     finally:
         mysql_exec_sql(mysql=mysql, sql_file="backend-funds-teardown.sql")
 
+
 @contextlib.contextmanager
-def sql_backend_fund_rates(mysql: MySqlContainer):
+def sql_backend_security_rates(mysql: MySqlContainer):
     try:
-        yield mysql_exec_sql(mysql=mysql, sql_file="backend-fund-rates.sql")
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-security-rates.sql")
     finally:
-        mysql_exec_sql(mysql=mysql, sql_file="backend-fund-rates-teardown.sql")
+        mysql_exec_sql(mysql=mysql, sql_file="backend-security-rates-teardown.sql")
+
 
 @contextlib.contextmanager
 def sql_salkku_fund_securities(mysql: MySqlContainer):
@@ -47,12 +47,62 @@ def sql_salkku_fund_securities(mysql: MySqlContainer):
     finally:
         mysql_exec_sql(mysql=mysql, sql_file="salkku-fund-securities-teardown.sql")
 
+
 @contextlib.contextmanager
 def sql_salkku_raterah(mysql: MySqlContainer):
     try:
         yield mysql_exec_sql(mysql=mysql, sql_file="salkku-raterah.sql")
     finally:
         mysql_exec_sql(mysql=mysql, sql_file="salkku-raterah-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_company(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-company.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-company-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_security(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-security.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-security-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_last_rate(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-last-rate.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-last-rate-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_portfolio(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_portfolio_transaction(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-transaction.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-transaction-teardown.sql")
+
+
+@contextlib.contextmanager
+def sql_backend_portfolio_log(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-log.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-portfolio-log-teardown.sql")
+
 
 def wait_for_row_count(engine, entity: Any, count: int):
     """Waits for table row count to match given count
@@ -68,10 +118,7 @@ def wait_for_row_count(engine, entity: Any, count: int):
     while current != count:
         time.sleep(0.5)
         with Session(engine) as session:
-          current = session.query(entity).count()
+            current = session.query(entity).count()
         logger.info("Waiting for count to be %s...", count)
-        if datetime.now() >= timeout:
-            import pdb
-            pdb.set_trace()
 
         assert datetime.now() < timeout, f"Timed out waiting for count to be {count}, current count is {current}"

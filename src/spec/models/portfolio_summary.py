@@ -19,8 +19,20 @@ class PortfolioSummary(BaseModel):
         subscriptions: The subscriptions of this PortfolioSummary.
         redemptions: The redemptions of this PortfolioSummary.
     """
-    subscriptions: int
-    redemptions: int
+    subscriptions: str
+    redemptions: str
+
+    @classmethod
+    @validator("subscriptions")
+    def subscriptions_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("redemptions")
+    def redemptions_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
 
 
 PortfolioSummary.update_forward_refs()

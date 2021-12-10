@@ -39,6 +39,7 @@ class {{classname}}(BaseModel):
 {{#vars}}
 {{#maximum}}
 
+    @classmethod
     @validator("{{name}}")
     def {{name}}_max(cls, value):
         assert value <= {{maximum}}
@@ -46,6 +47,7 @@ class {{classname}}(BaseModel):
 {{/maximum}}
 {{#minimum}}
 
+    @classmethod
     @validator("{{name}}")
     def {{name}}_min(cls, value):
         assert value >= {{minimum}}
@@ -53,6 +55,7 @@ class {{classname}}(BaseModel):
 {{/minimum}}
 {{#minLength}}
 
+    @classmethod
     @validator("{{name}}")
     def {{name}}_min_length(cls, value):
         assert len(value) >= {{minLength}}
@@ -60,6 +63,7 @@ class {{classname}}(BaseModel):
 {{/minLength}}
 {{#maxLength}}
 
+    @classmethod
     @validator("{{name}}")
     def {{name}}_max_length(cls, value):
         assert len(value) <= {{maxLength}}
@@ -67,6 +71,7 @@ class {{classname}}(BaseModel):
 {{/maxLength}}
 {{#pattern}}
 
+    @classmethod
     @validator("{{name}}")
     def {{name}}_pattern(cls, value):
         assert value is not None and re.match(r"{{pattern}}", value)
