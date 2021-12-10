@@ -1,16 +1,10 @@
-from typing import Dict
-import pytest
 import json
-import logging
-import os
 import requests
 
-from testcontainers.mysql import MySqlContainer
-
+from typing import Dict
 from testcontainers.core.waiting_utils import wait_for_logs
 from ..testcontainers.kafka_connect import KafkaConnectContainer
-from ..testcontainers.kafka import KafkaContainer
-
+from ..testcontainers.mssql import SqlServerContainer
 from ..fixtures.kafka import *
 from ..fixtures.salkku_mysql import *
 
@@ -23,11 +17,14 @@ extra_libs = [
 
 
 @pytest.fixture(scope="session")
-def kafka_connect(request, salkku_mysql: MySqlContainer, kafka: KafkaContainer):
+def kafka_connect(request, salkku_mysql: MySqlContainer, funds_mssql: SqlServerContainer, kafka: KafkaContainer):
     """Kafka Connect fixture
 
     Args:
         request (FixtureRequest): A fixture request object
+        salkku_mysql (MySqlContainer): Salkku DB container
+        funds_mssql (SqlServerContainer): Funds DB container
+        kafka (KafkaContainer): Kafka container
 
     Returns:
         KafkaConnectContainer: Reference to Kafka Connect container
@@ -41,26 +38,43 @@ def kafka_connect(request, salkku_mysql: MySqlContainer, kafka: KafkaContainer):
         assert download_result.exit_code == 0
 
     def teardown():
-        """Stops the containers after session
-        """
+        """Stops the containers after session"""
         kafka_connect.stop()
 
-    def get_main_mysql_connector():
-        with open(f"{data_dir}/test-kafka-connector.json") as json_file:
+    def get_salkku_connector() -> Dict:
+        with open(f"{data_dir}/salkku-kafka-connector.json") as json_file:
+            db_container_id = salkku_mysql._container.id
             result: Dict = json.load(json_file)
-            result["config"]["database.hostname"] = salkku_mysql.get_docker_client().bridge_ip(salkku_mysql._container.id)
+            result["config"]["database.hostname"] = salkku_mysql.get_docker_client().bridge_ip(db_container_id)
             result["config"]["database.port"] = 3306
             result["config"]["database.user"] = "root"
-            result["config"]["database.password"] = "test"
+            result["config"]["database.password"] = "test"  # NOSONAR
             result["config"]["database.history.kafka.bootstrap.servers"] = kafka.get_kafka_url()
             return result
 
+    def get_funds_connector() -> Dict:
+        with open(f"{data_dir}/funds-kafka-connector.json") as json_file:
+            db_container_id = funds_mssql._container.id
+            result: Dict = json.load(json_file)
+            result["config"]["database.hostname"] = funds_mssql.get_docker_client().bridge_ip(db_container_id)
+            result["config"]["database.port"] = 1433
+            result["config"]["database.user"] = "sa"
+            result["config"]["database.password"] = "Test1234."  # NOSONAR
+            result["config"]["database.history.kafka.bootstrap.servers"] = kafka.get_kafka_url()
+            return result
+
+    def add_connector(connector: Dict):
+        connectors_url = f"{kafka_connect.get_kafka_connect_url()}/connectors/"
+        response = requests.post(connectors_url, json=connector)
+        if response.status_code != 201:
+            import pdb
+            pdb.set_trace()
+        assert response.status_code == 201
+
     request.addfinalizer(teardown)
 
-    main_mysql_connector = get_main_mysql_connector()
-    connectors_url = f"{kafka_connect.get_kafka_connect_url()}/connectors/"
-    response = requests.post(connectors_url, json=main_mysql_connector)
-    assert response.status_code == 201
+    add_connector(get_salkku_connector())
+    add_connector(get_funds_connector())
 
     wait_for_logs(kafka_connect, "Connected to MySQL binlog")
 
