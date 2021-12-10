@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from testcontainers.mysql import MySqlContainer
+from testcontainers.mssql import SqlServerContainer
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,18 @@ def mysql_exec_sql(mysql: MySqlContainer, sql_file: str):
     import_result = mysql.exec(import_command)
     assert import_result.exit_code == 0, f"Error while importing {sql_file}: {import_result.output.decode('utf-8')}"
 
+
+def mssql_exec_sql(mssql: SqlServerContainer, sql_file: str):
+    """Import SQL file into test database
+    Args:
+        mssql (SqlServerContainer): database container
+        sql_file (str): file
+    """
+    logger.info(f"Importing SQL file {sql_file}...")
+    import_file = f"{container_import_folder}/{sql_file}"
+    import_command = f'bash -c "/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P Test1234. -i {import_file}"'
+    import_result = mssql.exec(import_command)
+    assert import_result.exit_code == 0, import_result.output.decode("utf-8")
 
 @contextlib.contextmanager
 def sql_backend_funds(mysql: MySqlContainer):
@@ -49,11 +62,11 @@ def sql_salkku_fund_securities(mysql: MySqlContainer):
 
 
 @contextlib.contextmanager
-def sql_salkku_raterah(mysql: MySqlContainer):
+def sql_funds_rate(mssql: SqlServerContainer):
     try:
-        yield mysql_exec_sql(mysql=mysql, sql_file="salkku-raterah.sql")
+        yield mssql_exec_sql(mssql=mssql, sql_file="funds-rate.sql")
     finally:
-        mysql_exec_sql(mysql=mysql, sql_file="salkku-raterah-teardown.sql")
+        mssql_exec_sql(mssql=mssql, sql_file="funds-rate-teardown.sql")
 
 
 @contextlib.contextmanager
