@@ -37,6 +37,4 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index(op.f('ix_portfolio_transaction_security_id'), table_name='portfolio_transaction')
-    op.drop_index(op.f('ix_portfolio_transaction_portfolio_id'), table_name='portfolio_transaction')
     op.drop_table('portfolio_transaction')
