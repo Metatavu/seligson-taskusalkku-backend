@@ -18,8 +18,8 @@ class PortfolioTransaction(BaseModel):
     PortfolioTransaction - a model defined in OpenAPI
 
         id: The id of this PortfolioTransaction [Optional].
-        fundId: The fundId of this PortfolioTransaction.
-        targetFundId: The targetFundId of this PortfolioTransaction [Optional].
+        securityId: The securityId of this PortfolioTransaction [Optional].
+        targetSecurityId: The targetSecurityId of this PortfolioTransaction [Optional].
         transactionType: The transactionType of this PortfolioTransaction.
         valueDate: The valueDate of this PortfolioTransaction.
         value: The value of this PortfolioTransaction.
@@ -30,16 +30,46 @@ class PortfolioTransaction(BaseModel):
         provision: The provision of this PortfolioTransaction.
     """
     id: Optional[str] = None
-    fundId: str
-    targetFundId: Optional[str] = None
+    securityId: Optional[str] = None
+    targetSecurityId: Optional[str] = None
     transactionType: TransactionType
     valueDate: date
-    value: int
-    shareAmount: float
-    marketValue: int
-    totalValue: int
+    value: str
+    shareAmount: str
+    marketValue: str
+    totalValue: str
     paymentDate: date
-    provision: int
+    provision: str
+
+    @classmethod
+    @validator("value")
+    def value_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("share_amount")
+    def share_amount_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("market_value")
+    def market_value_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("total_value")
+    def total_value_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("provision")
+    def provision_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
 
 
 PortfolioTransaction.update_forward_refs()
