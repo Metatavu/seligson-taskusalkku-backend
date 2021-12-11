@@ -126,7 +126,7 @@ def wait_for_row_count(engine, entity: Any, count: int):
         count (int): count
     """    
     current = None
-    timeout = datetime.now() + timedelta(seconds=60)
+    timeout = datetime.now() + timedelta(seconds=120)
     
     while current != count:
         time.sleep(0.5)
