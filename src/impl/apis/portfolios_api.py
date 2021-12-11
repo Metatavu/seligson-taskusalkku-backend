@@ -213,7 +213,48 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         transaction_id: UUID,
         token_bearer: TokenModel
     ) -> PortfolioTransaction:
-        raise NotImplementedError
+        portfolio = operations.find_portfolio(
+            database=self.database,
+            portfolio_id=portfolio_id
+        )
+
+        if not portfolio:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Portfolio {portfolio_id} not found"
+            )
+
+        ssn = self.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        if portfolio.company.ssn != ssn:
+            raise HTTPException(
+                status_code=403,
+                detail=f"No permission to find this portfolio"
+            )
+
+        portfolio_log = operations.find_portfolio_log(
+            database=self.database,
+            portfolio_log_id=transaction_id
+        )
+
+        if portfolio_log is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Portfolio log {transaction_id} not found"
+            )
+
+        if portfolio_log.portfolio_id != portfolio.id:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Portfolio log {transaction_id} not found"
+            )
+
+        return self.translate_portfolio_log(portfolio_log=portfolio_log)
 
     async def list_portfolio_securities(
         self,

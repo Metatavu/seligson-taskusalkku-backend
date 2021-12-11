@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import func
 from .models import Fund, SecurityRate, Company, PortfolioTransaction, LastRate, Security, Portfolio, PortfolioLog
 from datetime import date
-from sqlalchemy.dialects import mysql
 
 @dataclass
 class PortfolioValues:
@@ -277,6 +276,19 @@ def get_portfolio_logs(database: Session,
         .offset(first_result) \
         .limit(max_result) \
         .all()
+
+
+def find_portfolio_log(database: Session, portfolio_log_id: UUID) -> Optional[PortfolioLog]:
+    """Finds portfolio log from the database
+
+    Args:
+            database (Session): database session
+            portfolio_log_id (UUID): portfolio log id
+    """
+    return database.query(PortfolioLog) \
+        .filter(PortfolioLog.id == portfolio_log_id) \
+        .one_or_none()
+
 
 
 def get_portfolio_history():

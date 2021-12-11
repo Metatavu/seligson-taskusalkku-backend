@@ -1,5 +1,3 @@
-import json
-
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.salkku_mysql import *  # noqa
@@ -289,7 +287,7 @@ class TestPortfolio:
                 assert expected_values["totalValue"] == Decimal(response["totalValue"]), f"totalValue does not match on {response['id']} fund"
                 assert expected_values["purchaseValue"] == Decimal(response["purchaseValue"]), f"purchaseValue does not match on {response['id']} fund"
 
-    def test_list_portfolio_transactions(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
+    def test_portfolio_transactions(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
         """
         Results from DB between 2020-06-03 and 2020-06-06
 
@@ -483,11 +481,24 @@ class TestPortfolio:
 
             portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
 
-            response = client.get(f"/v1/portfolios/{portfolio_id}/transactions?startDate=2020-06-03&endDate=2020-06-06", auth=user_1_auth)
-            assert response.status_code == 200
-            responses = response.json()
-            assert 12 == len(responses)
-            assert expected_response == response.json()
+            query = "startDate=2020-06-03&endDate=2020-06-06"
+            list_response = client.get(f"/v1/portfolios/{portfolio_id}/transactions?{query}", auth=user_1_auth)
+            assert list_response.status_code == 200
+            responses = list_response.json()
+            assert len(expected_response) == len(responses)
+            assert expected_response == list_response.json()
+
+            for transaction_type in ["SUBSCRIPTION", "REDEMPTION", "SECURITY"]:
+                type_expected = list(filter(lambda i: i["transactionType"] == transaction_type, expected_response))
+                query = f"startDate=2020-06-03&endDate=2020-06-06&transactionType={transaction_type}"
+                type_response = client.get(f"/v1/portfolios/{portfolio_id}/transactions?{query}", auth=user_1_auth)
+                assert type_response.json() == type_expected
+
+            find_expected = expected_response[7]
+            find_id = find_expected["id"]
+            find_response = client.get(f"/v1/portfolios/{portfolio_id}/transactions/{find_id}", auth=user_1_auth)
+            assert find_response.status_code == 200
+            assert find_expected == find_response.json()
 
     @staticmethod
     def get_portfolio(client: TestClient, portfolio_id: str, auth: BearerAuth) -> Portfolio:
