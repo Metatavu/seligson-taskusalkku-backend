@@ -107,7 +107,7 @@ class PortfoliosApiSpec(ABC):
         )
 
     @abstractmethod
-    async def find_portfolio_transactions(
+    async def find_portfolio_transaction(
         self,
         portfolio_id: UUID,
         transaction_id: UUID,
@@ -127,9 +127,9 @@ class PortfoliosApiSpec(ABC):
             500: {"model": Error, "description": "Internal server error"},
         },
         tags=["Portfolios"],
-        summary="Finds portfolio transactions",
+        summary="Finds portfolio transaction",
     )
-    async def find_portfolio_transactions_spec(
+    async def find_portfolio_transaction_spec(
         self,
         portfolio_id: str = Path(None, description="Portfolio id", alias="portfolioId"),
         transaction_id: str = Path(None, description="Transaction id", alias="transactionId"),
@@ -151,7 +151,7 @@ class PortfoliosApiSpec(ABC):
                 detail="Missing required parameter transactionId"
             )
 
-        return await self.find_portfolio_transactions(
+        return await self.find_portfolio_transaction(
             portfolio_id=self.to_uuid(portfolio_id),
             transaction_id=self.to_uuid(transaction_id),
             token_bearer=token_bearer
