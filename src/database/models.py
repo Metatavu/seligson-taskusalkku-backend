@@ -31,7 +31,7 @@ class Security(Base):
     fund = relationship("Fund", back_populates="securities", lazy=True)
     fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'), nullable=True)
     portfolio_transactions = relationship("PortfolioTransaction", back_populates="security", lazy=True)
-    portfolio_logs_c = relationship("PortfolioLog", back_populates="security_c", lazy=True)
+    c_portfolio_logs = relationship("PortfolioLog", back_populates="c_security", lazy=True)
     portfolio_logs = relationship("PortfolioLog", back_populates="security", lazy=True)
 
 
