@@ -219,7 +219,7 @@ class MigrateHandler:
                     new_company = destination_models.Company()
                     new_company.original_id = company.COM_CODE
                     new_company.ssn = company.SO_SEC_NR
-                    destination_session.add(new_fund)
+                    destination_session.add(new_company)
                     self.iteration += 1
                     if self.iteration >= self.batch:
                         break
