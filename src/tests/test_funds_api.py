@@ -140,6 +140,7 @@ class TestFunds:
             assert 0.564846 == values[0]["value"]
             assert 1.665009 == values[4]["value"]
 
+    @pytest.mark.skip()
     def test_sync_security_rates(self,
                                  client: TestClient,
                                  backend_mysql: MySqlContainer,
