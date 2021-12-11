@@ -6,21 +6,22 @@ from sqlalchemy.sql import func
 from .models import Fund, SecurityRate, Company, PortfolioTransaction, LastRate, Security, Portfolio, PortfolioLog
 from datetime import date
 
+
 @dataclass
 class PortfolioValues:
     """Data class for portfolio values query result"""
-    totalAmount: str
-    purchaseTotal: str
-    marketValueTotal: str
+    total_amount: str
+    purchase_total: str
+    market_value_total: str
 
 
 @dataclass
 class PortfolioSecurityValues:
     """Data class for portfolio security values query result"""
     security_id: UUID
-    totalAmount: str
-    purchaseTotal: str
-    marketValueTotal: str
+    total_amount: str
+    purchase_total: str
+    market_value_total: str
 
 
 def find_fund(database: Session, fund_id: UUID) -> Optional[Fund]:
@@ -161,9 +162,9 @@ def find_portfolio_values(database: Session, portfolio: Portfolio) -> PortfolioV
         .one()
 
     return PortfolioValues(
-        totalAmount=result.totalAmount,
-        purchaseTotal=result.purchaseTotal,
-        marketValueTotal=result.marketValueTotal
+        total_amount=result.totalAmount,
+        purchase_total=result.purchaseTotal,
+        market_value_total=result.marketValueTotal
     )
 
 
@@ -215,9 +216,11 @@ def get_portfolio_security_values(database: Session, portfolio: Portfolio) -> Li
     not_eur_security_id = PortfolioTransaction.security_id.label("security_id")
     not_eur_total_amount = func.sum(PortfolioTransaction.amount).label("totalAmount")
     not_eur_purchase_total = func.sum(PortfolioTransaction.purchase_c_value).label("purchaseTotal")
-    not_eur_market_value = func.sum(LastRate.rate_close / last_rate_cur.rate_close * PortfolioTransaction.amount).label("marketValueTotal")
+    not_eur_market_value = func.sum(LastRate.rate_close / last_rate_cur.rate_close *
+                                    PortfolioTransaction.amount).label("marketValueTotal")
 
-    not_eur_query = database.query(Portfolio, not_eur_security_id, not_eur_total_amount, not_eur_purchase_total, not_eur_market_value) \
+    not_eur_query = database.query(Portfolio, not_eur_security_id, not_eur_total_amount, not_eur_purchase_total,
+                                   not_eur_market_value) \
         .join(PortfolioTransaction, Portfolio.id == PortfolioTransaction.portfolio_id) \
         .join(LastRate, PortfolioTransaction.security_id == LastRate.security_id) \
         .join(Security, PortfolioTransaction.security_id == Security.id) \
@@ -234,9 +237,9 @@ def get_portfolio_security_values(database: Session, portfolio: Portfolio) -> Li
         results.append(
             PortfolioSecurityValues(
                 security_id=row.security_id,
-                totalAmount=row.totalAmount,
-                purchaseTotal=row.purchaseTotal,
-                marketValueTotal=row.marketValueTotal,
+                total_amount=row.totalAmount,
+                purchase_total=row.purchaseTotal,
+                market_value_total=row.marketValueTotal,
             )
         )
 
@@ -288,7 +291,6 @@ def find_portfolio_log(database: Session, portfolio_log_id: UUID) -> Optional[Po
     return database.query(PortfolioLog) \
         .filter(PortfolioLog.id == portfolio_log_id) \
         .one_or_none()
-
 
 
 def get_portfolio_history():

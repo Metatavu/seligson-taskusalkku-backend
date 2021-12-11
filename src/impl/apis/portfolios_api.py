@@ -45,9 +45,9 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
         if not portfolio:
             raise HTTPException(
-                                status_code=404,
-                                detail=f"Portfolio {portfolio_id} not found"
-                              )
+                status_code=404,
+                detail=f"Portfolio {portfolio_id} not found"
+            )
 
         ssn = self.get_user_ssn(token_bearer=token_bearer)
         if not ssn:
@@ -157,12 +157,12 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         return list(map(self.translate_portfolio, portfolios))
 
     async def list_portfolio_transactions(
-        self,
-        portfolio_id: UUID,
-        start_date: date,
-        end_date: date,
-        transaction_type: TransactionType,
-        token_bearer: TokenModel
+            self,
+            portfolio_id: UUID,
+            start_date: date,
+            end_date: date,
+            transaction_type: TransactionType,
+            token_bearer: TokenModel
     ) -> List[PortfolioTransaction]:
         transaction_code = self.get_transaction_code_for_transaction_type(transaction_type=transaction_type)
         transaction_codes = ["11", "12", "46"] if transaction_code is None else [transaction_code]
@@ -174,9 +174,9 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
         if not portfolio:
             raise HTTPException(
-                                status_code=404,
-                                detail=f"Portfolio {portfolio_id} not found"
-                              )
+                status_code=404,
+                detail=f"Portfolio {portfolio_id} not found"
+            )
 
         ssn = self.get_user_ssn(token_bearer=token_bearer)
         if not ssn:
@@ -208,10 +208,10 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         return list(map(self.translate_portfolio_log, portfolio_logs))
 
     async def find_portfolio_transaction(
-        self,
-        portfolio_id: UUID,
-        transaction_id: UUID,
-        token_bearer: TokenModel
+            self,
+            portfolio_id: UUID,
+            transaction_id: UUID,
+            token_bearer: TokenModel
     ) -> PortfolioTransaction:
         portfolio = operations.find_portfolio(
             database=self.database,
@@ -257,9 +257,9 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         return self.translate_portfolio_log(portfolio_log=portfolio_log)
 
     async def list_portfolio_securities(
-        self,
-        portfolio_id: UUID,
-        token_bearer: TokenModel
+            self,
+            portfolio_id: UUID,
+            token_bearer: TokenModel
     ) -> List[PortfolioSecurity]:
         portfolio = operations.find_portfolio(
             database=self.database,
@@ -268,9 +268,9 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
         if not portfolio:
             raise HTTPException(
-                                status_code=404,
-                                detail=f"Portfolio {portfolio_id} not found"
-                              )
+                status_code=404,
+                detail=f"Portfolio {portfolio_id} not found"
+            )
 
         ssn = self.get_user_ssn(token_bearer=token_bearer)
         if not ssn:
@@ -303,10 +303,10 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
         result = Portfolio()
         result.id = str(portfolio.id)
-        result.totalAmount = portfolio_values.totalAmount if portfolio_values.totalAmount is not None else "0"
-        result.marketValueTotal = portfolio_values.marketValueTotal if portfolio_values.marketValueTotal is not None \
-            else "0"
-        result.purchaseTotal = portfolio_values.purchaseTotal if portfolio_values.purchaseTotal is not None else "0"
+        result.totalAmount = portfolio_values.total_amount if portfolio_values.total_amount is not None else "0"
+        result.marketValueTotal = "0" if portfolio_values.market_value_total is None else \
+            portfolio_values.market_value_total
+        result.purchaseTotal = portfolio_values.purchase_total if portfolio_values.purchase_total is not None else "0"
 
         return result
 
@@ -369,7 +369,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         """
         return PortfolioSecurity(
             id=str(portfolio_security_values.security_id),
-            amount=str(portfolio_security_values.totalAmount),
-            totalValue=str(portfolio_security_values.marketValueTotal),
-            purchaseValue=str(portfolio_security_values.purchaseTotal)
+            amount=str(portfolio_security_values.total_amount),
+            totalValue=str(portfolio_security_values.market_value_total),
+            purchaseValue=str(portfolio_security_values.purchase_total)
         )
