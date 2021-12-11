@@ -26,7 +26,7 @@ class PortfolioTransaction(BaseModel):
         shareAmount: The shareAmount of this PortfolioTransaction.
         marketValue: The marketValue of this PortfolioTransaction.
         totalValue: The totalValue of this PortfolioTransaction.
-        paymentDate: The paymentDate of this PortfolioTransaction.
+        paymentDate: The paymentDate of this PortfolioTransaction [Optional].
         provision: The provision of this PortfolioTransaction.
     """
     id: Optional[str] = None
@@ -38,7 +38,7 @@ class PortfolioTransaction(BaseModel):
     shareAmount: str
     marketValue: str
     totalValue: str
-    paymentDate: date
+    paymentDate: Optional[date] = None
     provision: str
 
     @classmethod

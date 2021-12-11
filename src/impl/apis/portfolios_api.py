@@ -5,19 +5,19 @@ from uuid import UUID
 from typing import List, Optional
 from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
-from ...spec.apis.portfolios_api import PortfoliosApiSpec, router as portfolios_api_router
+from spec.apis.portfolios_api import PortfoliosApiSpec, router as portfolios_api_router
 from datetime import date
-from ...spec.models.extra_models import TokenModel
-from ...spec.models.portfolio import Portfolio
-from ...admin.keycloak_admin import KeycloakAdminAccess
-from ...spec.models.portfolio_summary import PortfolioSummary
-from ...spec.models.portfolio_history_value import PortfolioHistoryValue
-from ...database import operations
-from ...business_logics import business_logics
-from ...database.models import Portfolio as DbPortfolio, PortfolioLog as DbPortfolioLog
-from ...spec.models.portfolio_security import PortfolioSecurity
-from ...spec.models.portfolio_transaction import PortfolioTransaction
-from ...spec.models.transaction_type import TransactionType
+from spec.models.extra_models import TokenModel
+from spec.models.portfolio import Portfolio
+from admin.keycloak_admin import KeycloakAdminAccess
+from spec.models.portfolio_summary import PortfolioSummary
+from spec.models.portfolio_history_value import PortfolioHistoryValue
+from database import operations
+from business_logics import business_logics
+from database.models import Portfolio as DbPortfolio, PortfolioLog as DbPortfolioLog
+from spec.models.portfolio_security import PortfolioSecurity
+from spec.models.portfolio_transaction import PortfolioTransaction
+from spec.models.transaction_type import TransactionType
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +165,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         token_bearer: TokenModel
     ) -> List[PortfolioTransaction]:
         transaction_code = self.get_transaction_code_for_transaction_type(transaction_type=transaction_type)
+        transaction_codes = ["11", "12", "46"] if transaction_code is None else [transaction_code]
 
         portfolio = operations.find_portfolio(
             database=self.database,
@@ -190,10 +191,16 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                 detail=f"No permission to find this portfolio"
             )
 
+        if not start_date:
+            start_date = date(1997, 1, 1)
+
+        if not end_date:
+            end_date = date.today()
+
         portfolio_logs = operations.get_portfolio_logs(
             database=self.database,
             portfolio=portfolio,
-            transaction_code=transaction_code,
+            transaction_codes=transaction_codes,
             transaction_date_min=start_date,
             transaction_date_max=end_date,
         )

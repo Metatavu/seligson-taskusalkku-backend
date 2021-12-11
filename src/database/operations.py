@@ -246,7 +246,7 @@ def get_portfolio_security_values(database: Session, portfolio: Portfolio) -> Li
 
 def get_portfolio_logs(database: Session,
                        portfolio: Portfolio,
-                       transaction_code: str,
+                       transaction_codes: List[str],
                        transaction_date_min: date,
                        transaction_date_max: date,
                        first_result: int = 0,
@@ -257,7 +257,7 @@ def get_portfolio_logs(database: Session,
         Args:
             database (Session): database session
             portfolio (Portfolio): portfolio
-            transaction_code (str): filter by transaction code
+            transaction_codes (List[str]): filter by transaction codes
             transaction_date_min (date): filter results by transaction_date after given date
             transaction_date_max (date): filter results by transaction_date before given date
             first_result (int, optional): first result. Defaults to 0.
@@ -267,18 +267,15 @@ def get_portfolio_logs(database: Session,
              List[PortfolioLog]: list of portfolio logs
     """
 
-    query = database.query(PortfolioLog) \
+    return database.query(PortfolioLog) \
         .filter(PortfolioLog.status == "0") \
         .filter(PortfolioLog.portfolio_id == portfolio.id) \
         .filter(PortfolioLog.transaction_date >= transaction_date_min) \
-        .filter(PortfolioLog.transaction_date <= transaction_date_max)
-
-    if transaction_code is not None:
-        query = query.filter(PortfolioLog.transaction_code == transaction_code)
-
-    return query.offset(first_result) \
-        .limit(max_result) \
+        .filter(PortfolioLog.transaction_date <= transaction_date_max) \
+        .filter(PortfolioLog.transaction_code.in_(transaction_codes)) \
         .order_by(PortfolioLog.transaction_date) \
+        .offset(first_result) \
+        .limit(max_result) \
         .all()
 
 
