@@ -27,5 +27,4 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index(op.f('ix_company_original_id'), table_name='company')
     op.drop_table('company')

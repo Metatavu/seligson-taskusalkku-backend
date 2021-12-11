@@ -31,5 +31,4 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index(op.f('ix_security_original_id'), table_name='security')
     op.drop_table('security')
