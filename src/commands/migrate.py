@@ -2,8 +2,10 @@ import sys
 import logging
 import os
 import time
+from typing import List
+
 import click
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, and_
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session, Query
 from memory_profiler import profile
@@ -17,45 +19,45 @@ from database import models as destination_models
 
 logger = logging.getLogger(__name__)
 
-"""
-mapper = {
-    source_models.FundSecurity: {
-        "destination_tables": [(destination_models.Fund,
-        "field_mapping": {
-            "fundID": "original_id"
-        "securityID": ""
-        "securityName_fi" = Column(String(255))
-        "securityName_sv" = Column(String(255))
-    }
-
-}
-"""
-
 
 MIGRATION_DATABASE_SOURCE = "MIGRATION_DATABASE_SOURCE"
 MIGRATION_DATABASE_DESTINATION = "MIGRATION_DATABASE_DESTINATION"
 DESTINATION_ENTITIES = [ destination_models.Fund]
 SOURCE_ENTITIES = [source_models.FundSecurity]
 
+
 class MigrateHandler:
 
-    def __init__(self, sleep, debug, batch):
+    def __init__(self, sleep, debug, batch, target, starting_row):
         self.delay_in_second = sleep / 1000
         self.debug = debug
         self.batch = batch
         self.iteration = 0
+        self.target = target
+        self.starting_row = starting_row
         self.source_engine, self.destination_engine = self.get_sessions()
+        self.misc_entities = []
 
     def handle(self):
         with click.progressbar(length=self.batch,
                                label='processing the batch') as self.progress_status:
             with Session(self.source_engine) as source_session, Session(
                     self.destination_engine) as destination_session:
+                kwargs = {"source_session":source_session, "destination_session":destination_session}
+                function_name = f"process_{self.target}"
+                if self.target:
+                    if hasattr(self, function_name) and callable(function := getattr(self, function_name)):
+                        function(**kwargs)
+                    else:
+                        click.echo("Not a valid model as target")
 
-                self.process_fund(source_session=source_session, destination_session=destination_session)
-                self.process_security(source_session=source_session, destination_session=destination_session)
-                #self.process_security_rate(source_session=source_session, destination_session=destination_session)
-
+                else:
+                    self.process_fund(**kwargs)
+                    import pdb
+                    pdb.set_trace()
+                    self.process_security(**kwargs)
+                    self.process_security_rate(**kwargs)
+                    self.process_company(**kwargs)
                 if not self.debug:
                     destination_session.commit()
                     click.echo(f"Finished the batch, Inserted {self.iteration} rows to the database")
@@ -74,12 +76,16 @@ class MigrateHandler:
             destination_engine = create_engine(migration_destination)
             return source_engine, destination_engine
 
+    @profile
     def process_fund(self, source_session, destination_session):
         page = 0
         page_size = 1000
         number_of_rows = 100
+
         while self.iteration < self.batch:
             fund_securities = list(self.generate_query(session=source_session,entity=source_models.FundSecurity, page=page, page_size=page_size,number_of_rows=number_of_rows))
+            if self.target and self.starting_row:
+                fund_securities = fund_securities[self.starting_row:]
             page += 1
             if len(fund_securities) == 0:
                 break
@@ -103,10 +109,12 @@ class MigrateHandler:
         page_size = 1000
         number_of_rows = 100
         while self.iteration < self.batch:
-            securities = list(self.generate_query(session=source_session, entity=source_models.SECURITYrah, page=page, page_size=page_size, number_of_rows=number_of_rows))
+            securities: List[source_models.SECURITYrah] = list(self.generate_query(session=source_session, entity=source_models.SECURITYrah, page=page, page_size=page_size, number_of_rows=number_of_rows))
             page += 1
             if len(securities) == 0:
                 break
+            if self.target and self.starting_row:
+                securities = securities[self.starting_row:]
 
             for _, security in enumerate(list(securities)):
                 existing_security: destination_models.Security = destination_session.query(destination_models.Security).filter(
@@ -135,20 +143,91 @@ class MigrateHandler:
                     self.progress_status.update(1)
                     self.delay()
 
+    @profile
     def process_security_rate(self, source_session, destination_session):
         page = 0
         page_size = 1000
         number_of_rows = 100
         while self.iteration < self.batch:
-            rates = list(self.generate_query(session=source_session, entity=source_models.RATErah, page=page,
+            rates: List[source_models.RATErah] = list(self.generate_query(session=source_session, entity=source_models.RATErah, page=page,
                                              page_size=page_size, number_of_rows=number_of_rows))
             page += 1
             if len(rates) == 0:
                 break
+
+            if self.target and self.starting_row:
+                rates = rates[self.starting_row:]
+
             for _, rate in enumerate(rates):
-                existing_rate: destination_models.SecurityRate = destination_session.query(
-                    destination_models.SecurityRate).filter(
-                    destination_models.SecurityRate.original_id == security.SECID).one_or_none()
+                existing_security = destination_session.query(destination_models.Security).filter(destination_models.Security.original_id == rate.SECID).one_or_none()
+                if not existing_security:
+                    # this should not happen at this stage, and it means there are securities that are not in SECURITYrah!
+                    # so we add them as missing ones, since we do not have any information about them anyway.
+                    new_security = destination_models.Security()
+                    new_security.original_id = rate.SECID
+                    new_security.fund_id = None
+                    new_security.currency = ""
+                    new_security.name_fi = ""
+                    new_security.name_sv = ""
+                    destination_session.add(new_security)
+                    self.iteration += 1
+                    if self.iteration >= self.batch:
+                        break
+                    self.progress_status.update(1)
+                    self.delay()
+
+                    security_id = new_security.id
+                    # and alert
+                    click.echo(f"WARNING: missing security {rate.SECID}")
+                    self.misc_entities.append({"entity": destination_models.Security, "value": rate.SECID})
+                    existing_rate = None
+
+                else:
+                    existing_rate: destination_models.SecurityRate = destination_session.query(
+                        destination_models.SecurityRate).filter(and_(destination_models.SecurityRate.security_id == existing_security.id, destination_models.SecurityRate.rate_date == rate.RDATE)).one_or_none()
+                    security_id = existing_security.id
+
+                if not existing_rate:
+                    new_rate = destination_models.SecurityRate()
+                    new_rate.security_id = security_id
+                    new_rate.rate_date = rate.RDATE
+                    new_rate.rate_close = rate.RCLOSE
+                    destination_session.add(new_rate)
+                    self.iteration += 1
+                    if self.iteration >= self.batch:
+                        break
+                    self.progress_status.update(1)
+                    self.delay()
+
+    @profile
+    def process_company(self, source_session, destination_session):
+        page = 0
+        page_size = 1000
+        number_of_rows = 100
+        while self.iteration < self.batch:
+            companies: List[source_models.COMPANYrah]= list(self.generate_query(session=source_session, entity=source_models.COMPANYrah, page=page, page_size=page_size,number_of_rows=number_of_rows))
+            page += 1
+            if len(companies) == 0:
+                break
+            if self.target and self.starting_row:
+                companies = companies[self.starting_row:]
+
+            for _, company in enumerate(companies):
+                existing_company = destination_session.query(destination_models.Company).filter(
+                    destination_models.Company.original_id == company.COM_CODE).one_or_none()
+                if not existing_company:
+                    new_company = destination_models.Company()
+                    new_company.original_id = company.COM_CODE
+                    new_company.ssn = company.SO_SEC_NR
+                    destination_session.add(new_fund)
+                    self.iteration += 1
+                    if self.iteration >= self.batch:
+                        break
+                    self.progress_status.update(1)
+                    self.delay()
+
+
+
 
     def delay(self):
         if self.iteration % 10000 == 0:
@@ -167,14 +246,15 @@ class MigrateHandler:
         return query.yield_per(number_of_rows) if number_of_rows else query.all()
 
 
-
 @click.command()
 @click.option("--debug", default=True, help="Debug, readonly for testing purposes")
 @click.option("--sleep", default=1000, help="sleep delay in miliseconds")
 @click.option("--batch", default=1, help="number of rows that are read and migrated into new database")
-def main(debug, sleep, batch):
+@click.option("--target", default=None, help="Only migrates the target model")
+@click.option("--starting_row", default=0, help="starting row of source table choose with target")
+def main(debug, sleep, batch, target, starting_row):
     """Migration method"""
-    handler = MigrateHandler(sleep=sleep, debug=debug, batch=batch)
+    handler = MigrateHandler(sleep=sleep, debug=debug, batch=batch, target=target, starting_row=starting_row)
     handler.handle()
 
 
