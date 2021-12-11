@@ -95,7 +95,6 @@ security_ids = {
 
 class TestPortfolio:
 
-    @pytest.mark.skip()
     def test_find_portfolio(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
         """
         test to find portfolio from portfolio id
@@ -137,7 +136,6 @@ class TestPortfolio:
             assert sub_expected_sum_market_value_total == Decimal(sub_portfolio["marketValueTotal"])
             assert sub_expected_sum_purchase_total == Decimal(sub_portfolio["purchaseTotal"])
 
-    @pytest.mark.skip()
     def test_get_portfolio_summary(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
         """
         test to find portfolio history from portfolio id in a given period
@@ -182,11 +180,9 @@ class TestPortfolio:
             assert expected_redemption == Decimal(values["redemptions"])
             assert expected_subscription == Decimal(values["subscriptions"])
 
-    @pytest.mark.skip()
     def test_portfolio_history_values(self):
         pass  # todo development after new database changes
 
-    @pytest.mark.skip()
     def test_list_portfolios(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
         """
         test to list portfolios of a user
@@ -221,7 +217,6 @@ class TestPortfolio:
                 assert expected_sum_market_value_total == Decimal(result["marketValueTotal"])
                 assert expected_sum_purchase_total == Decimal(result["purchaseTotal"])
 
-    @pytest.mark.skip()
     def test_list_portfolio_securities(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
         """
         +-------------------------------------------------------------+-------------+
