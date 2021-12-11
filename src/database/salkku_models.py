@@ -1,10 +1,35 @@
 # coding: utf-8
-from sqlalchemy import BigInteger, CHAR, Column, DECIMAL, Date, DateTime, Integer, String, TIMESTAMP, Table, text
+import enum
+from sqlalchemy import BigInteger, CHAR, Column, DECIMAL, Date, DateTime, Integer, String, TIMESTAMP, Table, text, Enum, ForeignKeyConstraint
 from sqlalchemy.dialects.mysql import BIT, INTEGER, LONGTEXT, TINYINT
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 metadata = Base.metadata
+
+
+class FundSecurity(Base):
+    __tablename__ = 'FundSecurities'
+
+    fundID = Column(Integer, nullable=False, primary_key=True)
+    securityID = Column(String(24), nullable=False, primary_key=True)
+    securityName_fi = Column(String(64), nullable=False)
+    securityName_sv = Column(String(64), nullable=False)
+    Klass = Column('class', Enum(enum.Enum('test', 'other growth profit heart K'), nullable=False))
+    minimumPurchase = Column('minimumPurchase', DECIMAL(13, 3), nullable=False, server_default=text("'0.000'"))
+
+
+class SECURITYrah(Base):
+    __tablename__ = 'SECURITYrah'
+
+    SECID = Column(String(20), index=True, primary_key=True)
+    NAME1 = Column(String(255))
+    NAME2 = Column(String(255))
+    NAME3 = Column(String(255))
+    CURRENCY = Column(CHAR(3))
+    PE_CORR = Column(DECIMAL(8, 4))
+    ISIN = Column(String(12))
+
 
 t_ADDRESSrah = Table(
     'ADDRESSrah', metadata,
@@ -374,16 +399,6 @@ class RATELASTrah(Base):
     RCLOSE = Column(DECIMAL(16, 6))
 
 
-class SECURITYrah(Base):
-    __tablename__ = 'SECURITYrah'
-
-    SECID = Column(String(20), index=True, primary_key=True)
-    NAME1 = Column(String(255))
-    NAME2 = Column(String(255))
-    NAME3 = Column(String(255))
-    CURRENCY = Column(CHAR(3))
-    PE_CORR = Column(DECIMAL(8, 4))
-    ISIN = Column(String(12))
 
 
 class RATErah(Base):
