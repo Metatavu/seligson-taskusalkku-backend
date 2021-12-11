@@ -29,8 +29,10 @@ class Security(Base):
     rates = relationship("SecurityRate", back_populates="security", lazy=True)
     last_rate = relationship("LastRate", back_populates="security", lazy=True)
     fund = relationship("Fund", back_populates="securities", lazy=True)
-    fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'), nullable=False)
+    fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'), nullable=True)
     portfolio_transactions = relationship("PortfolioTransaction", back_populates="security", lazy=True)
+    portfolio_logs_c = relationship("PortfolioLog", back_populates="security_c", lazy=True)
+    portfolio_logs = relationship("PortfolioLog", back_populates="security", lazy=True)
 
 
 class SecurityRate(Base):
@@ -85,7 +87,19 @@ class PortfolioLog(Base):
     transaction_date = Column(Date, index=True)
     c_total_value = Column(DECIMAL(15, 2))
     portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True, nullable=False)
+    portfolio = relationship("Portfolio", back_populates="portfolio_log", lazy=True)
+    security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=False)
+    security = relationship("Security", back_populates="portfolio_log", lazy=True)
+    c_security_id = Column("c_security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=True)
+    c_security = relationship("Security", back_populates="portfolio_log", lazy=True)
+    amount = Column(DECIMAL(19, 6), nullable=False)
+    c_price = Column(DECIMAL(19, 6), nullable=False)
+    payment_date = Column(Date, index=True, nullable=False)
+    c_value = Column(DECIMAL(15, 2), nullable=False)
+    provision = Column(DECIMAL(15, 2), nullable=True)
+    status = Column(CHAR(1), nullable=False)
     portfolio = relationship("Portfolio", back_populates="portfolio_logs", lazy=True)
+
 
 
 class PortfolioTransaction(Base):
