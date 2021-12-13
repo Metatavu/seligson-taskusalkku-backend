@@ -344,6 +344,8 @@ class MigrateHandler:
             new_security = self.upsert_security(session=session, security=existing_security, original_id=original_id,
                                                 fund_id=None, currency="",
                                                 name_fi="", name_sv="", )
+            import pdb
+            pdb.set_trace()
             security_id = new_security.id
 
             # and alert
@@ -370,7 +372,8 @@ class MigrateHandler:
             _, new_portfolio = self.upsert_portfolio(session=session, portfolio=existing_portfolio,
                                                      original_id=original_id, company_id=company_id)
             # todo verify why session needs to be commited in here.
-            session.commit()
+            if not self.debug:
+                session.commit()
             portfolio_id = new_portfolio.id
             print(f"\nWARNING: missing portfolio with id={original_id}")
             self.misc_entities.append({"entity": destination_models.Portfolio, "value": original_id})
@@ -525,8 +528,11 @@ class MigrateHandler:
 
     def report_misc(self):
         print("Issues with the following inserted rows:")
+
         for misc_entity in self.misc_entities:
-            print(f"{misc_entity.entity}: {misc_entity.value}")
+            entity = misc_entity.get("entity")
+            value = misc_entity.get("value")
+            print(f'{entity},{value}')
 
     @staticmethod
     def generate_query(session: Session, entity, filters=None, page=None, page_size=None, number_of_rows=None) -> Query:
