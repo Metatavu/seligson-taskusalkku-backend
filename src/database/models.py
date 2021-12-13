@@ -93,7 +93,7 @@ class PortfolioLog(Base):
     c_price = Column(DECIMAL(19, 6), nullable=False)
     payment_date = Column(Date, index=True, nullable=True)
     c_value = Column(DECIMAL(15, 2), nullable=False)
-    provision = Column(DECIMAL(15, 2), nullable=True)
+    provision = Column(DECIMAL(15, 2), nullable=False)
     status = Column(CHAR(1), nullable=False)
 
     portfolio = relationship("Portfolio", back_populates="portfolio_logs", lazy=True)

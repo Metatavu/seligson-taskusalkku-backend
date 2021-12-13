@@ -30,7 +30,7 @@ def upgrade():
                     sa.Column('c_price', sa.DECIMAL(precision=19, scale=6), nullable=False),
                     sa.Column('payment_date', sa.Date(), nullable=True),
                     sa.Column('c_value', sa.DECIMAL(precision=15, scale=2), nullable=False),
-                    sa.Column('provision', sa.DECIMAL(precision=15, scale=2), nullable=True),
+                    sa.Column('provision', sa.DECIMAL(precision=15, scale=2), nullable=False),
                     sa.Column('status', sa.CHAR(length=1), nullable=False),
                     sa.ForeignKeyConstraint(['c_security_id'], ['security.id'], ),
                     sa.ForeignKeyConstraint(['portfolio_id'], ['portfolio.id'], ),
