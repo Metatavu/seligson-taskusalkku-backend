@@ -11,7 +11,8 @@ from sqlalchemy import create_engine
 
 from .utils.database import sql_backend_company, sql_backend_security, sql_backend_portfolio_log, \
     sql_backend_portfolio_transaction, sql_backend_last_rate, sql_backend_portfolio, sql_backend_funds, \
-    wait_for_row_count
+    sql_backend_security_rates, wait_for_row_count
+
 from ..database.models import Company, Security, LastRate, Portfolio, PortfolioTransaction, PortfolioLog
 
 logger = logging.getLogger(__name__)
@@ -180,8 +181,92 @@ class TestPortfolio:
             assert expected_redemption == Decimal(values["redemptions"])
             assert expected_subscription == Decimal(values["subscriptions"])
 
-    def test_portfolio_history_values(self):
-        pass  # todo development after new database changes
+    def test_portfolio_history_values(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
+                  (PortfolioLog, 60)]
+        engine = create_engine(backend_mysql.get_connection_url())
+        with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
+                sql_backend_security_rates(backend_mysql), sql_backend_portfolio(backend_mysql), \
+                sql_backend_portfolio_transaction(backend_mysql), sql_backend_portfolio_log(backend_mysql):
+
+            for table in tables:
+                wait_for_row_count(engine=engine, entity=table[0], count=table[1])
+
+            portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
+
+            """
+            2020-06-01:
+             
+            3 transfers:
+            - subscription of PASSIVETEST01, amount 8.891322479445751
+            - redemption of PASSIVETEST01, amount 46.54840931204268 (ignored)
+            - transfer from PASSIVETEST01 to ACTIVETEST01, amount  35.19015936647667
+            
+            security rates:
+            - PASSIVETEST01 = 3.0411934114057058
+            - ACTIVETEST01 = 2.8414261328219794
+            
+            Sum for day should be: 
+            
+            (8.891322479445751 * 3.0411934114057058) + (35.19015936647667 * 2.8414261328219794) 
+
+            2020-06-06
+            3. transfers
+            - subscription of SPILTAN TEST with amount 25.034593204195833
+            - redemption of SPILTAN TEST with amount amount 12.602863875893721 (ignored)
+            - transfer from SPILTAN TEST PASSIVETEST01 with amount 14.24559022245685
+            
+            security rates:
+            - SPILTAN TEST = 10.2893454827978
+            - PASSIVETEST01 = 2.265510994165496
+            - SEK = 5.123123
+            
+            (25.034593204195833 * 10.2893454827978  / 5.123123) + (14.24559022245685 * 2.265510994165496) 
+            
+            1998-01-23
+            1. transfer
+            - subscription of PASSIVETEST01 with amount 30
+            - redemption of PASSIVETEST01 with amount 30 (ignored)
+            - removal of BALANCEDTEST01 with amount 3.5
+            
+            security rates:
+            - PASSIVETEST01 = 1.5151887883728388
+            - BALANCEDTEST01 = 8.510354920492162
+            
+            and because it's before 1999-01-01, it's in FIM
+            
+            (30 * 1.5151887883728388 / 5.94573) - (3.5 * 8.510354920492162 / 5.94573)
+            """
+
+            expected_value_1998_01_23 = (30 * 1.5151887883728388 / 5.94573) - \
+                                        (3.5 * 8.510354920492162 / 5.94573)
+
+            expected_value_2020_06_01 = (8.891322479445751 * 3.0411934114057058) + \
+                                        (35.19015936647667 * 2.8414261328219794)
+
+            expected_value_2020_06_06 = (25.034593204195833 * 10.2893454827978 / 5.123123) + \
+                                        (14.24559022245685 * 2.265510994165496)
+
+            responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
+                                   f"startDate=1998-01-23&endDate=1998-01-23", auth=user_1_auth).json()
+            assert 1 == len(responses)
+            assert "1998-01-23" == responses[0]["date"]
+            assert round(Decimal(expected_value_1998_01_23), 4) == round(Decimal(responses[0]["value"]), 4)
+
+            responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
+                                   f"startDate=2020-06-01&endDate=2020-06-06", auth=user_1_auth).json()
+
+            assert 6 == len(responses)
+            assert "2020-06-01" == responses[0]["date"]
+            assert round(Decimal(expected_value_2020_06_01), 4) == round(Decimal(responses[0]["value"]), 4)
+
+            assert "2020-06-06" == responses[5]["date"]
+            assert round(Decimal(expected_value_2020_06_06), 4) == round(Decimal(responses[5]["value"]), 4)
+
+            responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
+                                   f"startDate=1999-01-01&endDate=1999-01-01", auth=user_1_auth).json()
+            assert 0 == len(responses)
 
     def test_list_portfolios(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
         """

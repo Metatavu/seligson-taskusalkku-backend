@@ -65,9 +65,7 @@ class MeetingsApiSpec(ABC):
     async def create_meeting(
         self,
         meeting: Meeting,
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
+        token_bearer: TokenModel,
     ) -> Meeting:
         ...
 
@@ -107,9 +105,7 @@ class MeetingsApiSpec(ABC):
         self,
         start_date: Optional[date],
         end_date: Optional[date],
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
+        token_bearer: TokenModel,
     ) -> List[MeetingTime]:
         ...
 

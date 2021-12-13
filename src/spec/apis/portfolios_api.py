@@ -69,9 +69,7 @@ class PortfoliosApiSpec(ABC):
     async def find_portfolio(
         self,
         portfolio_id: UUID,
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
+        token_bearer: TokenModel,
     ) -> Portfolio:
         ...
 
@@ -111,9 +109,7 @@ class PortfoliosApiSpec(ABC):
         self,
         portfolio_id: UUID,
         transaction_id: UUID,
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
+        token_bearer: TokenModel,
     ) -> PortfolioTransaction:
         ...
 
@@ -163,9 +159,7 @@ class PortfoliosApiSpec(ABC):
         portfolio_id: UUID,
         start_date: date,
         end_date: date,
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
+        token_bearer: TokenModel,
     ) -> PortfolioSummary:
         ...
 
@@ -222,9 +216,7 @@ class PortfoliosApiSpec(ABC):
         portfolio_id: UUID,
         start_date: date,
         end_date: date,
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
+        token_bearer: TokenModel,
     ) -> List[PortfolioHistoryValue]:
         ...
 
@@ -279,9 +271,7 @@ class PortfoliosApiSpec(ABC):
     async def list_portfolio_securities(
         self,
         portfolio_id: UUID,
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
+        token_bearer: TokenModel,
     ) -> List[PortfolioSecurity]:
         ...
 
@@ -324,9 +314,7 @@ class PortfoliosApiSpec(ABC):
         start_date: Optional[date],
         end_date: Optional[date],
         transaction_type: Optional[TransactionType],
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
+        token_bearer: TokenModel,
     ) -> List[PortfolioTransaction]:
         ...
 
@@ -371,9 +359,7 @@ class PortfoliosApiSpec(ABC):
     @abstractmethod
     async def list_portfolios(
         self,
-        token_bearer: TokenModel = Security(
-            get_token_bearer
-        ),
+        token_bearer: TokenModel,
     ) -> List[Portfolio]:
         ...
 

@@ -61,13 +61,48 @@ def list_funds(database: Session,
 
 
 def query_security_rates(database: Session,
-                         fund_id: UUID,
+                         security_id: UUID,
                          rate_date_min: date,
                          rate_date_max: date,
-                         first_result: int = 0,
-                         max_result: int = 100
+                         first_result: Optional[int] = None,
+                         max_result: Optional[int] = None
                          ) -> List[SecurityRate]:
-    """Queries the fund rate table
+    """Queries the security rates
+
+    Args:
+        database (Session): database session
+        security_id (UUID): security id
+        rate_date_min (date): filter results by rate_date after given date
+        rate_date_max (date): filter results by rate_date before given date
+        first_result (int, optional): first result
+        max_result (int, optional): max results
+
+    Returns:
+        List[SecurityRate]: list of matching SecurityRate table rows
+    """
+
+    query = database.query(SecurityRate) \
+        .filter(SecurityRate.rate_date >= rate_date_min) \
+        .filter(SecurityRate.rate_date <= rate_date_max) \
+        .filter(SecurityRate.security_id == security_id)
+
+    if first_result:
+        query = query.offset(first_result)
+
+    if max_result:
+        query = query.limit(max_result)
+
+    return query.all()
+
+
+def query_fund_security_rates(database: Session,
+                              fund_id: UUID,
+                              rate_date_min: date,
+                              rate_date_max: date,
+                              first_result: int = 0,
+                              max_result: int = 100
+                              ) -> List[SecurityRate]:
+    """Queries the fund security rates
 
     Args:
         database (Session): database session
@@ -90,6 +125,29 @@ def query_security_rates(database: Session,
         .limit(max_result) \
         .order_by(SecurityRate.rate_date) \
         .all()
+
+
+def find_most_recent_security_rate(database: Session,
+                                   security_id: UUID,
+                                   rate_date_before: date
+                                   ) -> Optional[SecurityRate]:
+    """Find most recent security rate before given time
+
+    Args:
+        database (Session): database session
+        security_id (UUID): security id
+        rate_date_before (date): date before (or at same day) the returned rate should be
+
+    Returns:
+        Optional[SecurityRate]: SecurityRate or None if not found
+    """
+
+    return database.query(SecurityRate) \
+        .filter(SecurityRate.security_id == security_id) \
+        .filter(SecurityRate.rate_date <= rate_date_before) \
+        .order_by(SecurityRate.rate_date.desc()) \
+        .limit(1) \
+        .one_or_none()
 
 
 def get_companies(database: Session, ssn: str) -> List[Company]:
@@ -290,6 +348,18 @@ def find_portfolio_log(database: Session, portfolio_log_id: UUID) -> Optional[Po
     """
     return database.query(PortfolioLog) \
         .filter(PortfolioLog.id == portfolio_log_id) \
+        .one_or_none()
+
+
+def find_security_by_original_id(database: Session, original_id: str) -> Optional[Security]:
+    """Finds security from the database using original_id
+
+    Args:
+            database (Session): database session
+            original_id (str): original id
+    """
+    return database.query(Security) \
+        .filter(Security.original_id == original_id) \
         .one_or_none()
 
 
