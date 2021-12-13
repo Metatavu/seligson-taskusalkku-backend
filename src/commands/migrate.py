@@ -257,8 +257,9 @@ class MigrateHandler:
                                                                        com_code=portfolio_log.COM_CODE)
 
                     else:
-                        self.alert(entity=destination_models.Portfolio,key="original_id", value=portfolio_original_id)
+                        self.alert(entity=destination_models.Portfolio, key="original_id", value=portfolio_original_id)
                         # without the portfolio key we cant do anything
+                        portfolio_id = None
 
                     if portfolio_id:
                         existing_portfolio_log = destination_session.query(destination_models.PortfolioLog).filter(
@@ -286,7 +287,7 @@ class MigrateHandler:
                             if self.has_the_progress_completed(session=destination_session):
                                 break
 
-    def alert(self,entity, key,value):
+    def alert(self, entity, key, value):
         alert_message = {"entity": entity, "key": key, "value": value}
         self.misc_entities.append(alert_message)
         if self.debug:
@@ -294,7 +295,6 @@ class MigrateHandler:
             print()
         else:
             logger.warning(alert_message)
-
 
     def process_portfolio_transaction(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
@@ -355,16 +355,17 @@ class MigrateHandler:
         existing_security = self.get_security_from_original_id(session=session,
                                                                original_security_id=original_id)
         if not existing_security:
-            self.alert(entity=destination_models.Security,key="original_id", value= original_id)
+            self.alert(entity=destination_models.Security, key="original_id", value=original_id)
             if self.create_missing_relations:
 
-                new_security = self.upsert_security(session=session, security=existing_security, original_id=original_id,
+                new_security = self.upsert_security(session=session, security=existing_security,
+                                                    original_id=original_id,
                                                     fund_id=None, currency="",
                                                     name_fi="", name_sv="", )
                 security_id = new_security.id
                 created = True
             else:
-                create = False
+                created = False
                 security_id = None
         else:
             security_id = existing_security.id
@@ -572,6 +573,7 @@ class MigrateHandler:
                 print(alert_message)
             else:
                 logger.warning(alert_message)
+
     @staticmethod
     def generate_query(session: Session, entity, filters=None, page=None, page_size=None, number_of_rows=None) -> Query:
         query: Query = session.query(entity)
@@ -605,8 +607,7 @@ class MigrateHandler:
 @click.option("--starting_row", default=0, help="starting row of source table choose with target")
 @click.option("--update", default=False, help="updates existing rows from source, in case of difference")
 @click.option("--create_missing_relations", default=False, help="create missing entities in other tables")
-
-def main(debug, sleep, batch, target, starting_row, update,  create_missing_relations):
+def main(debug, sleep, batch, target, starting_row, update, create_missing_relations):
     """Migration method"""
     handler = MigrateHandler(sleep=sleep, debug=debug, batch=batch, target=target, starting_row=starting_row,
                              update=update, create_missing_relations=create_missing_relations)
