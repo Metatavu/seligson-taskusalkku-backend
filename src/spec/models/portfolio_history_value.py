@@ -20,7 +20,13 @@ class PortfolioHistoryValue(BaseModel):
         value: The value of this PortfolioHistoryValue [Optional].
     """
     date: Optional[date] = None
-    value: Optional[int] = None
+    value: Optional[str] = None
+
+    @classmethod
+    @validator("value")
+    def value_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
 
 
 PortfolioHistoryValue.update_forward_refs()

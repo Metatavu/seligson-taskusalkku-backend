@@ -4,11 +4,12 @@ from sqlalchemy import create_engine
 from ..database.models import Fund, SecurityRate
 
 from .utils.database import wait_for_row_count, sql_backend_funds, sql_backend_security_rates, \
-    sql_salkku_fund_securities, sql_salkku_raterah, sql_backend_security
+    sql_backend_security, sql_funds_rate
 
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.salkku_mysql import *  # noqa
+from .fixtures.funds_mssql import *  # noqa
 from .fixtures.backend_mysql import *  # noqa
 from .fixtures.sync import *  # noqa
 from .fixtures.kafka import *  # noqa
@@ -18,12 +19,12 @@ from .fixtures.zookeeper import *  # noqa
 logger = logging.getLogger(__name__)
 
 fund_ids = {
-  "passivetest01": "03568d76-93f1-3a2d-9ed5-b95516546548",
-  "activetest01": "dc856547-449b-306e-80c9-05ef8a002a3a",
-  "balancedtst01": "3073d4fe-78cc-36ec-a7e0-9c24944030b0",
-  "fixedtest0": "8cd9b437-e524-3926-a3f9-969923cf51bd",
-  "dimetest01": "79f8da68-6bdc-3a24-acde-327aa14e2546",
-  "spiltan_test": "098a999d-65ae-3746-900b-b0b33a5d7d9c"
+    "passivetest01": "03568d76-93f1-3a2d-9ed5-b95516546548",
+    "activetest01": "dc856547-449b-306e-80c9-05ef8a002a3a",
+    "balancedtst01": "3073d4fe-78cc-36ec-a7e0-9c24944030b0",
+    "fixedtest0": "8cd9b437-e524-3926-a3f9-969923cf51bd",
+    "dimetest01": "79f8da68-6bdc-3a24-acde-327aa14e2546",
+    "spiltan_test": "098a999d-65ae-3746-900b-b0b33a5d7d9c"
 }
 
 invalid_uuids = ["potato", "`?%!", "äö", "Правда"]
@@ -65,7 +66,7 @@ class TestFunds:
             assert -0.32 == fund["profitProjection"]
             assert "2021-10-12" == fund["profitProjectionDate"]
 
-    def test_find_fund_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,  user_1_auth: BearerAuth):
+    def test_find_fund_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
         with sql_backend_funds(backend_mysql):
             for invalid_uuid in invalid_uuids:
                 url = f"/v1/funds/{invalid_uuid}"
@@ -91,9 +92,9 @@ class TestFunds:
                 first_result=0,
                 max_results=3,
                 expected_ids=[
-                  fund_ids["passivetest01"],
-                  fund_ids["activetest01"],
-                  fund_ids["balancedtst01"]
+                    fund_ids["passivetest01"],
+                    fund_ids["activetest01"],
+                    fund_ids["balancedtst01"]
                 ]
             )
 
@@ -103,10 +104,10 @@ class TestFunds:
                 first_result=2,
                 max_results=8,
                 expected_ids=[
-                  fund_ids["balancedtst01"],
-                  fund_ids["fixedtest0"],
-                  fund_ids["dimetest01"],
-                  fund_ids["spiltan_test"]
+                    fund_ids["balancedtst01"],
+                    fund_ids["fixedtest0"],
+                    fund_ids["dimetest01"],
+                    fund_ids["spiltan_test"]
                 ]
             )
 
@@ -116,8 +117,8 @@ class TestFunds:
                 first_result=2,
                 max_results=2,
                 expected_ids=[
-                  fund_ids["balancedtst01"],
-                  fund_ids["fixedtest0"]
+                    fund_ids["balancedtst01"],
+                    fund_ids["fixedtest0"]
                 ]
             )
 
@@ -139,42 +140,20 @@ class TestFunds:
             assert 0.564846 == values[0]["value"]
             assert 1.665009 == values[4]["value"]
 
-    @pytest.mark.skip
-    def test_sync_funds(self,
-                        client: TestClient,
-                        backend_mysql: MySqlContainer,
-                        salkku_mysql: MySqlContainer,
-                        kafka_connect: KafkaConnectContainer,
-                        sync: SyncContainer,
-                        user_1_auth: BearerAuth
-                        ):
+    def test_sync_security_rates(self,
+                                 client: TestClient,
+                                 backend_mysql: MySqlContainer,
+                                 salkku_mysql: MySqlContainer,
+                                 funds_mssql: SqlServerContainer,
+                                 kafka_connect: KafkaConnectContainer,
+                                 sync: SyncContainer,
+                                 user_1_auth: BearerAuth
+                                 ):
         engine = create_engine(backend_mysql.get_connection_url())
-        with sql_salkku_fund_securities(mysql=salkku_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             wait_for_row_count(engine=engine, entity=Fund, count=6)
 
-            response = client.get("/v1/funds", auth=user_1_auth)
-            assert response.status_code == 200
-
-            response_funds = response.json()
-            response_names = list(map(lambda i: i["name"]["fi"], response_funds))
-            assert "Passive test fund 1 - fi" == response_names[0]
-
-        mysql_exec_sql(mysql=backend_mysql, sql_file="backend-funds-teardown.sql")
-
-    @pytest.mark.skip
-    def test_sync_fund_rates(self,
-                             client: TestClient,
-                             backend_mysql: MySqlContainer,
-                             salkku_mysql: MySqlContainer,
-                             kafka_connect: KafkaConnectContainer,
-                             sync: SyncContainer,
-                             user_1_auth: BearerAuth
-                             ):
-        engine = create_engine(backend_mysql.get_connection_url())
-        with sql_salkku_fund_securities(mysql=salkku_mysql):
-            wait_for_row_count(engine=engine, entity=Fund, count=6)
-
-            with sql_salkku_raterah(mysql=salkku_mysql):
+            with sql_funds_rate(mssql=funds_mssql):
                 wait_for_row_count(engine=engine, entity=SecurityRate, count=546)
                 fund_id = client.get("/v1/funds?max_results=1", auth=user_1_auth).json()[0]["id"]
                 assert fund_id is not None
@@ -195,7 +174,6 @@ class TestFunds:
                 assert 4.743263 == values[4]["value"]
 
             mysql_exec_sql(mysql=backend_mysql, sql_file="backend-security-rates-teardown.sql")
-            mysql_exec_sql(mysql=backend_mysql, sql_file="backend-funds-teardown.sql")
 
     @staticmethod
     def assert_list(expected_ids: List[str],

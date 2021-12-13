@@ -69,9 +69,7 @@ class {{classname}}Spec(ABC):
         {{/allParams}}
         {{#hasAuthMethods}}
         {{#authMethods}}
-        token_{{name}}: TokenModel = Security(
-            get_token_{{name}}{{#isOAuth}}, scopes=[{{#scopes}}"{{scope}}"{{^-last}}, {{/-last}}{{/scopes}}]{{/isOAuth}}
-        ),
+        token_{{name}}: TokenModel,
         {{/authMethods}}
         {{/hasAuthMethods}}
     ) -> {{returnType}}{{^returnType}}None{{/returnType}}:

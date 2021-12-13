@@ -25,5 +25,4 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index(op.f('ix_fund_original_id'), table_name='fund')
     op.drop_table('fund')
