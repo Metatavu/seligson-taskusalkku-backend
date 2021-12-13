@@ -24,7 +24,7 @@ MIGRATION_DATABASE_DESTINATION = "MIGRATION_DATABASE_DESTINATION"
 
 class MigrateHandler:
 
-    def __init__(self, sleep, debug, batch, target, starting_row, update):
+    def __init__(self, sleep, debug, batch, target, starting_row, update, create_missing_relations):
         self.start_time = datetime.now()
         self.delay_in_second = sleep / 1000
         self.debug = debug
@@ -34,6 +34,7 @@ class MigrateHandler:
         self.target = target
         self.starting_row = starting_row
         self.update = update
+        self.create_missing_relations = create_missing_relations
         self.source_engine, self.destination_engine = self.get_sessions()
         self.misc_entities = []
         self.current_target = ""
@@ -88,7 +89,7 @@ class MigrateHandler:
                 existing_fund: destination_models.Fund = destination_session.query(destination_models.Fund).filter(
                     destination_models.Fund.original_id == fund_security.fundID).one_or_none()
                 if not existing_fund or self.update:
-                    self.upsert_fund(fund=existing_fund if self.update else None,
+                    self.upsert_fund(session=destination_session, fund=existing_fund if self.update else None,
                                      original_id=fund_security.fundID)
                     if self.has_the_progress_completed(session=destination_session):
                         break
@@ -140,16 +141,18 @@ class MigrateHandler:
                 self.update_progress_bar_info()
                 _, security_id = self.get_or_create_security(session=destination_session,
                                                              original_id=original_security_id)
-                existing_security_rate: destination_models.SecurityRate = destination_session.query(
-                    destination_models.SecurityRate).filter(
-                    and_(destination_models.SecurityRate.security_id == security_id,
-                         destination_models.SecurityRate.rate_date == rate.RDATE)).one_or_none()
+                if security_id:
 
-                if not existing_security_rate or self.update:
-                    self.upsert_security_rate(session=destination_session, security_rate=existing_security_rate,
-                                              security_id=security_id, rate_date=rate.RDATE, rate_close=rate.RCLOSE)
-                    if self.has_the_progress_completed(session=destination_session):
-                        break
+                    existing_security_rate: destination_models.SecurityRate = destination_session.query(
+                        destination_models.SecurityRate).filter(
+                        and_(destination_models.SecurityRate.security_id == security_id,
+                             destination_models.SecurityRate.rate_date == rate.RDATE)).one_or_none()
+
+                    if not existing_security_rate or self.update:
+                        self.upsert_security_rate(session=destination_session, security_rate=existing_security_rate,
+                                                  security_id=security_id, rate_date=rate.RDATE, rate_close=rate.RCLOSE)
+                        if self.has_the_progress_completed(session=destination_session):
+                            break
 
     def process_company(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
@@ -187,15 +190,16 @@ class MigrateHandler:
                 original_security_id = last_rate.SECID
                 _, security_id = self.get_or_create_security(session=destination_session,
                                                              original_id=original_security_id)
-                existing_last_rate: destination_models.LastRate = destination_session.query(
-                    destination_models.LastRate).filter(
-                    destination_models.LastRate.security_id == security_id).one_or_none()
+                if security_id:
+                    existing_last_rate: destination_models.LastRate = destination_session.query(
+                        destination_models.LastRate).filter(
+                        destination_models.LastRate.security_id == security_id).one_or_none()
 
-                if not existing_last_rate or self.update:
-                    self.upsert_last_rate(session=destination_session, last_rate=existing_last_rate,
-                                          security_id=security_id, rate_close=last_rate.RCLOSE)
-                    if self.has_the_progress_completed(session=destination_session):
-                        break
+                    if not existing_last_rate or self.update:
+                        self.upsert_last_rate(session=destination_session, last_rate=existing_last_rate,
+                                              security_id=security_id, rate_close=last_rate.RCLOSE)
+                        if self.has_the_progress_completed(session=destination_session):
+                            break
 
     @profile
     def process_portfolio(self, source_session, destination_session):
@@ -214,14 +218,15 @@ class MigrateHandler:
                 _, company_id = self.get_or_create_company(session=destination_session,
                                                            original_id=company_original_id)
 
-                existing_portfolio = self.get_portfolio_from_original_id(session=destination_session,
-                                                                         original_portfolio_id=portfolio.PORID)
-                if not existing_portfolio or self.update:
-                    self.upsert_portfolio(session=destination_session, portfolio=existing_portfolio,
-                                          original_id=portfolio.PORID,
-                                          company_id=company_id)
-                    if self.has_the_progress_completed(session=destination_session):
-                        break
+                if company_id:
+                    existing_portfolio = self.get_portfolio_from_original_id(session=destination_session,
+                                                                             original_portfolio_id=portfolio.PORID)
+                    if not existing_portfolio or self.update:
+                        self.upsert_portfolio(session=destination_session, portfolio=existing_portfolio,
+                                              original_id=portfolio.PORID,
+                                              company_id=company_id)
+                        if self.has_the_progress_completed(session=destination_session):
+                            break
 
     def process_portfolio_log(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
@@ -238,49 +243,58 @@ class MigrateHandler:
                 security_original_id = portfolio_log.SECID
                 _, security_id = self.get_or_create_security(session=destination_session,
                                                              original_id=security_original_id)
-                c_security_original_id = portfolio_log.CSECID
-                if c_security_original_id.strip():  # for the case that null is inserted as SECID = ' '
-                    _, c_security_id = self.get_or_create_security(session=destination_session,
-                                                                   original_id=c_security_original_id)
-                else:
-                    c_security_id = None
-                portfolio_original_id = portfolio_log.PORID
-                if portfolio_original_id.strip():  # make sure it is not null or empty space
-                    _, portfolio_id = self.get_or_create_portfolio(session=destination_session,
-                                                                   original_id=portfolio_original_id,
-                                                                   com_code=portfolio_log.COM_CODE)
-                else:
-                    # todo this actually happens in test data, and should not happen according to the models
-                    print(f"\nWARNING: missing portfolio id in portfolio logs with no for transaction number ="
-                          f"{portfolio_log.TRANS_NR}")
-                    print()
-                    self.misc_entities.append({"entity": source_models.PORTLOGrah, "value": portfolio_log.TRANS_NR})
+                if security_id:
+                    c_security_original_id = portfolio_log.CSECID
+                    if c_security_original_id.strip():  # for the case that null is inserted as SECID = ' '
+                        _, c_security_id = self.get_or_create_security(session=destination_session,
+                                                                       original_id=c_security_original_id)
+                    else:
+                        c_security_id = None
+                    portfolio_original_id = portfolio_log.PORID
+                    if portfolio_original_id.strip():  # make sure it is not null or empty space
+                        _, portfolio_id = self.get_or_create_portfolio(session=destination_session,
+                                                                       original_id=portfolio_original_id,
+                                                                       com_code=portfolio_log.COM_CODE)
 
-                existing_portfolio_log = destination_session.query(destination_models.PortfolioLog).filter(
-                    destination_models.PortfolioLog.transaction_number == portfolio_log.TRANS_NR).one_or_none()
-                if not existing_portfolio_log or self.update:
-                    # payment dates are supposed to exist but there are cases without them,
-                    # setting them to unix time.
-                    # todo verify if this is a correct strategy
-                    payment_date = portfolio_log.PMT_DATE if portfolio_log.PMT_DATE else "1970-01-01"
+                    else:
+                        self.alert(entity=destination_models.Portfolio,key="original_id", value=portfolio_original_id)
+                        # without the portfolio key we cant do anything
 
-                    self.upsert_portfolio_log(session=destination_session,
-                                              portfolio_log=existing_portfolio_log,
-                                              transaction_number=portfolio_log.TRANS_NR,
-                                              transaction_code=portfolio_log.TRANS_CODE,
-                                              transaction_date=portfolio_log.TRANS_DATE,
-                                              c_total_value=portfolio_log.CTOT_VALUE,
-                                              portfolio_id=portfolio_id,
-                                              security_id=security_id,
-                                              c_security_id=c_security_id,
-                                              amount=portfolio_log.AMOUNT,
-                                              c_price=portfolio_log.CPRICE,
-                                              payment_date=payment_date,
-                                              c_value=portfolio_log.CVALUE,
-                                              provision=portfolio_log.PROVISION,
-                                              status=portfolio_log.STATUS)
-                    if self.has_the_progress_completed(session=destination_session):
-                        break
+                    if portfolio_id:
+                        existing_portfolio_log = destination_session.query(destination_models.PortfolioLog).filter(
+                            destination_models.PortfolioLog.transaction_number == portfolio_log.TRANS_NR).one_or_none()
+                        if not existing_portfolio_log or self.update:
+                            # payment dates are supposed to exist but there are cases without them,
+                            # check if date is before 1970
+                            payment_date = portfolio_log.PMT_DATE if portfolio_log.PMT_DATE > "1970-01-01" else None
+
+                            self.upsert_portfolio_log(session=destination_session,
+                                                      portfolio_log=existing_portfolio_log,
+                                                      transaction_number=portfolio_log.TRANS_NR,
+                                                      transaction_code=portfolio_log.TRANS_CODE,
+                                                      transaction_date=portfolio_log.TRANS_DATE,
+                                                      c_total_value=portfolio_log.CTOT_VALUE,
+                                                      portfolio_id=portfolio_id,
+                                                      security_id=security_id,
+                                                      c_security_id=c_security_id,
+                                                      amount=portfolio_log.AMOUNT,
+                                                      c_price=portfolio_log.CPRICE,
+                                                      payment_date=payment_date,
+                                                      c_value=portfolio_log.CVALUE,
+                                                      provision=portfolio_log.PROVISION,
+                                                      status=portfolio_log.STATUS)
+                            if self.has_the_progress_completed(session=destination_session):
+                                break
+
+    def alert(self,entity, key,value):
+        alert_message = {"entity": entity, "key": key, "value": value}
+        self.misc_entities.append(alert_message)
+        if self.debug:
+            print(f"{alert_message}")
+            print()
+        else:
+            logger.warning(alert_message)
+
 
     def process_portfolio_transaction(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
@@ -341,17 +355,17 @@ class MigrateHandler:
         existing_security = self.get_security_from_original_id(session=session,
                                                                original_security_id=original_id)
         if not existing_security:
-            new_security = self.upsert_security(session=session, security=existing_security, original_id=original_id,
-                                                fund_id=None, currency="",
-                                                name_fi="", name_sv="", )
-            import pdb
-            pdb.set_trace()
-            security_id = new_security.id
+            self.alert(entity=destination_models.Security,key="original_id", value= original_id)
+            if self.create_missing_relations:
 
-            # and alert
-            print(f"\nWARNING: adding security with id={original_id}")
-            self.misc_entities.append({"entity": destination_models.Security, "value": original_id})
-            created = True
+                new_security = self.upsert_security(session=session, security=existing_security, original_id=original_id,
+                                                    fund_id=None, currency="",
+                                                    name_fi="", name_sv="", )
+                security_id = new_security.id
+                created = True
+            else:
+                create = False
+                security_id = None
         else:
             security_id = existing_security.id
             created = False
@@ -369,16 +383,23 @@ class MigrateHandler:
 
             company_original_id = com_code
             _, company_id = self.get_or_create_company(session=session, original_id=company_original_id)
-            _, new_portfolio = self.upsert_portfolio(session=session, portfolio=existing_portfolio,
-                                                     original_id=original_id, company_id=company_id)
-            # todo verify why session needs to be commited in here.
-            if not self.debug:
-                session.commit()
-            portfolio_id = new_portfolio.id
-            print(f"\nWARNING: missing portfolio with id={original_id}")
-            self.misc_entities.append({"entity": destination_models.Portfolio, "value": original_id})
+            if company_id:
+                if self.create_missing_relations:
+                    _, new_portfolio = self.upsert_portfolio(session=session, portfolio=existing_portfolio,
+                                                             original_id=original_id, company_id=company_id)
 
-            created = True
+                    portfolio_id = new_portfolio.id
+                    print(f"\nWARNING: missing portfolio with id={original_id}")
+                    self.misc_entities.append({"entity": destination_models.Portfolio, "value": original_id})
+
+                    created = True
+                else:
+                    portfolio_id = None
+                    created = False
+            else:
+                portfolio_id = None
+                created = False
+
         else:
             portfolio_id = existing_portfolio.id
             created = False
@@ -390,13 +411,17 @@ class MigrateHandler:
         if not existing_company:
             # this should not happen at this stage. It means there are companies that are not in COMPANYrah!
             # so we add them as missing ones, since we do not have any information about them anyway.
-            new_company = self.upsert_company(session=session, company=existing_company,
-                                              original_id=company_original_id)
-            company_id = new_company.id
             # and alert
-            print(f"\nWARNING: missing company with id={company_original_id}")
-            self.misc_entities.append({"entity": destination_models.Company, "value": company_original_id})
-            created = True
+            self.alert(entity=destination_models.Company, key="original_id", value=company_original_id)
+            if self.create_missing_relations:
+
+                new_company = self.upsert_company(session=session, company=existing_company,
+                                                  original_id=company_original_id)
+                company_id = new_company.id
+                created = True
+            else:
+                company_id = None
+                created = False
         else:
             company_id = existing_company.id
             created = False
@@ -412,6 +437,7 @@ class MigrateHandler:
         new_security.name_fi = name_fi
         new_security.name_sv = name_sv
         session.add(new_security)
+        session.flush()
         return new_security
 
     @staticmethod
@@ -422,6 +448,7 @@ class MigrateHandler:
         new_security_rate.rate_date = rate_date
         new_security_rate.rate_close = rate_close
         session.add(new_security_rate)
+        session.flush()
         return new_security_rate
 
     @staticmethod
@@ -431,6 +458,7 @@ class MigrateHandler:
         new_last_rate.security_id = security_id
         new_last_rate.rate_close = rate_close
         session.add(new_last_rate)
+        session.flush()
         return new_last_rate
 
     @staticmethod
@@ -439,6 +467,7 @@ class MigrateHandler:
         new_company.original_id = original_id
         new_company.ssn = ssn
         session.add(new_company)
+        session.flush()
         return new_company
 
     @staticmethod
@@ -447,12 +476,15 @@ class MigrateHandler:
         new_portfolio.original_id = original_id
         new_portfolio.company_id = company_id
         session.add(new_portfolio)
+        session.flush()
         return new_portfolio
 
     @staticmethod
-    def upsert_fund(fund, original_id):
+    def upsert_fund(session, fund, original_id):
         new_fund = fund if fund else destination_models.Fund()
         new_fund.original_id = original_id
+        session.add(new_fund)
+        session.flush()
         return new_fund
 
     @staticmethod
@@ -475,6 +507,7 @@ class MigrateHandler:
         new_portfolio_log.provision = provision
         new_portfolio_log.status = status
         session.add(new_portfolio_log)
+        session.flush()
         return new_portfolio_log
 
     @staticmethod
@@ -489,12 +522,13 @@ class MigrateHandler:
         new_port_trans.portfolio_id = portfolio_id
         new_port_trans.security_id = security_id
         session.add(new_port_trans)
+        session.flush()
         return new_port_trans
 
     def calculate_starting_point(self) -> (int, int, int):
         page = 0
         page_size = 1000
-        number_of_rows = 100
+        number_of_rows = 10000
 
         if self.target and self.starting_row:
             page = self.starting_row // page_size
@@ -531,9 +565,13 @@ class MigrateHandler:
 
         for misc_entity in self.misc_entities:
             entity = misc_entity.get("entity")
+            key = misc_entity.get("key")
             value = misc_entity.get("value")
-            print(f'{entity},{value}')
-
+            alert_message = f'{entity},{key}:{value}'
+            if self.debug:
+                print(alert_message)
+            else:
+                logger.warning(alert_message)
     @staticmethod
     def generate_query(session: Session, entity, filters=None, page=None, page_size=None, number_of_rows=None) -> Query:
         query: Query = session.query(entity)
@@ -566,10 +604,12 @@ class MigrateHandler:
 @click.option("--target", default="", help="Only migrates the target model")
 @click.option("--starting_row", default=0, help="starting row of source table choose with target")
 @click.option("--update", default=False, help="updates existing rows from source, in case of difference")
-def main(debug, sleep, batch, target, starting_row, update):
+@click.option("--create_missing_relations", default=False, help="create missing entities in other tables")
+
+def main(debug, sleep, batch, target, starting_row, update,  create_missing_relations):
     """Migration method"""
     handler = MigrateHandler(sleep=sleep, debug=debug, batch=batch, target=target, starting_row=starting_row,
-                             update=update)
+                             update=update, create_missing_relations=create_missing_relations)
     handler.handle()
 
 
