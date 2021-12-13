@@ -99,7 +99,7 @@ class FundsApiImpl(FundsApiSpec):
                                 detail="Fund {fund_id} not found"
                                )
 
-        values = database.query_security_rates(
+        values = database.query_fund_security_rates(
             database=self.database,
             fund_id=fund.id,
             rate_date_min=start_date,
