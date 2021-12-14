@@ -251,8 +251,6 @@ class MigrateHandler:
                                                                        com_code=portfolio_log.COM_CODE)
 
                     else:
-                        self.alert(entity="row", key="after row", value=self.counter)
-                        self.alert(entity=portfolio_log.__dict__, key="original_id", value=portfolio_log.PORID)
                         # without the portfolio key we cant do anything, we try to grab the right portfolio from
                         # portfolio table considering the company code. If there are more than one portfolio then
                         # we should alert and ask how to resolve the situation manually.
@@ -261,13 +259,13 @@ class MigrateHandler:
                         portfolios = self.get_portfolios_from_company(session=destination_session, company_id=company.id)
                         if len(portfolios) != 1:
                             portfolio_id = None
-                            self.alert(entity="row", key="after row", value=self.counter)
+                            self.alert(entity="portfolio_log", key="after row", value=self.counter)
                             self.alert(entity=portfolio_log.__dict__, key="original_id", value=portfolio_log.PORID)
 
                         else:
                             portfolio = portfolios[0]
                             portfolio_id = portfolio.id
-                            self.alert(entity="row", key="after row", value=self.counter)
+                            self.alert(entity="portfolio_log", key="after row", value=self.counter)
                             self.alert(entity="mapped company to portfolio", key=portfolio.company_id,
                                        value=portfolio.id)
 
@@ -570,20 +568,20 @@ class MigrateHandler:
 
     def update_progress_bar_info(self):
         self.counter += 1
-        elapsed = datetime.now() - self.start_time
-        progress_percentage = int(self.iteration / self.batch * 100)
-        progress = f"{self.iteration}/{self.batch}"
-        percentage = f"{progress_percentage}%"
-        elapsed_text = f"elapsed time: {elapsed.seconds // 3600}:{elapsed.seconds // 60 % 60}:{elapsed.seconds % 60}"
-        info = f"processing the batch for {self.current_target}"
-        print(
-            f"Info: {info} select count:{self.counter}  insert/update count={progress},{percentage} {elapsed_text} ",
-            end="\r")
-        self.delay()
+        if self.counter % 10000 == 0:
+            elapsed = datetime.now() - self.start_time
+            progress_percentage = int(self.iteration / self.batch * 100)
+            progress = f"{self.iteration}/{self.batch}"
+            percentage = f"{progress_percentage}%"
+            elapsed_text = f"elapsed time: {elapsed.seconds // 3600}:{elapsed.seconds // 60 % 60}:{elapsed.seconds % 60}"
+            info = f"processing the batch for {self.current_target}"
+            self.print_message(f"Info: {info} select count:{self.counter}  "
+                               f"insert/update count={progress},{percentage} {elapsed_text}")
+            self.delay()
 
     def delay(self):
-        if self.counter % 10000 == 0:
-            time.sleep(self.delay_in_second)
+        time.sleep(self.delay_in_second)
+
 
     def report_misc(self):
         if self.misc_entities:
