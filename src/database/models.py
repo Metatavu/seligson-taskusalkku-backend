@@ -100,6 +100,7 @@ class PortfolioLog(Base):
     c_security = relationship("Security", back_populates="c_portfolio_logs", lazy=True, foreign_keys="PortfolioLog.c_security_id")
     security = relationship("Security", back_populates="portfolio_logs", lazy=True, foreign_keys="PortfolioLog.security_id")
 
+
 class PortfolioTransaction(Base):
     __tablename__ = 'portfolio_transaction'
 

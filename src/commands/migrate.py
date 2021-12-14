@@ -9,7 +9,6 @@ import click
 from sqlalchemy import create_engine, and_
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session, Query
-from memory_profiler import profile
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -18,8 +17,6 @@ from database import models as destination_models
 
 logger = logging.getLogger(__name__)
 
-MIGRATION_DATABASE_SOURCE = "MIGRATION_DATABASE_SOURCE"
-MIGRATION_DATABASE_DESTINATION = "MIGRATION_DATABASE_DESTINATION"
 
 
 class MigrateHandler:
@@ -47,7 +44,7 @@ class MigrateHandler:
         if hasattr(self, function_name) and callable(function := getattr(self, function_name)):
             function(**kwargs)
         else:
-            click.echo("Not a valid model as target")
+            self.print_message("Not a valid model as target")
 
     def handle(self):
         with Session(self.source_engine) as source_session, Session(
@@ -60,19 +57,16 @@ class MigrateHandler:
                 if not self.target:
                     function_name = f"process_{target_table}"
                     self.call_process(function_name=function_name, **kwargs)
-
                 elif self.target and self.target == target_table:
-
                     self.call_process(function_name=function_name, **kwargs)
                 else:
-                    click.echo(f"{target_table} not processed")
-
-            if not self.debug:
-                destination_session.commit()
-                print(f"\nFinished the batch, Inserted {self.iteration} rows to the database")
-            else:
-                print("\nFinished the batch, nothing changed(in debug mode)")
-            self.report_misc()
+                    self.print_message(f"skipping {target_table}")
+                if not self.debug:
+                    destination_session.commit()
+                    self.print_message(f"\nFinished {target_table}, Inserted {self.iteration} rows to the database")
+                else:
+                    self.print_message("\nFinished the batch, nothing changed(in debug mode)")
+                self.report_misc()
 
     def process_fund(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
@@ -201,7 +195,6 @@ class MigrateHandler:
                         if self.has_the_progress_completed(session=destination_session):
                             break
 
-    @profile
     def process_portfolio(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
         while self.iteration < self.batch:
@@ -229,6 +222,7 @@ class MigrateHandler:
                             break
 
     def process_portfolio_log(self, source_session, destination_session):
+        unix_time = datetime(1970,1,1,0,0)
         page, page_size, number_of_rows = self.calculate_starting_point()
         while self.iteration < self.batch:
             portfolio_logs: List[source_models.PORTLOGrah] = list(
@@ -251,13 +245,13 @@ class MigrateHandler:
                     else:
                         c_security_id = None
                     portfolio_original_id = portfolio_log.PORID
-                    if portfolio_original_id.strip():  # make sure it is not null or empty space
+                    if portfolio_original_id:
                         _, portfolio_id = self.get_or_create_portfolio(session=destination_session,
                                                                        original_id=portfolio_original_id,
                                                                        com_code=portfolio_log.COM_CODE)
 
                     else:
-                        self.alert(entity=destination_models.Portfolio, key="original_id", value=portfolio_original_id)
+                        self.alert(entity=portfolio_log.__dict__, key="original_id", value=portfolio_log.PORID)
                         # without the portfolio key we cant do anything
                         portfolio_id = None
 
@@ -267,7 +261,12 @@ class MigrateHandler:
                         if not existing_portfolio_log or self.update:
                             # payment dates are supposed to exist but there are cases without them,
                             # check if date is before 1970
-                            payment_date = portfolio_log.PMT_DATE if portfolio_log.PMT_DATE > "1970-01-01" else None
+
+                            logged_date = portfolio_log.PMT_DATE
+                            if logged_date and logged_date > unix_time:
+                                payment_date = logged_date
+                            else:
+                                payment_date = None
 
                             self.upsert_portfolio_log(session=destination_session,
                                                       portfolio_log=existing_portfolio_log,
@@ -290,11 +289,13 @@ class MigrateHandler:
     def alert(self, entity, key, value):
         alert_message = {"entity": entity, "key": key, "value": value}
         self.misc_entities.append(alert_message)
+        print(alert_message)
+
+    def print_message(self,message):
         if self.debug:
-            print(f"{alert_message}")
-            print()
+            click.echo(f"{message}")
         else:
-            logger.warning(alert_message)
+            logger.warning(message)
 
     def process_portfolio_transaction(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
@@ -390,7 +391,8 @@ class MigrateHandler:
                                                              original_id=original_id, company_id=company_id)
 
                     portfolio_id = new_portfolio.id
-                    print(f"\nWARNING: missing portfolio with id={original_id}")
+
+                    self.alert(entity=destination_models.Portfolio, key="original_id", value=portfolio_id)
                     self.misc_entities.append({"entity": destination_models.Portfolio, "value": original_id})
 
                     created = True
@@ -529,7 +531,7 @@ class MigrateHandler:
     def calculate_starting_point(self) -> (int, int, int):
         page = 0
         page_size = 1000
-        number_of_rows = 10000
+        number_of_rows = 1000 # recommended value by docs for performance
 
         if self.target and self.starting_row:
             page = self.starting_row // page_size
@@ -588,9 +590,8 @@ class MigrateHandler:
 
     @staticmethod
     def get_sessions() -> (MockConnection, MockConnection):
-        migration_source = os.environ.get(MIGRATION_DATABASE_SOURCE, "")
-        migration_destination = os.environ.get(MIGRATION_DATABASE_DESTINATION, "")
-
+        migration_source = os.environ.get("DATABASE_URL", "")
+        migration_destination = os.environ.get("TASKUSALKKU_DATABASE_URL", "")
         if not migration_source or not migration_destination:
             raise Exception("environment variables are not set")
         else:
