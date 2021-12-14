@@ -9,6 +9,8 @@ from .fixtures.zookeeper import *  # noqa
 from decimal import Decimal
 from sqlalchemy import create_engine
 
+from .constants import security_ids
+
 from .utils.database import sql_backend_company, sql_backend_security, sql_backend_portfolio_log, \
     sql_backend_portfolio_transaction, sql_backend_last_rate, sql_backend_portfolio, sql_backend_funds, \
     sql_backend_security_rates, wait_for_row_count
@@ -82,15 +84,6 @@ portfolio_values = {
         "purchase_total": [Decimal("10000.00")],
         "market_value_total": [Decimal("2169.4635655000000000")]
     }
-}
-
-security_ids = {
-    "PASSIVETEST01": "9bed2c6f-8f2c-4e6d-a711-d75cb2474616",
-    "ACTIVETEST01": "d84dfb1a-3230-4d0e-abcb-2a9f9b118afa",
-    "BALANCEDTEST01": "87c526df-c4b0-42d2-8202-07c990c725db",
-    "FIXEDTEST01": "a2c14970-161b-407a-9961-d1b14739ec2a",
-    "DIMETEST01": "49d73d12-3061-469a-ba67-0b4a906dd4fc",
-    "SPILTAN TEST": "b01f0d42-e133-44f1-a3c2-d0b560b868ae"
 }
 
 
