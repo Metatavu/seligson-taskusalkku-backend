@@ -251,9 +251,25 @@ class MigrateHandler:
                                                                        com_code=portfolio_log.COM_CODE)
 
                     else:
+                        self.alert(entity="row", key="after row", value=self.counter)
                         self.alert(entity=portfolio_log.__dict__, key="original_id", value=portfolio_log.PORID)
-                        # without the portfolio key we cant do anything
-                        portfolio_id = None
+                        # without the portfolio key we cant do anything, we try to grab the right portfolio from
+                        # portfolio table considering the company code. If there are more than one portfolio then
+                        # we should alert and ask how to resolve the situation manually.
+                        company = self.get_company_from_original_id(session=destination_session,
+                                                                    original_company_id=portfolio_log.COM_CODE)
+                        portfolios = self.get_portfolios_from_company(session=destination_session, company_id=company.id)
+                        if len(portfolios) != 1:
+                            portfolio_id = None
+                            self.alert(entity="row", key="after row", value=self.counter)
+                            self.alert(entity=portfolio_log.__dict__, key="original_id", value=portfolio_log.PORID)
+
+                        else:
+                            portfolio = portfolios[0]
+                            portfolio_id = portfolio.id
+                            self.alert(entity="row", key="after row", value=self.counter)
+                            self.alert(entity="mapped company to portfolio", key=portfolio.company_id,
+                                       value=portfolio.id)
 
                     if portfolio_id:
                         existing_portfolio_log = destination_session.query(destination_models.PortfolioLog).filter(
@@ -353,6 +369,11 @@ class MigrateHandler:
         return session.query(destination_models.Portfolio).filter(
             destination_models.Portfolio.original_id == original_portfolio_id).one_or_none()
 
+    @staticmethod
+    def get_portfolios_from_company(session, company_id) -> List[destination_models.Portfolio]:
+        return session.query(destination_models.Portfolio).filter(
+            destination_models.Portfolio.company_id == company_id).all()
+
     def get_or_create_security(self, session, original_id):
         existing_security = self.get_security_from_original_id(session=session,
                                                                original_security_id=original_id)
@@ -393,7 +414,7 @@ class MigrateHandler:
 
                     portfolio_id = new_portfolio.id
 
-                    self.alert(entity=destination_models.Portfolio, key="original_id", value=portfolio_id)
+                    self.alert(entity=destination_models.Portfolio.__dict__, key="original_id", value=portfolio_id)
                     self.misc_entities.append({"entity": destination_models.Portfolio, "value": original_id})
 
                     created = True
