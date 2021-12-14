@@ -29,8 +29,7 @@ from sqlalchemy.orm import Session
 
 from spec.models.extra_models import TokenModel  # noqa: F401
 from spec.models.error import Error
-from spec.models.meeting import Meeting
-from spec.models.meeting_time import MeetingTime
+from spec.models.security import Security
 from impl.security_api import get_token_bearer
 
 router = InferringRouter()
@@ -57,82 +56,82 @@ def _get_fastapi_sessionmaker() -> FastAPISessionMaker:
 
 
 @cbv(router)
-class MeetingsApiSpec(ABC):
+class SecuritiesApiSpec(ABC):
 
     database: Session = Depends(get_database)
 
     @abstractmethod
-    async def create_meeting(
+    async def find_security(
         self,
-        meeting: Meeting,
+        security_id: UUID,
         token_bearer: TokenModel,
-    ) -> Meeting:
+    ) -> Security:
         ...
 
-    @router.post(
-        "/v1/meetings",
+    @router.get(
+        "/v1/securities/{securityId}",
         responses={
-            200: {"model": Meeting, "description": "Created Meeting"},
+            200: {"model": Security, "description": "Security"},
             400: {"model": Error, "description": "Invalid request was sent to the server"},
             403: {"model": Error, "description": "Attempted to make a call with unauthorized client"},
             500: {"model": Error, "description": "Internal server error"},
         },
-        tags=["Meetings"],
-        summary="Create a meeting.",
+        tags=["Securities"],
+        summary="Find a security.",
     )
-    async def create_meeting_spec(
+    async def find_security_spec(
         self,
-        meeting: Meeting = Body(None, description="Payload", alias="Meeting"),
+        security_id: str = Path(None, description="security id", alias="securityId"),
         token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
-    ) -> Meeting:
-        """Creates a new meeting."""
+    ) -> Security:
+        """Finds a security by id."""
 
-        if meeting is None:
+        if security_id is None:
             raise HTTPException(
                 status_code=400,
-                detail="Missing required parameter Meeting"
+                detail="Missing required parameter securityId"
             )
 
-        return await self.create_meeting(
-            meeting=meeting,
+        return await self.find_security(
+            security_id=self.to_uuid(security_id),
             token_bearer=token_bearer
         )
 
     @abstractmethod
-    async def list_meeting_times(
+    async def list_securities(
         self,
-        start_date: Optional[date],
-        end_date: Optional[date],
+        first_result: Optional[int],
+        max_results: Optional[int],
         token_bearer: TokenModel,
-    ) -> List[MeetingTime]:
+    ) -> List[Security]:
         ...
 
     @router.get(
-        "/v1/meetingTimes",
+        "/v1/securities",
         responses={
-            200: {"model": List[MeetingTime], "description": "List of meeting times"},
+            200: {"model": List[Security], "description": "List of securities"},
             400: {"model": Error, "description": "Invalid request was sent to the server"},
             403: {"model": Error, "description": "Attempted to make a call with unauthorized client"},
             500: {"model": Error, "description": "Internal server error"},
         },
-        tags=["Meetings"],
-        summary="Lists meeting times",
+        tags=["Securities"],
+        summary="List securities.",
     )
-    async def list_meeting_times_spec(
+    async def list_securities_spec(
         self,
-        start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
-        end_date: str = Query(None, description="End date for the date range", alias="endDate"),
+        first_result: int = Query(None, description="First result. Defaults to 0", alias="firstResult"),
+        max_results: int = Query(None, description="Max results. Defaults to 10", alias="maxResults"),
         token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
-    ) -> List[MeetingTime]:
-        """Returns list of meeting times"""
+    ) -> List[Security]:
+        """Lists securities."""
 
-        return await self.list_meeting_times(
-            start_date=self.to_date(start_date),
-            end_date=self.to_date(end_date),
+        return await self.list_securities(
+            first_result=first_result,
+            max_results=max_results,
             token_bearer=token_bearer
         )
 

@@ -3,7 +3,6 @@ import json
 import logging
 
 from typing import List, TypedDict, Optional, Dict
-from uuid import UUID, uuid3
 from csv import DictReader
 from datetime import date, datetime
 
@@ -24,17 +23,17 @@ class FundMeta(TypedDict, total=False):
     kiid: Optional[List[str]]
     group: str
     price_date: date
-    a_share_value: float
-    b_share_value: float
-    _1d_change: float
-    _1m_change: float
-    _1y_change: float
-    _3y_change: float
-    _5y_change: float
-    _10y_change: float
-    _15y_change: float
-    _20y_change: float
-    profit_projection: float
+    a_share_value: str
+    b_share_value: str
+    _1d_change: str
+    _1m_change: str
+    _1y_change: str
+    _3y_change: str
+    _5y_change: str
+    _10y_change: str
+    _15y_change: str
+    _20y_change: str
+    profit_projection: str
     profit_projection_date: date
 
 
@@ -140,12 +139,8 @@ class FundsMetaController:
         _10y_change = self.parse_csv_float(values_basic["10y_change"])
         _15y_change = self.parse_csv_float(values_basic["15y_change"])
         _20y_change = self.parse_csv_float(values_basic["20y_change"])
-        profit_projection = self.parse_csv_float(
-          values_basic["profit_projection"]
-        )
-        profit_projection_date = self.parse_csv_date(
-          values_basic["profit_projection_date"]
-        )
+        profit_projection = self.parse_csv_float(values_basic["profit_projection"])
+        profit_projection_date = self.parse_csv_date(values_basic["profit_projection_date"])
 
         return FundMeta(
                         fund_code=code,
@@ -173,7 +168,8 @@ class FundsMetaController:
                         profit_projection_date=profit_projection_date
                       )
 
-    def parse_csv_date(self, csv_date: str) -> Optional[date]:
+    @staticmethod
+    def parse_csv_date(csv_date: str) -> Optional[date]:
         """Parses date from CSV value
 
         Args:
@@ -187,19 +183,20 @@ class FundsMetaController:
 
         return datetime.strptime(csv_date, "%d.%m.%Y").date()
 
-    def parse_csv_float(self, csv_float: str) -> Optional[float]:
+    @staticmethod
+    def parse_csv_float(csv_float: str) -> Optional[str]:
         """Parses float from CSV value
 
         Args:
             csv_float (str): CSV float value
 
         Returns:
-            Optional[float]: float
+            Optional[str]: parsed float as string
         """
         if "-" == csv_float:
             return None
 
-        return float(csv_float.replace(",", "."))
+        return csv_float.replace(",", ".")
 
     def get_fund_values_basic_for_fund_id(self,
                                           fund_id: str
@@ -214,7 +211,8 @@ class FundsMetaController:
         """
         return next((entry for entry in self.get_fund_values_basic() if fund_id == entry["fund_id"]), None)
 
-    def load_funds(self) -> Dict:
+    @staticmethod
+    def load_funds() -> Dict:
         """Loads fund JSON file
 
         Returns:
