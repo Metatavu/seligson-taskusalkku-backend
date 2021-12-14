@@ -11,6 +11,8 @@ from .fixtures.users import *  # noqa
 from .fixtures.zookeeper import *  # noqa
 from .utils.database import sql_backend_security, sql_backend_funds
 
+import logging
+
 logger = logging.getLogger(__name__)
 
 security_1_data = {

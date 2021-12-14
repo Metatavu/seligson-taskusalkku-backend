@@ -17,6 +17,7 @@ from .fixtures.sync import *  # noqa
 from .fixtures.kafka import *  # noqa
 from .fixtures.kafka_connect import *  # noqa
 from .fixtures.zookeeper import *  # noqa
+import logging
 
 logger = logging.getLogger(__name__)
 

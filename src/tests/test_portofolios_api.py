@@ -19,6 +19,8 @@ from .utils.database import sql_backend_company, sql_backend_security, sql_backe
 
 from ..database.models import Company, Security, LastRate, Portfolio, PortfolioTransaction, PortfolioLog
 
+import logging
+
 logger = logging.getLogger(__name__)
 
 """
