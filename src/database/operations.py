@@ -90,7 +90,7 @@ def list_securities_with_fund(database: Session,
         List[Security]: list of security with fund_id
     """
     return database.query(Security) \
-        .filter(Security.fund_id.isnot(None)) \
+        .filter(Security.fund_id.is_not(None)) \
         .order_by(Security.original_id) \
         .offset(first_result) \
         .limit(max_result) \

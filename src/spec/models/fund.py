@@ -42,14 +42,32 @@ class Fund(BaseModel):
     bankReceiverName: Optional[str] = None
     group: Optional[FundGroup] = None
     priceDate: Optional[date] = None
-    aShareValue: Optional[float] = None
-    bShareValue: Optional[float] = None
+    aShareValue: Optional[str] = None
+    bShareValue: Optional[str] = None
     changeData: Optional[ChangeData] = None
-    profitProjection: Optional[float] = None
+    profitProjection: Optional[str] = None
     profitProjectionDate: Optional[date] = None
     color: Optional[str] = None
     risk: Optional[int] = None
     KIID: Optional[LocalizedValue] = None
+
+    @classmethod
+    @validator("a_share_value")
+    def a_share_value_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("b_share_value")
+    def b_share_value_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("profit_projection")
+    def profit_projection_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
 
 
 Fund.update_forward_refs()

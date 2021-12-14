@@ -25,14 +25,62 @@ class ChangeData(BaseModel):
         change15y: The change15y of this ChangeData [Optional].
         change20y: The change20y of this ChangeData [Optional].
     """
-    change1d: Optional[float] = None
-    change1m: Optional[float] = None
-    change1y: Optional[float] = None
-    change3y: Optional[float] = None
-    change5y: Optional[float] = None
-    change10y: Optional[float] = None
-    change15y: Optional[float] = None
-    change20y: Optional[float] = None
+    change1d: Optional[str] = None
+    change1m: Optional[str] = None
+    change1y: Optional[str] = None
+    change3y: Optional[str] = None
+    change5y: Optional[str] = None
+    change10y: Optional[str] = None
+    change15y: Optional[str] = None
+    change20y: Optional[str] = None
+
+    @classmethod
+    @validator("change1d")
+    def change1d_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("change1m")
+    def change1m_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("change1y")
+    def change1y_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("change3y")
+    def change3y_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("change5y")
+    def change5y_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("change10y")
+    def change10y_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("change15y")
+    def change15y_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("change20y")
+    def change20y_pattern(cls, value):
+        assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
 
 
 ChangeData.update_forward_refs()
