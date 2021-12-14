@@ -18,7 +18,6 @@ from database import models as destination_models
 logger = logging.getLogger(__name__)
 
 
-
 class MigrateHandler:
 
     def __init__(self, sleep, debug, batch, target, starting_row, update, create_missing_relations):
@@ -223,7 +222,7 @@ class MigrateHandler:
                             break
 
     def process_portfolio_log(self, source_session, destination_session):
-        unix_time = datetime(1970,1,1,0,0)
+        unix_time = datetime(1970, 1, 1, 0, 0)
         page, page_size, number_of_rows = self.calculate_starting_point()
         while self.iteration < self.batch:
             portfolio_logs: List[source_models.PORTLOGrah] = list(
@@ -292,7 +291,7 @@ class MigrateHandler:
         self.misc_entities.append(alert_message)
         print(alert_message)
 
-    def print_message(self,message):
+    def print_message(self, message):
         if self.debug:
             click.echo(f"{message}")
         else:
