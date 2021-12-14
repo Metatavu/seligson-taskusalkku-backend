@@ -17,7 +17,7 @@ from fastapi import (  # noqa: F401
     Path,
     Query,
     Response,
-    Security,
+    Security as FastAPISecurity,
     status,
     HTTPException
 )
@@ -87,7 +87,7 @@ class PortfoliosApiSpec(ABC):
     async def find_portfolio_spec(
         self,
         portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
-        token_bearer: TokenModel = Security(
+        token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
     ) -> Portfolio:
@@ -129,7 +129,7 @@ class PortfoliosApiSpec(ABC):
         self,
         portfolio_id: str = Path(None, description="Portfolio id", alias="portfolioId"),
         transaction_id: str = Path(None, description="Transaction id", alias="transactionId"),
-        token_bearer: TokenModel = Security(
+        token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
     ) -> PortfolioTransaction:
@@ -179,7 +179,7 @@ class PortfoliosApiSpec(ABC):
         portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
         start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
         end_date: str = Query(None, description="End date for the date range", alias="endDate"),
-        token_bearer: TokenModel = Security(
+        token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
     ) -> PortfolioSummary:
@@ -236,7 +236,7 @@ class PortfoliosApiSpec(ABC):
         portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
         start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
         end_date: str = Query(None, description="End date for the date range", alias="endDate"),
-        token_bearer: TokenModel = Security(
+        token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
     ) -> List[PortfolioHistoryValue]:
@@ -290,7 +290,7 @@ class PortfoliosApiSpec(ABC):
     async def list_portfolio_securities_spec(
         self,
         portfolio_id: str = Path(None, description="portfolio id", alias="portfolioId"),
-        token_bearer: TokenModel = Security(
+        token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
     ) -> List[PortfolioSecurity]:
@@ -336,7 +336,7 @@ class PortfoliosApiSpec(ABC):
         start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
         end_date: str = Query(None, description="End date for the date range", alias="endDate"),
         transaction_type: TransactionType = Query(None, description="Transaction type", alias="transactionType"),
-        token_bearer: TokenModel = Security(
+        token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
     ) -> List[PortfolioTransaction]:
@@ -376,7 +376,7 @@ class PortfoliosApiSpec(ABC):
     )
     async def list_portfolios_spec(
         self,
-        token_bearer: TokenModel = Security(
+        token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
     ) -> List[Portfolio]:
