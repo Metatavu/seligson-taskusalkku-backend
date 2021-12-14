@@ -17,7 +17,7 @@ from fastapi import (  # noqa: F401
     Path,
     Query,
     Response,
-    Security,
+    Security as FastAPISecurity,
     status,
     HTTPException
 )
@@ -83,7 +83,7 @@ class MeetingsApiSpec(ABC):
     async def create_meeting_spec(
         self,
         meeting: Meeting = Body(None, description="Payload", alias="Meeting"),
-        token_bearer: TokenModel = Security(
+        token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
     ) -> Meeting:
@@ -124,7 +124,7 @@ class MeetingsApiSpec(ABC):
         self,
         start_date: str = Query(None, description="Start date for the date range", alias="startDate"),
         end_date: str = Query(None, description="End date for the date range", alias="endDate"),
-        token_bearer: TokenModel = Security(
+        token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
     ) -> List[MeetingTime]:

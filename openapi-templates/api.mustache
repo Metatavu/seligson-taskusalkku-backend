@@ -17,7 +17,7 @@ from fastapi import (  # noqa: F401
     Path,
     Query,
     Response,
-    Security,
+    Security as FastAPISecurity,
     status,
     HTTPException
 )
@@ -97,7 +97,7 @@ class {{classname}}Spec(ABC):
         {{/allParams}}
         {{#hasAuthMethods}}
         {{#authMethods}}
-        token_{{name}}: TokenModel = Security(
+        token_{{name}}: TokenModel = FastAPISecurity(
             get_token_{{name}}{{#isOAuth}}, scopes=[{{#scopes}}"{{scope}}"{{^-last}}, {{/-last}}{{/scopes}}]{{/isOAuth}}
         ),
         {{/authMethods}}

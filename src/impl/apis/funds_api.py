@@ -1,9 +1,9 @@
 # coding: utf-8
 
 import logging
-import uuid
 import database.operations as database
 
+from uuid import UUID
 from typing import List, Optional
 from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
@@ -11,7 +11,7 @@ from spec.apis.funds_api import FundsApiSpec, router as funds_api_router
 from datetime import date
 
 from spec.models.fund import Fund
-from spec.models.historical_value import HistoricalValue
+from spec.models.fund_history_value import FundHistoryValue
 from spec.models.extra_models import TokenModel
 from funds.funds_meta import FundsMetaController
 from funds.funds_meta import FundMeta
@@ -26,11 +26,10 @@ logger = logging.getLogger(__name__)
 
 @cbv(funds_api_router)
 class FundsApiImpl(FundsApiSpec):
-
     fundsMetaController: FundsMetaController = FundsMetaController()
 
     async def find_fund(self,
-                        fund_id: uuid,
+                        fund_id: UUID,
                         token_bearer: TokenModel
                         ) -> Fund:
 
@@ -41,11 +40,18 @@ class FundsApiImpl(FundsApiSpec):
 
         if not fund:
             raise HTTPException(
-                                status_code=404,
-                                detail=f"Fund {fund_id} not found"
-                              )
+                status_code=404,
+                detail=f"Fund {fund_id} not found"
+            )
 
-        return self.translate_fund(fund=fund)
+        result = self.translate_fund(fund=fund)
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Fund {fund_id} not found"
+            )
+
+        return result
 
     async def list_funds(self,
                          first_result: int,
@@ -61,32 +67,32 @@ class FundsApiImpl(FundsApiSpec):
 
         if first_result < 0:
             raise HTTPException(
-                                 status_code=400,
-                                 detail="Invalid first result parameter cannot be negative"
-                               )
+                status_code=400,
+                detail="Invalid first result parameter cannot be negative"
+            )
 
         if max_results < 0:
             raise HTTPException(
-                                 status_code=400,
-                                 detail="Invalid max results parameter cannot be negative"
-                               )
+                status_code=400,
+                detail="Invalid max results parameter cannot be negative"
+            )
 
         funds = database.list_funds(
-          database=self.database,
-          first_result=first_result,
-          max_result=max_results
+            database=self.database,
+            first_result=first_result,
+            max_result=max_results
         )
 
-        return list(map(self.translate_fund, funds))
+        return list(filter(lambda x: x is not None, map(self.translate_fund, funds)))
 
-    async def list_historical_values(self,
-                                     fund_id: str,
-                                     first_result: Optional[int],
-                                     max_results: Optional[int],
-                                     start_date: Optional[date],
-                                     end_date: Optional[date],
-                                     token_bearer: TokenModel
-                                     ) -> List[HistoricalValue]:
+    async def list_fund_history_values(self,
+                                       fund_id: UUID,
+                                       first_result: Optional[int],
+                                       max_results: Optional[int],
+                                       start_date: Optional[date],
+                                       end_date: Optional[date],
+                                       token_bearer: TokenModel
+                                       ) -> List[FundHistoryValue]:
 
         fund = database.find_fund(
             database=self.database,
@@ -95,9 +101,9 @@ class FundsApiImpl(FundsApiSpec):
 
         if not fund:
             raise HTTPException(
-                                status_code=404,
-                                detail="Fund {fund_id} not found"
-                               )
+                status_code=404,
+                detail="Fund {fund_id} not found"
+            )
 
         values = database.query_fund_security_rates(
             database=self.database,
@@ -114,7 +120,7 @@ class FundsApiImpl(FundsApiSpec):
         """Translates fund to REST resource
 
         Args:
-            fund_meta (FundMeta): fund meta entry
+            fund (DbFund): fund
 
         Returns:
             Fund: Translated REST resource
@@ -122,37 +128,36 @@ class FundsApiImpl(FundsApiSpec):
 
         fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id=str(fund.original_id))
         if fund_meta is None:
-            raise HTTPException(
-                                status_code=404,
-                                detail=f"Fund meta for fund id {fund.original_id} not found"
-                              )
+            logger.warning("Fund meta for fund id %s not found", fund.original_id)
+            return None
 
         name = self.translate_meta_locale(fund_meta["name"])
         long_name = self.translate_meta_locale(fund_meta["long_name"])
         short_name = self.translate_meta_locale(fund_meta["short_name"])
 
-        kiid = self.translate_meta_locale(fund_meta.get("kiid",  None))
+        kiid = self.translate_meta_locale(fund_meta.get("kiid", None))
         result = Fund(
-                      id=str(fund.id),
-                      name=name,
-                      longName=long_name,
-                      shortName=short_name,
-                      KIID=kiid,
-                      color=fund_meta["color"],
-                      risk=fund_meta["risk"],
-                      bankReceiverName=fund_meta.get("subs_name", None),
-                      group=fund_meta["group"],
-                      priceDate=fund_meta["price_date"],
-                      aShareValue=fund_meta["a_share_value"],
-                      bShareValue=fund_meta["b_share_value"],
-                      changeData=self.translate_change_date(fund_meta),
-                      profitProjection=fund_meta["profit_projection"],
-                      profitProjectionDate=fund_meta["profit_projection_date"]
-                  )
+            id=str(fund.id),
+            name=name,
+            longName=long_name,
+            shortName=short_name,
+            KIID=kiid,
+            color=fund_meta["color"],
+            risk=fund_meta["risk"],
+            bankReceiverName=fund_meta.get("subs_name", None),
+            group=fund_meta["group"],
+            priceDate=fund_meta["price_date"],
+            aShareValue=fund_meta["a_share_value"],
+            bShareValue=fund_meta["b_share_value"],
+            changeData=self.translate_change_date(fund_meta),
+            profitProjection=fund_meta["profit_projection"],
+            profitProjectionDate=fund_meta["profit_projection_date"]
+        )
 
         return result
 
-    def translate_change_date(self, fund_meta: FundMeta) -> ChangeData:
+    @staticmethod
+    def translate_change_date(fund_meta: FundMeta) -> ChangeData:
         """Translates change data from fund meta object
 
         Args:
@@ -172,9 +177,8 @@ class FundsApiImpl(FundsApiSpec):
             change20y=fund_meta["_20y_change"],
         )
 
-    def translate_meta_locale(self,
-                              meta_locale: Optional[List[str]]
-                              ) -> Optional[LocalizedValue]:
+    @staticmethod
+    def translate_meta_locale(meta_locale: Optional[List[str]]) -> Optional[LocalizedValue]:
         """Translates localized value from fund meta to LocalizedValue
 
         Args:
@@ -194,16 +198,17 @@ class FundsApiImpl(FundsApiSpec):
             sv=sv
         )
 
-    def translate_historical_value(self, security_rate: SecurityRate) -> HistoricalValue:
+    @staticmethod
+    def translate_historical_value(security_rate: SecurityRate) -> FundHistoryValue:
         """Translates historical value
 
         Args:
-            rate_rah (RATErah): single row from RATErah table
+            security_rate (SecurityRate): security rate
 
         Returns:
-            HistoricalValue: REST resource
+            FundHistoryValue: REST resource
         """
-        result = HistoricalValue()
+        result = FundHistoryValue()
         result.value = security_rate.rate_close
         result.date = security_rate.rate_date
         return result
