@@ -60,6 +60,43 @@ def list_funds(database: Session,
         .all()
 
 
+def find_security(database: Session, security_id: UUID) -> Optional[Security]:
+    """Queries the fund table
+
+        Args:
+            database (Session): database session
+            security_id (UUID): security id
+
+        Returns:
+            Optional[Security]: matching security row or none
+        """
+    return database.query(Security) \
+        .filter(Security.id == security_id) \
+        .one_or_none()
+
+
+def list_securities_with_fund(database: Session,
+                              first_result: int,
+                              max_result: int
+                              ) -> List[Security]:
+    """Lists securities with not null fund
+
+    Args:
+        database (Session): database session
+        first_result (int, optional): first result. Defaults to 0.
+        max_result (int, optional): max results. Defaults to 100.
+
+    Returns:
+        List[Security]: list of security with fund_id
+    """
+    return database.query(Security) \
+        .filter(Security.fund_id.isnot(None)) \
+        .order_by(Security.original_id) \
+        .offset(first_result) \
+        .limit(max_result) \
+        .all()
+
+
 def query_security_rates(database: Session,
                          security_id: UUID,
                          rate_date_min: date,
