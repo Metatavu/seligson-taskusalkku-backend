@@ -63,10 +63,11 @@ class MigrateHandler:
                     self.print_message(f"skipping {target_table}")
                 if not self.debug:
                     destination_session.commit()
-                    self.print_message(f"\nFinished {target_table}, Inserted {self.iteration} rows to the database")
+                    self.print_message(f"\nFinished {target_table}")
                 else:
-                    self.print_message("\nFinished the batch, nothing changed(in debug mode)")
-                self.report_misc()
+                    self.print_message(F"\nFinished {target_table} nothing changed(in debug mode)")
+
+            self.report_misc()
 
     def process_fund(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
@@ -303,6 +304,7 @@ class MigrateHandler:
             portfolio_transactions: List[source_models.PORTRANSrah] = list(
                 self.generate_query(session=source_session, entity=source_models.PORTRANSrah, page=page,
                                     page_size=page_size, number_of_rows=number_of_rows))
+
             page += 1
             if len(portfolio_transactions) == 0:
                 break
@@ -531,7 +533,7 @@ class MigrateHandler:
     def calculate_starting_point(self) -> (int, int, int):
         page = 0
         page_size = 1000
-        number_of_rows = 1000 # recommended value by docs for performance
+        number_of_rows = 10  # recommended value by docs for performance
 
         if self.target and self.starting_row:
             page = self.starting_row // page_size
@@ -564,7 +566,8 @@ class MigrateHandler:
             time.sleep(self.delay_in_second)
 
     def report_misc(self):
-        print("Issues with the following inserted rows:")
+        if self.misc_entities:
+            self.print_message("Issues with the following inserted rows:")
 
         for misc_entity in self.misc_entities:
             entity = misc_entity.get("entity")
