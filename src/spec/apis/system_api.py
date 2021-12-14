@@ -17,7 +17,7 @@ from fastapi import (  # noqa: F401
     Path,
     Query,
     Response,
-    Security,
+    Security as FastAPISecurity,
     status,
     HTTPException
 )
