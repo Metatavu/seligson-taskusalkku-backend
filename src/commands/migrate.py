@@ -532,7 +532,7 @@ class MigrateHandler:
     def calculate_starting_point(self) -> (int, int, int):
         page = 0
         page_size = 1000
-        number_of_rows = 10  # recommended value by docs for performance
+        number_of_rows = 1000  # recommended value by docs for performance
 
         if self.target and self.starting_row:
             page = self.starting_row // page_size
