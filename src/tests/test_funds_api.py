@@ -6,6 +6,8 @@ from ..database.models import Fund, SecurityRate
 from .utils.database import wait_for_row_count, sql_backend_funds, sql_backend_security_rates, \
     sql_backend_security, sql_funds_rate
 
+from .constants import fund_ids, invalid_uuids
+
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.salkku_mysql import *  # noqa
@@ -17,17 +19,6 @@ from .fixtures.kafka_connect import *  # noqa
 from .fixtures.zookeeper import *  # noqa
 
 logger = logging.getLogger(__name__)
-
-fund_ids = {
-    "passivetest01": "03568d76-93f1-3a2d-9ed5-b95516546548",
-    "activetest01": "dc856547-449b-306e-80c9-05ef8a002a3a",
-    "balancedtst01": "3073d4fe-78cc-36ec-a7e0-9c24944030b0",
-    "fixedtest0": "8cd9b437-e524-3926-a3f9-969923cf51bd",
-    "dimetest01": "79f8da68-6bdc-3a24-acde-327aa14e2546",
-    "spiltan_test": "098a999d-65ae-3746-900b-b0b33a5d7d9c"
-}
-
-invalid_uuids = ["potato", "`?%!", "äö", "Правда"]
 
 
 class TestFunds:
@@ -128,7 +119,7 @@ class TestFunds:
             fund_id = fund_ids["passivetest01"]
             start_date = "2020-01-01"
             end_date = "2020-01-05"
-            response = client.get(f"/v1/funds/{fund_id}/historicalValues/?startDate={start_date}&endDate={end_date}",
+            response = client.get(f"/v1/funds/{fund_id}/historyValues/?startDate={start_date}&endDate={end_date}",
                                   auth=user_1_auth)
 
             assert response.status_code == 200
@@ -137,8 +128,8 @@ class TestFunds:
             assert 5 == len(values)
             assert "2020-01-01" == values[0]["date"]
             assert "2020-01-05" == values[4]["date"]
-            assert 0.564846 == values[0]["value"]
-            assert 1.665009 == values[4]["value"]
+            assert "0.564846" == values[0]["value"]
+            assert "1.665009" == values[4]["value"]
 
     def test_sync_security_rates(self,
                                  client: TestClient,
@@ -162,7 +153,7 @@ class TestFunds:
                 end_date = "2020-01-05"
 
                 response = client.get(
-                    f"/v1/funds/{fund_id}/historicalValues/?startDate={start_date}&endDate={end_date}",
+                    f"/v1/funds/{fund_id}/historyValues/?startDate={start_date}&endDate={end_date}",
                     auth=user_1_auth)
                 assert response.status_code == 200
 
@@ -170,8 +161,8 @@ class TestFunds:
                 assert 5 == len(values)
                 assert "2020-01-01" == values[0]["date"]
                 assert "2020-01-05" == values[4]["date"]
-                assert 0.654115 == values[0]["value"]
-                assert 4.743263 == values[4]["value"]
+                assert "0.654115" == values[0]["value"]
+                assert "4.743263" == values[4]["value"]
 
             mysql_exec_sql(mysql=backend_mysql, sql_file="backend-security-rates-teardown.sql")
 
