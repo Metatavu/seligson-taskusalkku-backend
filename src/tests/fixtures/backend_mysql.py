@@ -27,7 +27,7 @@ def backend_mysql(request):
     mysql.with_volume_mapping(data_dir, container_import_folder)
     mysql.with_command("--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci")
     mysql.start()
-    os.environ["DATABASE_URL"] = mysql.get_connection_url()
+    os.environ["BACKEND_DATABASE_URL"] = mysql.get_connection_url()
     alembic_cfg = Config(alembicini)
     command.upgrade(alembic_cfg, 'head')
 

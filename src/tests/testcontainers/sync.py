@@ -2,7 +2,7 @@ from testcontainers.core.generic import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
 KAFKA_BOOTSTRAP_SERVERS = "KAFKA_BOOTSTRAP_SERVERS"
-DATABASE_URL = "DATABASE_URL"
+BACKEND_DATABASE_URL = "BACKEND_DATABASE_URL"
 
 
 class SyncContainer(DockerContainer):
@@ -38,4 +38,4 @@ class SyncContainer(DockerContainer):
     def _configure(self):
         """Configures the Kafka container"""
         self.with_env(KAFKA_BOOTSTRAP_SERVERS, "kafka:9092")
-        self.with_env(DATABASE_URL, self.database_url)
+        self.with_env(BACKEND_DATABASE_URL, self.database_url)

@@ -592,8 +592,8 @@ class MigrateHandler:
 
     @staticmethod
     def get_sessions() -> (MockConnection, MockConnection):
-        migration_source = os.environ.get("DATABASE_URL", "")
-        migration_destination = os.environ.get("TASKUSALKKU_DATABASE_URL", "")
+        migration_source = os.environ.get("SALKKU_DATABASE_URL", "")
+        migration_destination = os.environ.get("BACKEND_DATABASE_URL", "")
         if not migration_source or not migration_destination:
             raise Exception("environment variables are not set")
         else:

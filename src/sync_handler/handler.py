@@ -21,7 +21,7 @@ class SyncHandler:
 
     def __init__(self):
         """Constructor"""
-        url = os.environ["DATABASE_URL"]
+        url = os.environ["BACKEND_DATABASE_URL"]
         self.engine = create_engine(url)
 
     async def handle_message(self, record: ConsumerRecord):
