@@ -2,7 +2,7 @@ import sys
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 import click
@@ -23,6 +23,7 @@ class MigrateHandler:
     def __init__(self, sleep, debug, batch, target, starting_row, update, create_missing_relations):
         self.skip_caches = False
         self.start_time = datetime.now()
+        self.timeout = datetime.now() + timedelta(seconds=30)
         self.delay_in_second = sleep / 1000
         self.debug = debug
         self.batch = batch
@@ -60,6 +61,14 @@ class MigrateHandler:
 
         return result
 
+    def should_timeout(self):
+        result = self.timeout < datetime.now()
+
+        if result:
+            self.print_message("Timeout reached, stopping...")
+
+        return result
+
     def call_process(self, function_name, **kwargs):
         if hasattr(self, function_name) and callable(function := getattr(self, function_name)):
             function(**kwargs)
@@ -67,8 +76,8 @@ class MigrateHandler:
             self.print_message("Not a valid model as target")
 
     def handle(self):
-        start_time = datetime.now()
-        self.print_message(f"Start time: {start_time}")
+        self.start_time = datetime.now()
+        self.print_message(f"Start time: {self.start_time}")
 
         with Session(self.source_engine) as source_session, Session(
                 self.destination_engine) as destination_session:
@@ -91,7 +100,7 @@ class MigrateHandler:
                     self.print_message(F"\nFinished {target_table} nothing changed(in debug mode)")
 
             end_time = datetime.now()
-            total_time = end_time - start_time
+            total_time = end_time - self.start_time
 
             self.print_message(f"End time: {end_time}, total time: {total_time}")
 
@@ -99,7 +108,7 @@ class MigrateHandler:
 
     def process_fund(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
-        while self.iteration < self.batch:
+        while self.iteration < self.batch and not self.should_timeout():
             fund_securities = list(
                 self.generate_query(session=source_session, entity=source_models.FundSecurity, page=page,
                                     page_size=page_size, number_of_rows=number_of_rows))
@@ -119,7 +128,7 @@ class MigrateHandler:
 
     def process_security(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
-        while self.iteration < self.batch:
+        while self.iteration < self.batch and not self.should_timeout():
             securities: List[source_models.SECURITYrah] = list(
                 self.generate_query(session=source_session, entity=source_models.SECURITYrah, page=page,
                                     page_size=page_size, number_of_rows=number_of_rows))
@@ -158,7 +167,7 @@ class MigrateHandler:
             self.existing_security_rates[key] = rate
 
         page, page_size, number_of_rows = self.calculate_starting_point()
-        while self.iteration < self.batch:
+        while self.iteration < self.batch and not self.should_timeout():
             rates: List[source_models.RATErah] = list(
                 self.generate_query(session=source_session, entity=source_models.RATErah, page=page,
                                     page_size=page_size, number_of_rows=number_of_rows))
@@ -202,7 +211,7 @@ class MigrateHandler:
 
     def process_company(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
-        while self.iteration < self.batch:
+        while self.iteration < self.batch and not self.should_timeout():
             companies: List[source_models.COMPANYrah] = list(
                 self.generate_query(session=source_session, entity=source_models.COMPANYrah, page=page,
                                     page_size=page_size, number_of_rows=number_of_rows))
@@ -223,7 +232,7 @@ class MigrateHandler:
 
     def process_last_rate(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
-        while self.iteration < self.batch:
+        while self.iteration < self.batch and not self.should_timeout():
             last_rates: List[source_models.RATELASTrah] = list(
                 self.generate_query(session=source_session, entity=source_models.RATELASTrah, page=page,
                                     page_size=page_size, number_of_rows=number_of_rows))
@@ -249,7 +258,7 @@ class MigrateHandler:
 
     def process_portfolio(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
-        while self.iteration < self.batch:
+        while self.iteration < self.batch and not self.should_timeout():
             portfolios: List[source_models.PORTFOLrah] = list(
                 self.generate_query(session=source_session, entity=source_models.PORTFOLrah, page=page,
                                     page_size=page_size, number_of_rows=number_of_rows))
@@ -276,7 +285,7 @@ class MigrateHandler:
     def process_portfolio_log(self, source_session, destination_session):
         unix_time = datetime(1970, 1, 1, 0, 0)
         page, page_size, number_of_rows = self.calculate_starting_point()
-        while self.iteration < self.batch:
+        while self.iteration < self.batch and not self.should_timeout():
             portfolio_logs: List[source_models.PORTLOGrah] = list(
                 self.generate_query(session=source_session, entity=source_models.PORTLOGrah, page=page,
                                     page_size=page_size, number_of_rows=number_of_rows))
@@ -365,7 +374,7 @@ class MigrateHandler:
 
     def process_portfolio_transaction(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
-        while self.iteration < self.batch:
+        while self.iteration < self.batch and not self.should_timeout():
             portfolio_transactions: List[source_models.PORTRANSrah] = list(
                 self.generate_query(session=source_session, entity=source_models.PORTRANSrah, page=page,
                                     page_size=page_size, number_of_rows=number_of_rows))
