@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 class MigrateHandler:
 
     def __init__(self, sleep, debug, batch, target, starting_row, update, create_missing_relations):
+        self.skip_caches = False
         self.start_time = datetime.now()
         self.delay_in_second = sleep / 1000
         self.debug = debug
@@ -34,10 +35,30 @@ class MigrateHandler:
         self.source_engine, self.destination_engine = self.get_sessions()
         self.misc_entities = []
         self.current_target = ""
+        self.fund_id_cache = {}
+        self.security_id_cache = {}
+        self.portfolio_id_cache = {}
+        self.company_id_cache = {}
+        self.existing_security_rates = {}
         self.destination_targets = [destination_models.Fund, destination_models.Security,
                                     destination_models.SecurityRate, destination_models.Company,
                                     destination_models.LastRate, destination_models.Portfolio,
                                     destination_models.PortfolioLog, destination_models.PortfolioTransaction]
+
+    def get_fund_id(self, destination_session, original_id):
+        result = None
+
+        if not self.skip_caches:
+            result = self.fund_id_cache.get(original_id, None)
+
+        if not result:
+            result = destination_session.query(destination_models.Fund.id).filter(
+                destination_models.Fund.original_id == original_id).scalar()
+
+            if result:
+                self.fund_id_cache[original_id] = result
+
+        return result
 
     def call_process(self, function_name, **kwargs):
         if hasattr(self, function_name) and callable(function := getattr(self, function_name)):
@@ -46,6 +67,9 @@ class MigrateHandler:
             self.print_message("Not a valid model as target")
 
     def handle(self):
+        start_time = datetime.now()
+        self.print_message(f"Start time: {start_time}")
+
         with Session(self.source_engine) as source_session, Session(
                 self.destination_engine) as destination_session:
             kwargs = {"source_session": source_session, "destination_session": destination_session}
@@ -65,6 +89,11 @@ class MigrateHandler:
                     self.print_message(f"\nFinished {target_table}")
                 else:
                     self.print_message(F"\nFinished {target_table} nothing changed(in debug mode)")
+
+            end_time = datetime.now()
+            total_time = end_time - start_time
+
+            self.print_message(f"End time: {end_time}, total time: {total_time}")
 
             self.report_misc()
 
@@ -109,8 +138,9 @@ class MigrateHandler:
                         # this is a security without fund
                         fund_id = None
                     else:
-                        fund_id = destination_session.query(destination_models.Fund.id).filter(
-                            destination_models.Fund.original_id == original_fund.fundID).scalar()
+                        fund_id = self.get_fund_id(destination_session=destination_session,
+                                                   original_id=original_fund.fundID)
+
                     self.upsert_security(session=destination_session,
                                          security=existing_security if self.update else None,
                                          original_id=original_security_id,
@@ -121,6 +151,12 @@ class MigrateHandler:
                         break
 
     def process_security_rate(self, source_session, destination_session):
+        initial_rates = destination_session.query(destination_models.SecurityRate).yield_per(1000)
+
+        for _, rate in enumerate(initial_rates):
+            key = f"{rate.security_id}-{rate.rate_date}"
+            self.existing_security_rates[key] = rate
+
         page, page_size, number_of_rows = self.calculate_starting_point()
         while self.iteration < self.batch:
             rates: List[source_models.RATErah] = list(
@@ -136,17 +172,33 @@ class MigrateHandler:
                 _, security_id = self.get_or_create_security(session=destination_session,
                                                              original_id=original_security_id)
                 if security_id:
-
-                    existing_security_rate: destination_models.SecurityRate = destination_session.query(
-                        destination_models.SecurityRate).filter(
-                        and_(destination_models.SecurityRate.security_id == security_id,
-                             destination_models.SecurityRate.rate_date == rate.RDATE)).one_or_none()
+                    existing_security_rate = self.get_existing_security_rate(destination_session,
+                                                                             security_id,
+                                                                             rate.RDATE)
 
                     if not existing_security_rate or self.update:
                         self.upsert_security_rate(session=destination_session, security_rate=existing_security_rate,
                                                   security_id=security_id, rate_date=rate.RDATE, rate_close=rate.RCLOSE)
                         if self.has_the_progress_completed(session=destination_session):
                             break
+
+    def get_existing_security_rate(self, destination_session, security_id, rate_date):
+        key = f"{security_id}-{rate_date.date()}"
+        existing_security_rate = None
+
+        if not self.skip_caches:
+            existing_security_rate = self.existing_security_rates.get(key, None)
+
+        if not existing_security_rate:
+            existing_security_rate: destination_models.SecurityRate = destination_session.query(
+                destination_models.SecurityRate).filter(
+                and_(destination_models.SecurityRate.security_id == security_id,
+                     destination_models.SecurityRate.rate_date == rate_date)).one_or_none()
+
+        if existing_security_rate:
+            self.existing_security_rates[key] = existing_security_rate
+
+        return existing_security_rate
 
     def process_company(self, source_session, destination_session):
         page, page_size, number_of_rows = self.calculate_starting_point()
@@ -373,6 +425,14 @@ class MigrateHandler:
             destination_models.Portfolio.company_id == company_id).all()
 
     def get_or_create_security(self, session, original_id):
+        cached_id = None
+
+        if not self.skip_caches:
+            cached_id = self.security_id_cache.get(original_id, None)
+
+        if cached_id:
+            return False, cached_id
+
         existing_security = self.get_security_from_original_id(session=session,
                                                                original_security_id=original_id)
         if not existing_security:
@@ -391,9 +451,20 @@ class MigrateHandler:
         else:
             security_id = existing_security.id
             created = False
+
+        if not self.skip_caches and original_id and security_id:
+            self.security_id_cache[original_id] = security_id
+
         return created, security_id
 
     def get_or_create_portfolio(self, session, original_id, com_code):
+        cached_id = None
+
+        if not self.skip_caches and original_id:
+            cached_id = self.portfolio_id_cache.get(original_id)
+
+        if cached_id:
+            return False, cached_id
 
         existing_portfolio = self.get_portfolio_from_original_id(session=session,
                                                                  original_portfolio_id=original_id)
@@ -426,9 +497,21 @@ class MigrateHandler:
         else:
             portfolio_id = existing_portfolio.id
             created = False
+
+        if not self.skip_caches and original_id and portfolio_id:
+            self.security_id_cache[original_id] = portfolio_id
+
         return created, portfolio_id
 
     def get_or_create_company(self, session, original_id):
+        cached_id = None
+
+        if not self.skip_caches and original_id:
+            cached_id = self.company_id_cache.get(original_id)
+
+        if cached_id:
+            return False, cached_id
+
         company_original_id = original_id
         existing_company = self.get_company_from_original_id(session=session, original_company_id=company_original_id)
         if not existing_company:
@@ -448,6 +531,10 @@ class MigrateHandler:
         else:
             company_id = existing_company.id
             created = False
+
+        if not self.skip_caches and original_id and company_id:
+            self.company_id_cache[original_id] = company_id
+
         return created, company_id
 
     @staticmethod
