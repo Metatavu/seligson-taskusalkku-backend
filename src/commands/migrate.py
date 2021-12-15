@@ -2,11 +2,12 @@ import sys
 import logging
 import os
 import time
+import math
 from datetime import datetime, timedelta
 from typing import List
 
 import click
-from sqlalchemy import create_engine, and_
+from sqlalchemy import create_engine, and_, func
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session, Query
 
@@ -20,17 +21,16 @@ logger = logging.getLogger(__name__)
 
 class MigrateHandler:
 
-    def __init__(self, sleep, debug, batch, target, starting_row, update, create_missing_relations):
+    def __init__(self, sleep, timeout, debug, batch, target, update, create_missing_relations):
         self.skip_caches = False
         self.start_time = datetime.now()
-        self.timeout = datetime.now() + timedelta(seconds=30)
+        self.timeout = datetime.now() + timedelta(minutes=timeout)
         self.delay_in_second = sleep / 1000
         self.debug = debug
         self.batch = batch
         self.iteration = 0
         self.counter = 0
         self.target = target
-        self.starting_row = starting_row
         self.update = update
         self.create_missing_relations = create_missing_relations
         self.source_engine, self.destination_engine = self.get_sessions()
@@ -86,6 +86,8 @@ class MigrateHandler:
             for target in self.destination_targets:
                 target_table = target.__tablename__
                 self.current_target = target_table
+                self.print_message(f"\nStarting {target_table}")
+
                 if not self.target:
                     function_name = f"process_{target_table}"
                     self.call_process(function_name=function_name, **kwargs)
@@ -107,7 +109,7 @@ class MigrateHandler:
             self.report_misc()
 
     def process_fund(self, source_session, destination_session):
-        page, page_size, number_of_rows = self.calculate_starting_point()
+        page, page_size, number_of_rows = self.calculate_starting_point(starting_row=0)
         while self.iteration < self.batch and not self.should_timeout():
             fund_securities = list(
                 self.generate_query(session=source_session, entity=source_models.FundSecurity, page=page,
@@ -127,7 +129,7 @@ class MigrateHandler:
                         break
 
     def process_security(self, source_session, destination_session):
-        page, page_size, number_of_rows = self.calculate_starting_point()
+        page, page_size, number_of_rows = self.calculate_starting_point(starting_row=0)
         while self.iteration < self.batch and not self.should_timeout():
             securities: List[source_models.SECURITYrah] = list(
                 self.generate_query(session=source_session, entity=source_models.SECURITYrah, page=page,
@@ -166,7 +168,7 @@ class MigrateHandler:
             key = f"{rate.security_id}-{rate.rate_date}"
             self.existing_security_rates[key] = rate
 
-        page, page_size, number_of_rows = self.calculate_starting_point()
+        page, page_size, number_of_rows = self.calculate_starting_point(starting_row=len(self.existing_security_rates.keys()))
         while self.iteration < self.batch and not self.should_timeout():
             rates: List[source_models.RATErah] = list(
                 self.generate_query(session=source_session, entity=source_models.RATErah, page=page,
@@ -210,7 +212,8 @@ class MigrateHandler:
         return existing_security_rate
 
     def process_company(self, source_session, destination_session):
-        page, page_size, number_of_rows = self.calculate_starting_point()
+        row_count = destination_session.query(func.count(destination_models.Company.id)).scalar()
+        page, page_size, number_of_rows = self.calculate_starting_point(starting_row=row_count)
         while self.iteration < self.batch and not self.should_timeout():
             companies: List[source_models.COMPANYrah] = list(
                 self.generate_query(session=source_session, entity=source_models.COMPANYrah, page=page,
@@ -231,7 +234,7 @@ class MigrateHandler:
                         break
 
     def process_last_rate(self, source_session, destination_session):
-        page, page_size, number_of_rows = self.calculate_starting_point()
+        page, page_size, number_of_rows = self.calculate_starting_point(starting_row=0)
         while self.iteration < self.batch and not self.should_timeout():
             last_rates: List[source_models.RATELASTrah] = list(
                 self.generate_query(session=source_session, entity=source_models.RATELASTrah, page=page,
@@ -257,7 +260,9 @@ class MigrateHandler:
                             break
 
     def process_portfolio(self, source_session, destination_session):
-        page, page_size, number_of_rows = self.calculate_starting_point()
+        row_count = destination_session.query(func.count(destination_models.Portfolio.id)).scalar()
+
+        page, page_size, number_of_rows = self.calculate_starting_point(starting_row=row_count)
         while self.iteration < self.batch and not self.should_timeout():
             portfolios: List[source_models.PORTFOLrah] = list(
                 self.generate_query(session=source_session, entity=source_models.PORTFOLrah, page=page,
@@ -283,8 +288,10 @@ class MigrateHandler:
                             break
 
     def process_portfolio_log(self, source_session, destination_session):
+        row_count = destination_session.query(func.count(destination_models.PortfolioLog.id)).scalar()
+
         unix_time = datetime(1970, 1, 1, 0, 0)
-        page, page_size, number_of_rows = self.calculate_starting_point()
+        page, page_size, number_of_rows = self.calculate_starting_point(starting_row=row_count)
         while self.iteration < self.batch and not self.should_timeout():
             portfolio_logs: List[source_models.PORTLOGrah] = list(
                 self.generate_query(session=source_session, entity=source_models.PORTLOGrah, page=page,
@@ -373,7 +380,9 @@ class MigrateHandler:
             logger.warning(message)
 
     def process_portfolio_transaction(self, source_session, destination_session):
-        page, page_size, number_of_rows = self.calculate_starting_point()
+        row_count = destination_session.query(func.count(destination_models.PortfolioTransaction.id)).scalar()
+
+        page, page_size, number_of_rows = self.calculate_starting_point(starting_row=row_count)
         while self.iteration < self.batch and not self.should_timeout():
             portfolio_transactions: List[source_models.PORTRANSrah] = list(
                 self.generate_query(session=source_session, entity=source_models.PORTRANSrah, page=page,
@@ -644,13 +653,13 @@ class MigrateHandler:
         session.flush()
         return new_port_trans
 
-    def calculate_starting_point(self) -> (int, int, int):
-        page = 0
+    def calculate_starting_point(self, starting_row=0) -> (int, int, int):
         page_size = 1000
+        page = starting_row // page_size
         number_of_rows = 1000  # recommended value by docs for performance
 
-        if self.target and self.starting_row:
-            page = self.starting_row // page_size
+        self.print_message(f"Info: starting fow {starting_row}, starting from page {page}")
+
         return page, page_size, number_of_rows
 
     def has_the_progress_completed(self, session) -> bool:
@@ -694,7 +703,8 @@ class MigrateHandler:
                 logger.warning(alert_message)
 
     @staticmethod
-    def generate_query(session: Session, entity, filters=None, page=None, page_size=None, number_of_rows=None) -> Query:
+    def generate_query(session: Session, entity, filters=None, page=None, page_size=None,
+                       number_of_rows=None) -> Query:
         query: Query = session.query(entity)
         if filters:
             query = query.filter_by(**filters)
@@ -720,15 +730,15 @@ class MigrateHandler:
 @click.command()
 @click.option("--debug", default=True, help="Debug, readonly for testing purposes")
 @click.option("--sleep", default=1000, help="sleep delay in milliseconds")
+@click.option("--timeout", default=15, help="maximum run time in minutes")
 @click.option("--batch", default=1, help="number of rows that are read and migrated into new database")
 @click.option("--target", default="", help="Only migrates the target model")
-@click.option("--starting_row", default=0, help="starting row of source table choose with target")
 @click.option("--update", default=False, help="updates existing rows from source, in case of difference")
 @click.option("--create_missing_relations", default=False, help="create missing entities in other tables")
-def main(debug, sleep, batch, target, starting_row, update, create_missing_relations):
+def main(debug, sleep, timeout, batch, target, update, create_missing_relations):
     """Migration method"""
-    handler = MigrateHandler(sleep=sleep, debug=debug, batch=batch, target=target, starting_row=starting_row,
-                             update=update, create_missing_relations=create_missing_relations)
+    handler = MigrateHandler(sleep=sleep, timeout=timeout, debug=debug, batch=batch, target=target, update=update,
+                             create_missing_relations=create_missing_relations)
     handler.handle()
 
 
