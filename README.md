@@ -96,16 +96,11 @@ make sure you are in git root folder
 sudo apt install maven
 sudo apt-get install jq
 ./bin/utils/generate-spec.sh # make sure you are in git root folder
-```
-- generating the output for the api
-make sure you are in git root folder
-```bash
-./bin/utils/openapi-generator-cli.sh author template -g python-fastapi
-bin/utils/generate-spec.sh
+
 ```
 
-
-## Clean up traces of docker containers in case they persist after tests:
+## Clean up
+Cleaning traces of docker containers in case they persist after tests:
 ```bash
  docker kill $(docker ps -q)
 ```
@@ -114,8 +109,30 @@ bin/utils/generate-spec.sh
 After changes to model run:
 
 ```bash
-alembic revision --autogenerate -m "test" --rev-id=NNNN
+alembic revision --autogenerate -m "test" --rev-id=REVISION_NUMBER
 ```
-where NNNN is a four digit number, find the last valid one and add one.
+where "REVISION_NUMBER" is a four-digit number, find the last valid one and add one.
 
+##changing dependencies
+install pip-tools:
+```bash
+pip install pip-tools
+```
+add dependency to requirements.in. Then run
+```bash
+# from root of project
+pip-compile requirements.in
+```
+install from created requirements.txt
+```bash
+cd src
+pip install -r requirements.txt
+```
+
+### Generate models from existing database as source
+```bash
+sqlacodegen  <database url> --outfile <path>
+```
+### Run the commands
+docker run  --net=host seligson-taskusalkku-backend:latest /bin/sh -c "python commands/migrate.py --debug=False --batch=100000 --target= --sleep=500 --update=True --starting_row=199999"
 

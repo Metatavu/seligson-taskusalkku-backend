@@ -25,7 +25,6 @@ def salkku_mysql(request):
     mysql.with_volume_mapping(data_dir, container_import_folder)
     mysql.with_command("--server-id=1 --log-bin=/var/log/mysql/mysql-bin.log --binlog_format=ROW --binlog_do_db=test")
     mysql.start()
-    os.environ["SQLALCHEMY_DATABASE_URL"] = mysql.get_connection_url()
 
     mysql_exec_sql(mysql, 'salkku-db.sql')
 

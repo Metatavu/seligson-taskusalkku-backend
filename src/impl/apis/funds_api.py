@@ -44,7 +44,14 @@ class FundsApiImpl(FundsApiSpec):
                 detail=f"Fund {fund_id} not found"
             )
 
-        return self.translate_fund(fund=fund)
+        result = self.translate_fund(fund=fund)
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Fund {fund_id} not found"
+            )
+
+        return result
 
     async def list_funds(self,
                          first_result: int,
@@ -76,7 +83,7 @@ class FundsApiImpl(FundsApiSpec):
             max_result=max_results
         )
 
-        return list(map(self.translate_fund, funds))
+        return list(filter(lambda x: x is not None, map(self.translate_fund, funds)))
 
     async def list_fund_history_values(self,
                                        fund_id: UUID,
@@ -121,10 +128,8 @@ class FundsApiImpl(FundsApiSpec):
 
         fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id=str(fund.original_id))
         if fund_meta is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Fund meta for fund id {fund.original_id} not found"
-            )
+            logger.warning("Fund meta for fund id %s not found", fund.original_id)
+            return None
 
         name = self.translate_meta_locale(fund_meta["name"])
         long_name = self.translate_meta_locale(fund_meta["long_name"])

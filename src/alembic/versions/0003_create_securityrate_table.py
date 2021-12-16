@@ -23,6 +23,7 @@ def upgrade():
                     ForeignKeyConstraint(['security_id'], ['security.id'], ),
                     PrimaryKeyConstraint('id')
                     )
+    op.create_index('ix_security_rate_security_id_rate_date', 'security_rate', ['security_id', 'rate_date'], unique=True)
 
 
 def downgrade():

@@ -51,7 +51,7 @@ def _get_fastapi_sessionmaker() -> FastAPISessionMaker:
     Returns:
         FastAPISessionMaker: FastAPI session maker
     """
-    database_uri = os.environ["DATABASE_URL"]
+    database_uri = os.environ["BACKEND_DATABASE_URL"]
     return FastAPISessionMaker(database_uri)
 
 

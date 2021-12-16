@@ -1,4 +1,5 @@
-pip-tools
 pytest
 testcontainers[mysql]
 factory-boy
+sqlacodegen
+memory_profiler
