@@ -81,3 +81,4 @@ class Fund(BaseModel):
     color: Optional[str] = Field(None, description='Fund color')
     risk: Optional[int] = Field(None, description='Fund risk level')
     KIID: Optional[LocalizedValue] = None
+

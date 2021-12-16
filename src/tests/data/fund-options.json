@@ -1,0 +1,85 @@
+
+{
+  "fundId": {
+    "123": "PASSIVETEST01",
+    "234": "ACTIVETEST01",
+    "345": "BALANCEDTEST01",
+    "456": "FIXEDTEST01",
+    "678": "DIMETEST01",
+    "789": "SPILTAN TEST"
+  },
+  "fundKey": {
+    "PASSIVETEST01": "PASSIVETEST01",
+    "PASSIVETEST01B": "PASSIVETEST01",
+    "ACTIVETEST01": "ACTIVETEST01",
+    "ACTIVETEST01B": "ACTIVETEST01",
+    "BALANCEDTEST01": "BALANCEDTEST01",
+    "BALANCEDTEST01B": "BALANCEDTEST01",
+    "FIXEDTEST01": "FIXEDTEST01",
+    "FIXEDTEST01B": "FIXEDTEST01",
+    "DIMETEST01": "DIMETEST01",
+    "SPILTAN TEST": "SPILTAN TEST"
+  },
+  "fundValueGroups": [
+    {
+      "group": "passive",
+      "name": [
+        "Passiiviset osakerahastot",
+        "Passiva aktiefonder"
+      ],
+      "funds": [
+        "PASSIVETEST01"
+      ]
+    },
+    {
+      "group": "active",
+      "name": [
+        "Aktiiviset osakerahastot",
+        "Aktiva aktiefonder"
+      ],
+      "funds": [
+        "ACTIVETEST01"
+      ]
+    },
+    {
+      "group": "balanced",
+      "name": [
+        "Varainhoitorahasto",
+        "Kapitalförvaltningsfond"
+      ],
+      "funds": [
+        "BALANCEDTEST01"
+      ]
+    },
+    {
+      "group": "fixedIncome",
+      "name": [
+        "Korkorahastot",
+        "Räntefonder"
+      ],
+      "funds": [
+        "FIXEDTEST01"
+      ]
+    },
+    {
+      "group": "dimension",
+      "name": [
+        "Dimensional Fund Advisors (DFA)",
+        "Dimensional Fund Advisors (DFA)"
+      ],
+      "funds": [
+        "DIMETEST01"
+      ]
+    },
+    {
+      "group": "spiltan",
+      "name": [
+        "Spiltan Fonder",
+        "Spiltan Fonder"
+      ],
+      "funds": [
+        "SPILTAN TEST"
+      ]
+    }
+  ]
+}

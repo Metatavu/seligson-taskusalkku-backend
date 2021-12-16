@@ -16,12 +16,18 @@ log.txt
 Pipfile.lock
 env3.*
 env
+env.sh
 docs_build
 venv
 docs.zip
 archive.zip
+out
 
 # vim temporary files
 *~
 .*.sw?
 bin/utils/*.jar
+staging-data
+src/tests/data/*.js
+src/tests/data/*.txt
+.DS_Store
