@@ -16,7 +16,7 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('portfolio', sa.Column('name', sa.String(192), nullable=False, default="UNDEFINED"))
+    op.add_column('portfolio', sa.Column('name', sa.String(192), nullable=False, server_default="UNDEFINED"))
 
 
 def downgrade():
