@@ -71,6 +71,7 @@ class Portfolio(Base):
     # and n is a number with maximum value of 8
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    name = Column(String(192),nullable=False)
     original_id = Column(String(20), unique=True, nullable=False)
     company_id = Column("company_id", SqlAlchemyUuid, ForeignKey('company.id'), index=True, nullable=False)
     company = relationship("Company", back_populates="portfolios", lazy=True)

@@ -399,6 +399,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
         result = Portfolio()
         result.id = str(portfolio.id)
+        result.name = portfolio.name
         result.totalAmount = portfolio_values.total_amount if portfolio_values.total_amount is not None else "0"
         result.marketValueTotal = "0" if portfolio_values.market_value_total is None else \
             portfolio_values.market_value_total

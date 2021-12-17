@@ -260,7 +260,14 @@ class MigrateHandler:
                             break
 
     def process_portfolio(self, source_session, destination_session):
-        row_count = destination_session.query(func.count(destination_models.Portfolio.id)).scalar()
+        require_full_migration = destination_session.query(func.count(destination_models.Portfolio.id)) \
+            .filter(destination_models.Portfolio.name == "UNDEFINED") \
+            .scalar() > 0
+
+        row_count = 0
+
+        if not require_full_migration:
+            row_count = destination_session.query(func.count(destination_models.Portfolio.id)).scalar()
 
         page, page_size, number_of_rows = self.calculate_starting_point(starting_row=row_count)
         while self.iteration < self.batch and not self.should_timeout():
