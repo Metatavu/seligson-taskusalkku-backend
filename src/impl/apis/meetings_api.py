@@ -63,7 +63,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
             await fm.send_message(message)
         except Exception:
             raise HTTPException(
-                                status_code=403,
+                                status_code=500,
                                 detail="Failed to send email due to invalid credentials."
                               )
 
