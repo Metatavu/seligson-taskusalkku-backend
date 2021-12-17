@@ -397,14 +397,13 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             portfolio=portfolio
         )
 
-        result = Portfolio()
-        result.id = str(portfolio.id)
-        result.totalAmount = portfolio_values.total_amount if portfolio_values.total_amount is not None else "0"
-        result.marketValueTotal = "0" if portfolio_values.market_value_total is None else \
-            portfolio_values.market_value_total
-        result.purchaseTotal = portfolio_values.purchase_total if portfolio_values.purchase_total is not None else "0"
-
-        return result
+        return Portfolio(
+            id=str(portfolio.id),
+            name=portfolio.name,
+            totalAmount=portfolio_values.total_amount if portfolio_values.total_amount is not None else "0",
+            marketValueTotal="0" if portfolio_values.market_value_total is None else portfolio_values.market_value_total,
+            purchaseTotal=portfolio_values.purchase_total if portfolio_values.purchase_total is not None else "0"
+        )
 
     def translate_portfolio_log(self, portfolio_log: DbPortfolioLog) -> PortfolioTransaction:
         target_security_id = None

@@ -260,7 +260,9 @@ class MigrateHandler:
                             break
 
     def process_portfolio(self, source_session, destination_session):
-        row_count = destination_session.query(func.count(destination_models.Portfolio.id)).scalar()
+        row_count = destination_session.query(func.count(destination_models.Portfolio.id)) \
+            .filter(destination_models.Portfolio.name != "UNDEFINED") \
+            .scalar()
 
         page, page_size, number_of_rows = self.calculate_starting_point(starting_row=row_count)
         while self.iteration < self.batch and not self.should_timeout():
@@ -282,8 +284,8 @@ class MigrateHandler:
                                                                              original_portfolio_id=portfolio.PORID)
                     if not existing_portfolio or self.update:
                         self.upsert_portfolio(session=destination_session, portfolio=existing_portfolio,
-                                              original_id=portfolio.PORID,
-                                              company_id=company_id)
+                                              original_id=portfolio.PORID, company_id=company_id,
+                                              name=portfolio.NAME1)
                         if self.has_the_progress_completed(session=destination_session):
                             break
 
@@ -599,10 +601,11 @@ class MigrateHandler:
         return new_company
 
     @staticmethod
-    def upsert_portfolio(session, portfolio, original_id, company_id) -> destination_models.Portfolio:
+    def upsert_portfolio(session, portfolio, original_id, company_id, name) -> destination_models.Portfolio:
         new_portfolio = portfolio if portfolio else destination_models.Portfolio()
         new_portfolio.original_id = original_id
         new_portfolio.company_id = company_id
+        new_portfolio.name = name
         session.add(new_portfolio)
         session.flush()
         return new_portfolio

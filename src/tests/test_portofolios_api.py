@@ -120,16 +120,16 @@ class TestPortfolio:
 
             main_portfolio = self.get_portfolio(client=client, portfolio_id=main_portfolio_id, auth=user_1_auth)
 
-            assert 4 == len(main_portfolio)
             assert main_portfolio_id == main_portfolio["id"]
+            assert  "Main portfolio for 123" == main_portfolio["name"]
             assert main_expected_sum_total_amounts == Decimal(main_portfolio["totalAmount"])
             assert main_expected_sum_market_value_total == Decimal(main_portfolio["marketValueTotal"])
             assert main_expected_sum_purchase_total == Decimal(main_portfolio["purchaseTotal"])
 
             sub_portfolio = self.get_portfolio(client=client, portfolio_id=sub_portfolio_id, auth=user_1_auth)
 
-            assert 4 == len(sub_portfolio)
             assert sub_portfolio_id == sub_portfolio["id"]
+            assert "Sub-Portfolio for 123" == sub_portfolio["name"]
             assert sub_expected_sum_total_amounts == Decimal(sub_portfolio["totalAmount"])
             assert sub_expected_sum_market_value_total == Decimal(sub_portfolio["marketValueTotal"])
             assert sub_expected_sum_purchase_total == Decimal(sub_portfolio["purchaseTotal"])
