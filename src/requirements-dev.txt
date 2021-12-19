@@ -10,10 +10,18 @@ certifi==2021.10.8
     # via requests
 chardet==4.0.0
     # via requests
+coverage[toml]==6.2
+    # via
+    #   coveralls
+    #   pytest-cov
+coveralls==3.3.1
+    # via -r requirements-dev.in
 deprecation==2.1.0
     # via testcontainers
 docker==5.0.3
     # via testcontainers
+docopt==0.6.2
+    # via coveralls
 factory-boy==3.2.1
     # via -r requirements-dev.in
 faker==9.8.3
@@ -43,11 +51,17 @@ pymysql==1.0.2
 pyparsing==2.4.7
     # via packaging
 pytest==6.2.3
+    # via
+    #   -r requirements-dev.in
+    #   pytest-cov
+pytest-cov==3.0.0
     # via -r requirements-dev.in
 python-dateutil==2.8.2
     # via faker
 requests==2.25.1
-    # via docker
+    # via
+    #   coveralls
+    #   docker
 six==1.16.0
     # via python-dateutil
 sqlacodegen==2.3.0
@@ -62,6 +76,8 @@ text-unidecode==1.3
     # via faker
 toml==0.10.2
     # via pytest
+tomli==2.0.0
+    # via coverage
 urllib3==1.26.7
     # via requests
 websocket-client==1.2.1
