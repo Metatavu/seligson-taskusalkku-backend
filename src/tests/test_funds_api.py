@@ -78,7 +78,7 @@ class TestFunds:
         with sql_backend_funds(backend_mysql):
             fund_id = fund_ids["passivetest01"]
             response = client.get(f"/v1/funds/{fund_id}")
-            assert response.status_code == 401
+            assert response.status_code == 403
 
     def test_find_fund_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
         with sql_backend_funds(backend_mysql):

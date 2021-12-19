@@ -1,4 +1,4 @@
-import logging
+from typing import Optional
 
 from .fixtures.client import *  # noqa
 from .fixtures.users import *  # noqa
@@ -11,7 +11,7 @@ from .fixtures.zookeeper import *  # noqa
 from decimal import Decimal
 from sqlalchemy import create_engine
 
-from .constants import security_ids
+from .constants import security_ids, invalid_auths
 
 from .utils.database import sql_backend_company, sql_backend_security, sql_backend_portfolio_log, \
     sql_backend_portfolio_transaction, sql_backend_last_rate, sql_backend_portfolio, sql_backend_funds, \
@@ -121,7 +121,7 @@ class TestPortfolio:
             main_portfolio = self.get_portfolio(client=client, portfolio_id=main_portfolio_id, auth=user_1_auth)
 
             assert main_portfolio_id == main_portfolio["id"]
-            assert  "Main portfolio for 123" == main_portfolio["name"]
+            assert "Main portfolio for 123" == main_portfolio["name"]
             assert main_expected_sum_total_amounts == Decimal(main_portfolio["totalAmount"])
             assert main_expected_sum_market_value_total == Decimal(main_portfolio["marketValueTotal"])
             assert main_expected_sum_purchase_total == Decimal(main_portfolio["purchaseTotal"])
@@ -133,6 +133,54 @@ class TestPortfolio:
             assert sub_expected_sum_total_amounts == Decimal(sub_portfolio["totalAmount"])
             assert sub_expected_sum_market_value_total == Decimal(sub_portfolio["marketValueTotal"])
             assert sub_expected_sum_purchase_total == Decimal(sub_portfolio["purchaseTotal"])
+
+    @pytest.mark.parametrize("auth", invalid_auths)
+    def test_find_portfolio_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
+                                         keycloak: KeycloakContainer, auth: BearerAuth):
+        self.assert_find_portfolio_fail(
+            client=client,
+            expected_status=403,
+            portfolio_id="6bb05ba3-2b4f-4031-960f-0f20d5244440",
+            auth=auth
+        )
+
+    def test_find_portfolio_anonymous(self, client: TestClient, backend_mysql: MySqlContainer,
+                                      keycloak: KeycloakContainer, anonymous_auth: BearerAuth):
+        self.assert_find_portfolio_fail(
+            client=client,
+            expected_status=403,
+            portfolio_id="6bb05ba3-2b4f-4031-960f-0f20d5244440",
+            auth=anonymous_auth
+        )
+
+    def test_find_portfolio_unauthorized(self, client: TestClient, backend_mysql: MySqlContainer,
+                                         keycloak: KeycloakContainer):
+        self.assert_find_portfolio_fail(
+            client=client,
+            expected_status=403,
+            portfolio_id="6bb05ba3-2b4f-4031-960f-0f20d5244440",
+            auth=None
+        )
+
+    def test_find_portfolio_wrong_user(self, client: TestClient, backend_mysql: MySqlContainer,
+                                       keycloak: KeycloakContainer, user_2_auth: BearerAuth, user_3_auth: BearerAuth):
+
+        with sql_backend_funds(backend_mysql), sql_backend_company(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_portfolio(backend_mysql):
+
+            self.assert_find_portfolio_fail(
+                client=client,
+                expected_status=403,
+                portfolio_id="6bb05ba3-2b4f-4031-960f-0f20d5244440",
+                auth=user_2_auth
+            )
+
+            self.assert_find_portfolio_fail(
+                client=client,
+                expected_status=403,
+                portfolio_id="6bb05ba3-2b4f-4031-960f-0f20d5244440",
+                auth=user_3_auth
+            )
 
     def test_get_portfolio_summary(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
         """
@@ -299,7 +347,8 @@ class TestPortfolio:
                 assert expected_sum_market_value_total == Decimal(result["marketValueTotal"])
                 assert expected_sum_purchase_total == Decimal(result["purchaseTotal"])
 
-    def test_list_portfolio_securities(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
+    def test_list_portfolio_securities(self, client: TestClient, user_1_auth: BearerAuth,
+                                       backend_mysql: MySqlContainer):
         """
         +-------------------------------------------------------------+-------------+
         | security          | totalAmount | purchaseTotal | marketValueTotal        |
@@ -576,6 +625,16 @@ class TestPortfolio:
             find_response = client.get(f"/v1/portfolios/{portfolio_id}/transactions/{find_id}", auth=user_1_auth)
             assert find_response.status_code == 200
             assert find_expected == find_response.json()
+
+    @staticmethod
+    def assert_find_portfolio_fail(client: TestClient, expected_status: int, portfolio_id: str,
+                                   auth: Optional[BearerAuth]):
+        if auth is None:
+            response = client.get(f"/v1/portfolios/{portfolio_id}")
+        else:
+            response = client.get(f"/v1/portfolios/{portfolio_id}", auth=auth)
+
+        assert expected_status == response.status_code
 
     @staticmethod
     def get_portfolio(client: TestClient, portfolio_id: str, auth: BearerAuth) -> Portfolio:
