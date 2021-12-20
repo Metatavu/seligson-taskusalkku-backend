@@ -408,7 +408,7 @@ class MigrateHandler:
 
                 existing_portfolio_transaction = destination_session.query(
                     destination_models.PortfolioTransaction).filter(
-                    destination_models.PortfolioTransaction.transaction_number == portfolio_transaction.TRANS_NR)
+                    destination_models.PortfolioTransaction.transaction_number == portfolio_transaction.TRANS_NR).one_or_none()
 
                 if not existing_portfolio_transaction or self.update:
                     self.upsert_portfolio_transaction(session=destination_session,
@@ -645,6 +645,7 @@ class MigrateHandler:
     def upsert_portfolio_transaction(session, portfolio_transaction, transaction_number, transaction_date, amount,
                                      purchase_c_value,
                                      portfolio_id, security_id):
+
         new_port_trans = portfolio_transaction if portfolio_transaction else destination_models.PortfolioTransaction()
         new_port_trans.transaction_number = transaction_number
         new_port_trans.transaction_date = transaction_date
