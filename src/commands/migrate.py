@@ -309,7 +309,7 @@ class MigrateHandler:
                                                              original_id=security_original_id)
                 if security_id:
                     c_security_original_id = portfolio_log.CSECID
-                    if c_security_original_id.strip():  # for the case that null is inserted as SECID = ' '
+                    if c_security_original_id and c_security_original_id.strip():  # for the case that null is inserted as SECID = ' '
                         _, c_security_id = self.get_or_create_security(session=destination_session,
                                                                        original_id=c_security_original_id)
                     else:
