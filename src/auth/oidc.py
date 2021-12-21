@@ -11,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class Oidc:
-    """OIDC helper class
-  """
+    """OIDC helper class"""
 
     def __init__(self, oidc_auth_server_url: str):
         """Constructor
@@ -25,13 +24,13 @@ class Oidc:
     def decode_jwt_token(self, token: str, audience: str) -> Union[dict, None]:
         """Decodes JWT token and verifies it's signature.
 
-    Args:
-        token (str): JWT token
-        audience (str): token audience
+        Args:
+            token (str): JWT token
+            audience (str): token audience
 
-    Returns:
-        dict: parsed token
-    """
+        Returns:
+            dict: parsed token
+        """
 
         if not token:
             logger.warning("No token provided")
@@ -42,7 +41,7 @@ class Oidc:
             logger.warning("Could not parse JWT header")
             return None
 
-        kid = jwt_header.get("kid", "")
+        kid = jwt_header.get("kid", None)
         if not kid:
             logger.warning("Could not resolve kid from JWT header")
             return None
@@ -69,7 +68,8 @@ class Oidc:
         return jwt.decode(token, certificate.public_key(), issuer=issuer, audience=audience,
                           algorithms=token_endpoint_auth_signing_alg_values_supported)
 
-    def get_certificate(self, jwks: dict, kid: str) -> Certificate:
+    @staticmethod
+    def get_certificate(jwks: dict, kid: str) -> Certificate:
         """Returns certificate for given kid using JWKS object as source
 
     Args:
@@ -85,7 +85,8 @@ class Oidc:
         certificate = '-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----'.format(x5c)
         return load_pem_x509_certificate(certificate.encode(), default_backend())
 
-    def get_oidc_config(self, oidc_config_url: str) -> dict:
+    @staticmethod
+    def get_oidc_config(oidc_config_url: str) -> dict:
         """Returns OIDC config from config URL
 
     Args:
@@ -96,7 +97,8 @@ class Oidc:
     """
         return requests.get(oidc_config_url).json()
 
-    def get_jwks(self, jwks_uri: str) -> dict:
+    @staticmethod
+    def get_jwks(jwks_uri: str) -> dict:
         """Returns JWKS object from given URI
 
     Args:

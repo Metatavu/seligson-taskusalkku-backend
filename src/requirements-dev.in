@@ -1,4 +1,6 @@
 pytest
+pytest-cov
+coveralls
 testcontainers[mysql]
 factory-boy
 sqlacodegen
