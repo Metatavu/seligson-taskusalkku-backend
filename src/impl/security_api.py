@@ -1,5 +1,4 @@
 # coding: utf-8
-
 import logging
 import os
 from fastapi import Depends, HTTPException
@@ -39,7 +38,12 @@ def get_token_bearer(credentials: HTTPAuthorizationCredentials = Depends(bearer_
 
     oidc = Oidc(oidc_auth_server_url=oidc_auth_server_url)
 
-    token = oidc.decode_jwt_token(token=credentials.credentials, audience=oidc_audience)
+    try:
+        token = oidc.decode_jwt_token(token=credentials.credentials, audience=oidc_audience)
+    except Exception as e:
+        logger.warning("Invalid access token received %s", e)
+        raise HTTPException(status_code=403, detail="Invalid access token")
+
     if not token:
         raise HTTPException(status_code=403, detail="Forbidden")
 

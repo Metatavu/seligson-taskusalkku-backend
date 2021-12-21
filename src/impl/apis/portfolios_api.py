@@ -3,6 +3,7 @@ import logging
 from decimal import Decimal
 from uuid import UUID
 
+from auth.auth_utils import AuthUtils
 from typing import List, Optional, Dict
 from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
@@ -10,7 +11,6 @@ from spec.apis.portfolios_api import PortfoliosApiSpec, router as portfolios_api
 from datetime import date, timedelta
 from spec.models.extra_models import TokenModel
 from spec.models.portfolio import Portfolio
-from admin.keycloak_admin import KeycloakAdminAccess
 from spec.models.portfolio_summary import PortfolioSummary
 from spec.models.portfolio_history_value import PortfolioHistoryValue
 from database import operations
@@ -26,14 +26,6 @@ logger = logging.getLogger(__name__)
 
 @cbv(portfolios_api_router)
 class PortfoliosApiImpl(PortfoliosApiSpec):
-
-    @staticmethod
-    def get_user_ssn(token_bearer: TokenModel) -> str:
-        """
-        get user ssn from keycloak admin
-        """
-        keycloak_admin_access = KeycloakAdminAccess()
-        return keycloak_admin_access.get_user_ssn(token_bearer.get("sub", ""))
 
     async def find_portfolio(
             self,
@@ -257,11 +249,16 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             token_bearer: TokenModel,
     ) -> List[Portfolio]:
         """ list portfolios"""
+        if not AuthUtils.has_user_role(token_bearer=token_bearer):
+            raise HTTPException(
+                status_code=403,
+                detail="This endpoint is not available for anonymous users"
+            )
 
-        ssn = self.get_user_ssn(token_bearer=token_bearer)
+        ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
         if not ssn:
             raise HTTPException(
-                status_code=401,
+                status_code=403,
                 detail=f"Cannot resolve logged user SSN"
             )
 
@@ -360,8 +357,14 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         Raises:
             HTTPException, with status 404 if portfolio does not exist
             HTTPException, with status 401 if logged user does not have SSN defined
-            HTTPException, with status 403 if logged user does not have proper permission
+            HTTPException, with status 403 if logged user does not have proper permissions
         """
+        if not AuthUtils.has_user_role(token_bearer=token_bearer):
+            raise HTTPException(
+                status_code=403,
+                detail="This endpoint is not available for anonymous users"
+            )
+
         portfolio = operations.find_portfolio(
             database=self.database,
             portfolio_id=portfolio_id
@@ -373,10 +376,10 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                 detail=f"Portfolio {portfolio_id} not found"
             )
 
-        ssn = self.get_user_ssn(token_bearer=token_bearer)
+        ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
         if not ssn:
             raise HTTPException(
-                status_code=401,
+                status_code=403,
                 detail=f"Cannot resolve logged user SSN"
             )
 
@@ -397,12 +400,16 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             portfolio=portfolio
         )
 
+        total_amount = portfolio_values.total_amount if portfolio_values.total_amount is not None else "0"
+        market_value_total = "0" if portfolio_values.market_value_total is None else portfolio_values.market_value_total
+        purchase_total = portfolio_values.purchase_total if portfolio_values.purchase_total is not None else "0"
+
         return Portfolio(
             id=str(portfolio.id),
             name=portfolio.name,
-            totalAmount=portfolio_values.total_amount if portfolio_values.total_amount is not None else "0",
-            marketValueTotal="0" if portfolio_values.market_value_total is None else portfolio_values.market_value_total,
-            purchaseTotal=portfolio_values.purchase_total if portfolio_values.purchase_total is not None else "0"
+            totalAmount=total_amount,
+            marketValueTotal=market_value_total,
+            purchaseTotal=purchase_total
         )
 
     def translate_portfolio_log(self, portfolio_log: DbPortfolioLog) -> PortfolioTransaction:
