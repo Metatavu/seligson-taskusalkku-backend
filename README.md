@@ -133,6 +133,8 @@ pip install -r requirements.txt
 ```bash
 sqlacodegen  <database url> --outfile <path>
 ```
-### Run the commands
-docker run  --net=host seligson-taskusalkku-backend:latest /bin/sh -c "python commands/migrate.py --debug=False --batch=100000 --target= --sleep=500 --update=True --starting_row=199999"
+### Run commands
 
+#### migrate command
+
+docker run  --net=host seligson-taskusalkku-backend:latest /bin/sh -c "python commands/migrate.py --debug=False --batch=100000 --target= --sleep=500 --update=True --starting_row=199999"
