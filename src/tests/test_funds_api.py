@@ -41,7 +41,7 @@ class TestFunds:
             assert "Passive test fund 1 - en, short" == fund["shortName"]["sv"]
             assert "#123456" == fund["color"]
             assert 1 == fund["risk"]
-            assert {"fi": "PASSIVETESTFI", "sv": "PASSIVETESTSV"} == fund["KIID"]
+            assert {"fi": "http://example.com/PASSIVETESTFI", "sv": "http://example.com/PASSIVETESTSV"} == fund["KIID"]
             assert "Passive test fund 1 - subs" == fund["bankReceiverName"]
             assert "PASSIVE" == fund["group"]
             assert "2021-11-10" == fund["priceDate"]
