@@ -7,6 +7,7 @@ pyjwt
 fastapi-utils
 mysqlclient
 pymysql
+pymssql
 aiokafka
 alembic
 sqlalchemy-utils

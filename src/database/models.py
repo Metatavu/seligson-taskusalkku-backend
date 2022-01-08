@@ -12,9 +12,13 @@ metadata = Base.metadata
 class Fund(Base):
     __tablename__ = 'fund'
 
-    # a fund contains one or more securities
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     original_id = Column(Integer, index=True, unique=True)
+    risk_level = Column(Integer, nullable=True)
+    kiid_url_fi = Column(String(191), nullable=False)
+    kiid_url_sv = Column(String(191), nullable=True)
+    kiid_url_en = Column(String(191), nullable=True)
+    # a fund contains one or more securities
     securities = relationship("Security", back_populates="fund", lazy=True)
 
 

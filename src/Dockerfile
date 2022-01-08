@@ -10,16 +10,13 @@ ENV PYTHONUNBUFFERED 1
 
 COPY ./requirements.txt /usr/src/app/requirements.txt
 
-
 RUN set -eux \
-    && apk add --no-cache mariadb-connector-c-dev \
-    && apk add --no-cache --virtual .build-deps build-base \
-        libressl-dev libffi-dev gcc musl-dev python3-dev \
-    && apk add curl \
-    && pip install --upgrade pip setuptools wheel \
-    && pip install -r /usr/src/app/requirements.txt \
-    && rm -rf /root/.cache/pip
+    && apk add --no-cache mariadb-connector-c-dev freetds-dev curl \
+    && apk add --no-cache --virtual .build-deps build-base libressl-dev libffi-dev gcc musl-dev python3-dev
 
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install -r /usr/src/app/requirements.txt
+RUN rm -rf /root/.cache/pip
 
 FROM base AS development
 COPY ./requirements-dev.txt /usr/src/app/requirements-dev.txt

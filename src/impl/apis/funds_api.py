@@ -135,15 +135,17 @@ class FundsApiImpl(FundsApiSpec):
         long_name = self.translate_meta_locale(fund_meta["long_name"])
         short_name = self.translate_meta_locale(fund_meta["short_name"])
 
-        kiid = self.translate_meta_locale(fund_meta.get("kiid", None))
         result = Fund(
             id=str(fund.id),
             name=name,
             longName=long_name,
             shortName=short_name,
-            KIID=kiid,
+            KIID=LocalizedValue(
+                fi=fund.kiid_url_fi,
+                sv=fund.kiid_url_sv
+            ),
             color=fund_meta["color"],
-            risk=fund_meta["risk"],
+            risk=fund.risk_level,
             bankReceiverName=fund_meta.get("subs_name", None),
             group=fund_meta["group"],
             priceDate=fund_meta["price_date"],
