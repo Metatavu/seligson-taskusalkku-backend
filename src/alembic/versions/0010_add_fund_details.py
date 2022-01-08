@@ -16,10 +16,10 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('fund', sa.Column('risk_level', sa.String(192), nullable=True))
-    op.add_column('fund', sa.Column('kiid_url_fi', sa.String(192), nullable=False, server_default="UNDEFINED"))
-    op.add_column('fund', sa.Column('kiid_url_sv', sa.String(192), nullable=True))
-    op.add_column('fund', sa.Column('kiid_url_en', sa.String(192), nullable=True))
+    op.add_column("fund", sa.Column("risk_level", sa.String(192), nullable=True))
+    op.add_column('fund', sa.Column("kiid_url_fi", sa.String(192), nullable=False, server_default="UNDEFINED"))
+    op.add_column('fund', sa.Column("kiid_url_sv", sa.String(192), nullable=True))
+    op.add_column('fund', sa.Column("kiid_url_en", sa.String(192), nullable=True))
 
 
 def downgrade():
