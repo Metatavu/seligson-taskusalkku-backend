@@ -10,14 +10,15 @@ import click
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from commands.migration_tasks import AbstractMigrationTask, MigrateFundsTask, MigrateSecuritiesTask
+from commands.migration_tasks import AbstractMigrationTask, MigrateFundsTask, MigrateSecuritiesTask, \
+    MigrateSecurityRatesTask
 
 logger = logging.getLogger(__name__)
 
 
 class KiidMigrateHandler:
 
-    tasks = [MigrateFundsTask(), MigrateSecuritiesTask()]
+    tasks = [MigrateFundsTask(), MigrateSecuritiesTask(), MigrateSecurityRatesTask()]
 
     """
     Migration handler database
@@ -36,7 +37,7 @@ class KiidMigrateHandler:
         """
         Runs all migrations
         """
-        timeout = datetime.now() + timedelta(minutes=15)
+        timeout = datetime.now() + timedelta(minutes=1)
 
         for task in self.tasks:
             self.run_task(task, timeout)
