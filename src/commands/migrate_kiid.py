@@ -1,23 +1,26 @@
 import logging
 import os
 import sys
-from datetime import datetime
-
-import click
+from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 
+import click
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database import models
+from commands.migration_tasks import AbstractMigrationTask, MigrateFundsTask, MigrateSecuritiesTask
 
 logger = logging.getLogger(__name__)
 
 
 class KiidMigrateHandler:
+
+    tasks = [MigrateFundsTask(), MigrateSecuritiesTask()]
+
     """
-    Migration handler from KIID database
+    Migration handler database
     """
 
     def __init__(self, debug: bool):
@@ -26,87 +29,59 @@ class KiidMigrateHandler:
         Args:
             debug: whether to run the command in debug mode
         """
-        self.kiid_engine, self.backend_engine = self.get_sessions()
+        self.backend_engine = self.get_backend_engine()
         self.debug = debug
-        self.start_time = None
-
-    @staticmethod
-    def list_fund_rows(kiid_session: Session):
-        """
-        Lists rows from the kiid funds table
-        Args:
-            kiid_session: KIID database session
-
-        Returns: rows from the kiid funds table
-        """
-        risk_query = "SELECT TOP 1 risk_level FROM TextContent WHERE fund_name = NAME_KIID ORDER BY modification_time"
-        statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, ({risk_query}) as RISK_LEVEL FROM FUND"
-        return kiid_session.execute(statement=statement)
 
     def handle(self):
         """
-        Handles the migration
+        Runs all migrations
         """
-        self.start_time = datetime.now()
-        self.print_message(f"Start time: {self.start_time}")
+        timeout = datetime.now() + timedelta(minutes=15)
 
-        synchronized_count = 0
-        with Session(self.kiid_engine) as kiid_session, Session(
-                self.backend_engine) as backend_session:
+        for task in self.tasks:
+            self.run_task(task, timeout)
 
-            fund_rows = self.list_fund_rows(kiid_session=kiid_session)
-            for fund_row in fund_rows:
-                fund_id = fund_row.ID
+    def run_task(self, task: AbstractMigrationTask, timeout: datetime):
+        """
+        Runs single migration task
+        Args:
+            task: task
+            timeout: timeout
+        """
+        start_time = datetime.now()
+        name = task.get_name()
+        self.print_message(f"Start time: {start_time}")
 
-                fund: models.Fund = backend_session.query(models.Fund) \
-                    .filter(models.Fund.original_id == fund_id) \
-                    .one_or_none()
-
-                if not fund:
-                    fund = models.Fund()
-                    fund.original_id = fund_id
-
-                if fund_row.URL_EN:
-                    fund.kiid_url_en = fund_row.URL_EN
-
-                if fund_row.URL_FI:
-                    fund.kiid_url_fi = fund_row.URL_FI
-
-                if fund_row.URL_SV:
-                    fund.kiid_url_sv = fund_row.URL_SV
-
-                if fund_row.RISK_LEVEL:
-                    fund.risk_level = fund_row.RISK_LEVEL
-
-                backend_session.add(fund)
-                backend_session.flush()
-                synchronized_count = synchronized_count + 1
+        with Session(self.backend_engine) as backend_session:
+            up_to_date = task.up_to_date(backend_session)
+            if up_to_date:
+                self.print_message(f"\n{name} is already up-to-date.")
+            else:
+                self.print_message(f"\n{name} is not up-to-date. Migrating...")
+                count = task.migrate(backend_session, timeout)
+                self.print_message(f"\n{name} migration complete. {count} updated entries")
 
             if not self.debug:
                 backend_session.commit()
-                self.print_message(f"\nSynchronized {synchronized_count} funds.")
+                self.print_message(f"\nSaved changes.")
             else:
-                self.print_message(f"\nSynchronized {synchronized_count} funds. Nothing changed (in debug mode)")
+                self.print_message(f"\nRunning in debug mode, not saving the changes")
 
             end_time = datetime.now()
-            total_time = end_time - self.start_time
+            total_time = end_time - start_time
 
             self.print_message(f"End time: {end_time}, total time: {total_time}")
 
     @staticmethod
-    def get_sessions() -> (MockConnection, MockConnection):
+    def get_backend_engine() -> MockConnection:
         """
-        Initializes database sessions
-        Returns: database sessions
+        Initializes backend database engine
         """
-        kiid_database_url = os.environ.get("KIID_DATABASE_URL", "")
         backend_database_url = os.environ.get("BACKEND_DATABASE_URL", "")
-        if not kiid_database_url or not backend_database_url:
-            raise Exception("environment variables are not set")
+        if not backend_database_url:
+            raise Exception("BACKEND_DATABASE_URL environment variable is not set")
         else:
-            kiid_engine = create_engine(kiid_database_url)
-            backend_engine = create_engine(backend_database_url)
-            return kiid_engine, backend_engine
+            return create_engine(backend_database_url)
 
     def print_message(self, message: str):
         """
