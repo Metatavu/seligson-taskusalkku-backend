@@ -77,6 +77,19 @@ class AbstractMigrationTask(ABC):
         return timeout < datetime.now()
 
     @staticmethod
+    def get_company_by_original_id(backend_session: Session, original_id: str) -> Optional[destination_models.Company]:
+        """
+        Finds a company by original id
+        Args:
+            backend_session: backend session
+            original_id: original id
+
+        Returns: security or None if not found
+        """
+        return backend_session.query(destination_models.Company).filter(
+            destination_models.Company.original_id == original_id).one_or_none()
+
+    @staticmethod
     def get_security_by_original_id(session, original_security_id) -> Optional[destination_models.Security]:
         """
         Finds a security by original id
@@ -542,6 +555,114 @@ class MigrateCompaniesTask(AbstractFundsTask):
         new_company.ssn = ssn
         backend_session.add(new_company)
         return new_company
+
+
+class MigratePortfoliosTask(AbstractFundsTask):
+    """
+    Migration task for portfolios
+    """
+
+    def get_name(self):
+        return "portfolios"
+
+    def up_to_date(self, backend_session: Session) -> bool:
+        with Session(self.get_funds_database_engine()) as funds_session:
+            backend_count = self.count_backend_portfolios(backend_session=backend_session)
+            funds_count = funds_session.execute(statement="SELECT COUNT(COM_CODE) FROM TABLE_PORTFOL").fetchone()[0]
+            return backend_count >= funds_count
+
+    @staticmethod
+    def count_backend_portfolios(backend_session: Session):
+        """
+        Counts backend database portfolios
+        Args:
+            backend_session: backend database session
+
+        Returns: backend database portfolio count
+
+        """
+        return backend_session.query(func.count(destination_models.Portfolio.id)).scalar()
+
+    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+        synchronized_count = 0
+        batch = 1000
+        offset = self.count_backend_portfolios(backend_session=backend_session)
+
+        with Session(self.get_funds_database_engine()) as funds_session:
+
+            while not self.should_timeout(timeout=timeout):
+                self.print_message(f"Migrating portfolios from offset {offset}")
+
+                portfolio_rows = self.list_portfolios(
+                    funds_session=funds_session,
+                    offset=offset,
+                    limit=batch
+                )
+
+                if portfolio_rows.rowcount == 0:
+                    break
+
+                for portfolio_row in portfolio_rows:
+                    por_id = portfolio_row[0]
+                    name = portfolio_row[1]
+                    com_code = portfolio_row[2]
+                    company = self.get_company_by_original_id(backend_session=backend_session, original_id=com_code)
+                    if not company:
+                        raise MigrationException(f"Could not find company {com_code}")
+
+                    self.insert_portfolio(
+                        backend_session=backend_session,
+                        original_id=por_id,
+                        company_id=company.id,
+                        name=name
+                    )
+
+                    synchronized_count = synchronized_count + 1
+
+                offset += batch
+
+            if self.should_timeout(timeout=timeout):
+                self.print_message("Timed out.")
+
+            return synchronized_count
+
+    @staticmethod
+    def list_portfolios(funds_session: Session, limit: int, offset: int):
+        """
+        Lists portfolios from funds database
+        Args:
+            funds_session: Funds database session
+            limit: max results
+            offset: offset
+
+        Returns: portfolios from funds database
+        """
+        return funds_session.execute('SELECT PORID, NAME1, COM_CODE FROM TABLE_PORTFOL '
+                                     'ORDER BY COM_CODE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
+                                     {
+                                         "limit": limit,
+                                         "offset": offset
+                                     })
+
+    @staticmethod
+    def insert_portfolio(backend_session: Session, original_id: str, company_id: UUID, name: str) -> \
+            destination_models.Portfolio:
+        """
+        Creates new portfolio
+        Args:
+            backend_session: backend database session
+            original_id: original id
+            company_id: company id
+            name: name
+
+        Returns: created portfolio
+        """
+        new_portfolio = destination_models.Portfolio()
+        new_portfolio.original_id = original_id
+        new_portfolio.company_id = company_id
+        new_portfolio.name = name
+        backend_session.add(new_portfolio)
+        return new_portfolio
 
 
 class MigrateFundsTask(AbstractMigrationTask):
