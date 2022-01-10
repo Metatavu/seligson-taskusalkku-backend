@@ -444,6 +444,106 @@ class MigrateLastRatesTask(AbstractFundsTask):
         return new_last_rate
 
 
+class MigrateCompaniesTask(AbstractFundsTask):
+    """
+    Migration task for companies
+    """
+
+    def get_name(self):
+        return "companies"
+
+    def up_to_date(self, backend_session: Session) -> bool:
+        with Session(self.get_funds_database_engine()) as funds_session:
+            backend_count = self.count_backend_companies(backend_session=backend_session)
+            funds_count = funds_session.execute(statement="SELECT COUNT(COM_CODE) FROM TABLE_COMPANY").fetchone()[0]
+            return backend_count >= funds_count
+
+    @staticmethod
+    def count_backend_companies(backend_session: Session):
+        """
+        Counts backend database companies
+        Args:
+            backend_session: backend database session
+
+        Returns: backend database company count
+
+        """
+        return backend_session.query(func.count(destination_models.Company.id)).scalar()
+
+    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+        synchronized_count = 0
+        batch = 1000
+        offset = self.count_backend_companies(backend_session=backend_session)
+
+        with Session(self.get_funds_database_engine()) as funds_session:
+
+            while not self.should_timeout(timeout=timeout):
+                self.print_message(f"Migrating companies from offset {offset}")
+
+                company_rows = self.list_companies(
+                    funds_session=funds_session,
+                    offset=offset,
+                    limit=batch
+                )
+
+                if company_rows.rowcount == 0:
+                    break
+
+                for company_row in company_rows:
+                    com_code = company_row[0]
+                    so_sec_nr = company_row[1]
+
+                    self.insert_company(
+                        backend_session=backend_session,
+                        original_id=com_code,
+                        ssn=so_sec_nr
+                    )
+
+                    synchronized_count = synchronized_count + 1
+
+                offset += batch
+
+            if self.should_timeout(timeout=timeout):
+                self.print_message("Timed out.")
+
+            return synchronized_count
+
+    @staticmethod
+    def list_companies(funds_session: Session, limit: int, offset: int):
+        """
+        Lists companies from funds database
+        Args:
+            funds_session: Funds database session
+            limit: max results
+            offset: offset
+
+        Returns: rates from funds database
+        """
+        return funds_session.execute('SELECT COM_CODE, SO_SEC_NR FROM TABLE_COMPANY '
+                                     'ORDER BY COM_CODE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
+                                     {
+                                         "limit": limit,
+                                         "offset": offset
+                                     })
+
+    @staticmethod
+    def insert_company(backend_session: Session, original_id: str, ssn: str) -> destination_models.Company:
+        """
+        Inserts new company
+        Args:
+            backend_session: backend database session
+            original_id: original id
+            ssn: ssn
+
+        Returns: created company
+        """
+        new_company = destination_models.Company()
+        new_company.original_id = original_id
+        new_company.ssn = ssn
+        backend_session.add(new_company)
+        return new_company
+
+
 class MigrateFundsTask(AbstractMigrationTask):
     """
     Migration task for funds

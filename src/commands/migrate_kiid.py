@@ -11,14 +11,15 @@ import click
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from commands.migration_tasks import AbstractMigrationTask, MigrateFundsTask, MigrateSecuritiesTask, \
-    MigrateSecurityRatesTask, MigrateLastRatesTask
+    MigrateSecurityRatesTask, MigrateLastRatesTask, MigrateCompaniesTask
 
 logger = logging.getLogger(__name__)
 
 
 class KiidMigrateHandler:
 
-    tasks = [MigrateFundsTask(), MigrateSecuritiesTask(), MigrateSecurityRatesTask(), MigrateLastRatesTask()]
+    tasks = [MigrateFundsTask(), MigrateSecuritiesTask(), MigrateSecurityRatesTask(), MigrateLastRatesTask(),
+             MigrateCompaniesTask()]
 
     """
     Migration handler database
