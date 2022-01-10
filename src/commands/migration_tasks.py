@@ -4,10 +4,10 @@ from decimal import Decimal
 
 from uuid import UUID
 from abc import ABC, abstractmethod
-from sqlalchemy import create_engine, and_
+from sqlalchemy import create_engine, and_, func
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List, Dict
 from database import models as destination_models
 from datetime import datetime, date
 
@@ -68,17 +68,13 @@ class AbstractMigrationTask(ABC):
         """
         logger.warning(message)
 
-    def should_timeout(self, timeout: datetime) -> bool:
+    @staticmethod
+    def should_timeout(timeout: datetime) -> bool:
         """
         Returns whether task should time out
         Returns: whether task should time out
         """
-        result = timeout < datetime.now()
-
-        if result:
-            self.print_message("Timeout reached, stopping...")
-
-        return result
+        return timeout < datetime.now()
 
     @staticmethod
     def get_security_by_original_id(session, original_security_id) -> Optional[destination_models.Security]:
@@ -228,83 +224,141 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
-            backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM security_rate").fetchone()
-            funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATE").fetchone()
+            backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM security_rate").fetchone()[0]
+            funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATE").fetchone()[0]
             return backend_count >= funds_count
-
-    @staticmethod
-    def get_last_backend_date(backend_session: Session) -> Optional[datetime]:
-        return backend_session.execute(statement="SELECT max(rate_date) FROM security_rate").fetchone()[0]
 
     def migrate(self, backend_session: Session, timeout: datetime) -> int:
         synchronized_count = 0
-        offset = 0
         batch = 1000
 
         with Session(self.get_funds_database_engine()) as funds_session:
-            last_backend_date = self.get_last_backend_date(backend_session=backend_session)
-            if not last_backend_date:
-                last_backend_date = date(1970, 1, 1)
+            last_funds_dates = self.get_last_funds_dates(funds_session=funds_session)
+            last_backend_dates = self.get_last_backend_dates(backend_session=backend_session)
 
-            while not self.should_timeout(timeout=timeout):
-                self.print_message(f"Migrating rates from offset {offset}")
+            securities = self.list_securities(backend_session=backend_session)
+            for security in securities:
+                if self.should_timeout(timeout=timeout):
+                    break
 
-                rate_rows = self.list_rates(
-                    funds_session=funds_session,
-                    rdate=last_backend_date,
-                    offset=offset,
-                    limit=batch
-                )
+                offset = 0
 
-                for rate_row in rate_rows:
-                    original_security_id = rate_row.SECID
+                last_fund_date = last_funds_dates.get(security.original_id, None)
+                if not last_fund_date:
+                    continue
 
-                    security: destination_models.Security = self.get_security_by_original_id(
-                        session=backend_session,
-                        original_security_id=original_security_id
+                last_backend_date = last_backend_dates.get(security.id, date(1970, 1, 1))
+
+                if last_fund_date <= last_backend_date:
+                    continue
+
+                while not self.should_timeout(timeout=timeout):
+                    self.print_message(f"Migrating security {security.original_id} rates from offset {offset}")
+
+                    rate_rows = self.list_security_rates(
+                        funds_session=funds_session,
+                        security=security,
+                        rdate=last_backend_date,
+                        offset=offset,
+                        limit=batch
                     )
 
-                    if not security:
-                        self.print_message(f"Warning: Could not find security with original id {original_security_id}")
-                    else:
+                    if rate_rows.rowcount == 0:
+                        break
+
+                    for rate_row in rate_rows:
+                        rate_date = rate_row[0]
+                        rate_close = rate_row[1]
+
                         has_rate = offset == 0 and self.has_security_rate(
                             backend_session=backend_session,
                             security=security,
-                            rate_date=rate_row.RDATE
+                            rate_date=rate_date
                         )
 
                         if not has_rate:
                             self.insert_security_rate(
                                 backend_session=backend_session,
                                 security=security,
-                                rate_date=rate_row.RDATE,
-                                rate_close=rate_row.RCLOSE
+                                rate_date=rate_date,
+                                rate_close=rate_close
                             )
 
                             synchronized_count = synchronized_count + 1
 
-                offset += batch
+                    offset += batch
+
+            if self.should_timeout(timeout=timeout):
+                self.print_message("Timed out.")
 
             return synchronized_count
 
     @staticmethod
-    def list_rates(funds_session: Session, rdate: datetime, limit: int, offset: int):
+    def list_securities(backend_session: Session) -> List[destination_models.Security]:
+        """
+        Lists all securities
+        Args:
+            backend_session: backend database session
+
+        Returns: all securities
+        """
+        return backend_session.query(destination_models.Security).all()
+
+    @staticmethod
+    def get_last_backend_dates(backend_session: Session) -> Dict[UUID, date]:
+        """
+        Returns dict of last security backend dates
+        Args:
+            backend_session: backend database session
+
+        Returns: dict of last security backend dates"""
+        result = {}
+        rows = backend_session.query(destination_models.SecurityRate.security_id,
+                                     func.max(destination_models.SecurityRate.rate_date)) \
+            .group_by(destination_models.SecurityRate.security_id) \
+            .all()
+
+        for row in rows:
+            result[row[0]] = row[1]
+
+        return result
+
+    @staticmethod
+    def get_last_funds_dates(funds_session: Session) -> Dict[str, date]:
+        """
+        Returns dict of last security fund dates
+        Args:
+            funds_session: fund database session
+
+        Returns: dict of last security fund dates
+        """
+        result = {}
+        rows = funds_session.execute("SELECT SECID, max(RDATE) as LAST_DATE FROM TABLE_RATE GROUP BY SECID")
+        for row in rows:
+            result[row.SECID] = row.LAST_DATE.date()
+        return result
+
+    @staticmethod
+    def list_security_rates(funds_session: Session, security: destination_models.Security, rdate: datetime,
+                            limit: int, offset: int):
         """
         Lists rates from funds database
         Args:
             funds_session: Funds database session
             rdate: min rdate
+            security: security
             limit: max results
             offset: offset
 
         Returns: rates from funds database
         """
-        return funds_session.execute('SELECT SECID, RDATE, RCLOSE FROM TABLE_RATE WHERE RDATE >= :rdate '
+        return funds_session.execute('SELECT RDATE, RCLOSE FROM TABLE_RATE WHERE RDATE >= :rdate AND SECID = :SECID '
                                      'ORDER BY RDATE, SECID OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
                                      {
                                          "limit": limit,
                                          "offset": offset,
-                                         "rdate": rdate.isoformat()
+                                         "rdate": rdate.isoformat(),
+                                         "SECID": security.original_id
                                      })
 
     @staticmethod
@@ -318,9 +372,9 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
         Returns: whether rate exists for given security and date
         """
-        return backend_session.query(destination_models.SecurityRate.id)\
-            .filter( and_(destination_models.SecurityRate.security_id == security.id,
-                          destination_models.SecurityRate.rate_date == rate_date))\
+        return backend_session.query(destination_models.SecurityRate.id) \
+            .filter(and_(destination_models.SecurityRate.security_id == security.id,
+                         destination_models.SecurityRate.rate_date == rate_date)) \
             .one_or_none()
 
     @staticmethod
