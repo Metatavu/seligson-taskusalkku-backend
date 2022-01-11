@@ -90,17 +90,17 @@ class AbstractMigrationTask(ABC):
             destination_models.Company.original_id == original_id).one_or_none()
 
     @staticmethod
-    def get_security_by_original_id(session, original_security_id) -> Optional[destination_models.Security]:
+    def get_security_by_original_id(backend_session: Session, original_id) -> Optional[destination_models.Security]:
         """
         Finds a security by original id
         Args:
-            session: backend session
-            original_security_id: original id
+            backend_session: backend session
+            original_id: original id
 
         Returns: security or None if not found
         """
-        return session.query(destination_models.Security).filter(
-            destination_models.Security.original_id == original_security_id).one_or_none()
+        return backend_session.query(destination_models.Security).filter(
+            destination_models.Security.original_id == original_id).one_or_none()
 
     @staticmethod
     def get_fund_id_by_original_id(backend_session: Session, original_id: str) -> Optional[UUID]:
@@ -114,6 +114,24 @@ class AbstractMigrationTask(ABC):
         """
         return backend_session.query(destination_models.Fund.id).filter(
             destination_models.Fund.original_id == original_id).scalar()
+
+    @staticmethod
+    def get_portfolio_id_by_original_id(backend_session: Session, original_id: str) -> Optional[UUID]:
+        """
+        Finds portfolio id by original id
+        Args:
+            backend_session: backend session
+            original_id: original id
+
+        Returns: portfolio id or None if not found
+        """
+        return backend_session.query(destination_models.Portfolio.id).filter(
+            destination_models.Portfolio.original_id == original_id).scalar()
+
+    @staticmethod
+    def list_portfolios_by_company(backend_session: Session, company_id: UUID) -> List[destination_models.Portfolio]:
+        return backend_session.query(destination_models.Portfolio).filter(
+            destination_models.Portfolio.company_id == company_id).all()
 
     @staticmethod
     def list_securities(backend_session: Session) -> List[destination_models.Security]:
@@ -199,7 +217,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                         self.print_message(f"Warning: Could not find fund with original id {original_fund_id}")
 
                 existing_security: destination_models.Security = self.get_security_by_original_id(
-                    session=backend_session, original_security_id=original_security_id)
+                    backend_session=backend_session, original_id=original_security_id)
 
                 self.upsert_security(backend_session=backend_session,
                                      security=existing_security,
@@ -430,7 +448,8 @@ class MigrateLastRatesTask(AbstractFundsTask):
 
             rate_last_rows = funds_session.execute("SELECT SECID, RDATE, RCLOSE FROM TABLE_RATELAST")
             for rate_last_row in rate_last_rows:
-                security = self.get_security_by_original_id(backend_session, rate_last_row.SECID)
+                security = self.get_security_by_original_id(backend_session=backend_session,
+                                                            original_id=rate_last_row.SECID)
                 if not security:
                     raise MigrationException(f"Could not find security {rate_last_row.SECID}")
 
@@ -468,7 +487,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             backend_count = self.count_backend_companies(backend_session=backend_session)
-            funds_count = funds_session.execute(statement="SELECT COUNT(COM_CODE) FROM TABLE_COMPANY").fetchone()[0]
+            funds_count = self.count_companies(funds_session=funds_session)
             return backend_count >= funds_count
 
     @staticmethod
@@ -486,7 +505,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
     def migrate(self, backend_session: Session, timeout: datetime) -> int:
         synchronized_count = 0
         batch = 1000
-        offset = self.count_backend_companies(backend_session=backend_session)
+        offset = 0
 
         with Session(self.get_funds_database_engine()) as funds_session:
 
@@ -505,14 +524,17 @@ class MigrateCompaniesTask(AbstractFundsTask):
                 for company_row in company_rows:
                     com_code = company_row[0]
                     so_sec_nr = company_row[1]
+                    existing_company = self.get_company_by_original_id(backend_session=backend_session,
+                                                                       original_id=com_code)
 
-                    self.insert_company(
-                        backend_session=backend_session,
-                        original_id=com_code,
-                        ssn=so_sec_nr
-                    )
+                    if not existing_company:
+                        self.insert_company(
+                            backend_session=backend_session,
+                            original_id=com_code,
+                            ssn=so_sec_nr
+                        )
 
-                    synchronized_count = synchronized_count + 1
+                        synchronized_count = synchronized_count + 1
 
                 offset += batch
 
@@ -521,8 +543,21 @@ class MigrateCompaniesTask(AbstractFundsTask):
 
             return synchronized_count
 
-    @staticmethod
-    def list_companies(funds_session: Session, limit: int, offset: int):
+    def count_companies(self, funds_session: Session) -> int:
+        """
+        Counts companies from funds database
+        Args:
+            funds_session: Funds database session
+
+        Returns: company count from funds database
+        """
+        excluded = self.get_excluded_com_codes_query()
+        return funds_session\
+            .execute(f"SELECT count(COM_CODE) FROM TABLE_COMPANY WHERE COM_TYPE = '3' "
+                     f"AND COM_CODE NOT IN ({excluded})") \
+            .fetchone()[0]
+
+    def list_companies(self, funds_session: Session, limit: int, offset: int):
         """
         Lists companies from funds database
         Args:
@@ -530,14 +565,36 @@ class MigrateCompaniesTask(AbstractFundsTask):
             limit: max results
             offset: offset
 
-        Returns: rates from funds database
+        Returns: companies from funds database
         """
-        return funds_session.execute('SELECT COM_CODE, SO_SEC_NR FROM TABLE_COMPANY '
-                                     'ORDER BY COM_CODE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
-                                     {
-                                         "limit": limit,
-                                         "offset": offset
-                                     })
+        excluded = self.get_excluded_com_codes_query()
+        return funds_session.execute(
+            f"SELECT COM_CODE, SO_SEC_NR FROM TABLE_COMPANY WHERE COM_TYPE = '3' AND COM_CODE NOT IN ({excluded}) "
+            "ORDER BY COM_CODE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY",
+            {
+                "limit": limit,
+                "offset": offset
+            })
+
+    @staticmethod
+    def get_excluded_com_codes_query() -> str:
+        """
+        Returns SQL query for excluded com codes
+        Returns: SQL query for excluded com codes
+        """
+        return "SELECT DISTINCT P.COM_CODE FROM TABLE_PORTFOL P " \
+               "INNER JOIN TABLE_PORCLASSDEF D ON P.COM_CODE = D.COM_CODE AND P.PORID = D.PORID " \
+               "AND D.PORCLASS in(3, 4, 5) " \
+               "AND P.COM_CODE NOT IN (" \
+               "SELECT DISTINCT P.COM_CODE FROM TABLE_PORTFOL P " \
+               "LEFT JOIN TABLE_PORCLASSDEF D ON " \
+               "P.COM_CODE = D.COM_CODE AND P.PORID = D.PORID " \
+               "WHERE D.PORCLASS IS NULL " \
+               "UNION " \
+               "SELECT DISTINCT P.COM_CODE " \
+               "FROM TABLE_PORTFOL P " \
+               "INNER JOIN TABLE_PORCLASSDEF D ON P.COM_CODE = D.COM_CODE " \
+               "AND P.PORID = D.PORID AND D.PORCLASS in(1, 2))"
 
     @staticmethod
     def insert_company(backend_session: Session, original_id: str, ssn: str) -> destination_models.Company:
@@ -606,18 +663,22 @@ class MigratePortfoliosTask(AbstractFundsTask):
                     por_id = portfolio_row[0]
                     name = portfolio_row[1]
                     com_code = portfolio_row[2]
-                    company = self.get_company_by_original_id(backend_session=backend_session, original_id=com_code)
-                    if not company:
-                        raise MigrationException(f"Could not find company {com_code}")
 
-                    self.insert_portfolio(
-                        backend_session=backend_session,
-                        original_id=por_id,
-                        company_id=company.id,
-                        name=name
-                    )
+                    existing_portfolio = self.get_portfolio_id_by_original_id(backend_session=backend_session,
+                                                                              original_id=por_id)
+                    if not existing_portfolio:
+                        company = self.get_company_by_original_id(backend_session=backend_session, original_id=com_code)
+                        if not company:
+                            raise MigrationException(f"Could not find company {com_code}")
 
-                    synchronized_count = synchronized_count + 1
+                        self.insert_portfolio(
+                            backend_session=backend_session,
+                            original_id=por_id,
+                            company_id=company.id,
+                            name=name
+                        )
+
+                        synchronized_count = synchronized_count + 1
 
                 offset += batch
 
@@ -637,7 +698,13 @@ class MigratePortfoliosTask(AbstractFundsTask):
 
         Returns: portfolios from funds database
         """
+        exclude_query = "SELECT DISTINCT P.PORID " \
+                        "FROM TABLE_PORTFOL P " \
+                        "INNER JOIN TABLE_PORCLASSDEF D ON P.COM_CODE = D.COM_CODE " \
+                        "AND P.PORID = D.PORID AND D.PORCLASS IN (3, 4, 5)"
+
         return funds_session.execute('SELECT PORID, NAME1, COM_CODE FROM TABLE_PORTFOL '
+                                     f'WHERE PORID NOT IN ({exclude_query})'
                                      'ORDER BY COM_CODE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
                                      {
                                          "limit": limit,
@@ -663,6 +730,240 @@ class MigratePortfoliosTask(AbstractFundsTask):
         new_portfolio.name = name
         backend_session.add(new_portfolio)
         return new_portfolio
+
+
+class MigratePortfolioLogsTask(AbstractFundsTask):
+    """
+    Migration task for portfolio logs
+    """
+
+    def get_name(self):
+        return "portfoliologs"
+
+    def up_to_date(self, backend_session: Session) -> bool:
+        with Session(self.get_funds_database_engine()) as funds_session:
+            backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM portfolio_log").fetchone()[0]
+            funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_PORTLOG").fetchone()[0]
+            return backend_count >= funds_count
+
+    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+        synchronized_count = 0
+        batch = 1000
+        unix_time = datetime(1970, 1, 1, 0, 0)
+
+        with Session(self.get_funds_database_engine()) as funds_session:
+
+            funds_updates = self.get_funds_updates(funds_session=funds_session)
+            backend_updates = self.get_backend_updates(backend_session=backend_session)
+
+            securities = self.list_securities(backend_session=backend_session)
+            for security in securities:
+                if self.should_timeout(timeout=timeout):
+                    break
+
+                offset = 0
+
+                funds_updated = funds_updates.get(security.original_id, None)
+                if not funds_updated:
+                    continue
+
+                backend_update = backend_updates.get(security.id, None)
+                if not backend_update:
+                    backend_update = datetime(1970, 1, 1)
+
+                if funds_updated <= backend_update:
+                    continue
+
+                self.print_message(f"Security {security.original_id} portfolio logs are not upd-to-date funds "
+                                   f"{funds_updated}, backend {backend_update}")
+
+                while not self.should_timeout(timeout=timeout):
+                    self.print_message(f"Migrating security {security.original_id} portfolio logs from offset {offset}")
+
+                    portfolio_log_rows = list(self.list_portfolio_logs(
+                        funds_session=funds_session,
+                        security=security,
+                        updated=backend_update,
+                        offset=offset,
+                        limit=batch
+                    ).fetchall())
+
+                    if len(portfolio_log_rows) == 0:
+                        break
+
+                    trans_nrs = list(map(lambda i: i.TRANS_NR, portfolio_log_rows))
+                    por_ids = set(map(lambda i: i.PORID, portfolio_log_rows))
+
+                    existing_portfolio_logs = backend_session.query(destination_models.PortfolioLog).filter(
+                        destination_models.PortfolioLog.transaction_number.in_(trans_nrs)) \
+                        .all()
+
+                    portfolio_ids = backend_session.query(destination_models.Portfolio.id,
+                                                          destination_models.Portfolio.original_id) \
+                        .filter(destination_models.Portfolio.original_id.in_(por_ids)).all()
+
+                    existing_portfolio_log_map = {x.transaction_number: x for x in existing_portfolio_logs}
+                    portfolio_id_map = {x.original_id: x.id for x in portfolio_ids}
+
+                    for portfolio_log_row in portfolio_log_rows:
+                        c_security_original_id = portfolio_log_row.CSECID
+                        # for the case that null is inserted as SECID = ' '
+                        if c_security_original_id and c_security_original_id.strip():
+                            c_security = self.get_security_by_original_id(backend_session=backend_session,
+                                                                          original_id=c_security_original_id)
+                            if not c_security:
+                                raise MigrationException(f"Could not find security {c_security_original_id}")
+
+                            c_security_id = c_security.id
+                        else:
+                            c_security_id = None
+
+                        portfolio_original_id = portfolio_log_row.PORID
+                        if portfolio_original_id:
+                            portfolio_id = portfolio_id_map.get(portfolio_original_id, None)
+                            if not portfolio_id:
+                                raise MigrationException(f"Could not find portfolio {portfolio_original_id}")
+
+                        else:
+                            # without the portfolio key we cant do anything, we try to grab the right portfolio from
+                            # portfolio table considering the company code. If there are more than one portfolio then
+                            # we should alert and ask how to resolve the situation manually.
+                            company = self.get_company_by_original_id(backend_session=backend_session,
+                                                                      original_id=portfolio_log_row.COM_CODE)
+                            if not company:
+                                raise MigrationException(f"Could not find company {portfolio_log_row.COM_CODE}")
+
+                            portfolios = self.list_portfolios_by_company(backend_session=backend_session,
+                                                                         company_id=company.id)
+                            if len(portfolios) != 1:
+                                raise MigrationException(f"Could not resolve portfolio for company "
+                                                         f"{portfolio_log_row.COM_CODE}")
+
+                            else:
+                                portfolio = portfolios[0]
+                                portfolio_id = portfolio.id
+
+                        existing_portfolio_log = existing_portfolio_log_map.get(portfolio_log_row.TRANS_NR, None)
+                        logged_date = portfolio_log_row.PMT_DATE
+
+                        # dates that are before 1970-01-01 are considered to be nulls
+                        if logged_date and logged_date > unix_time:
+                            payment_date = logged_date
+                        else:
+                            payment_date = None
+
+                        self.upsert_portfolio_log(session=backend_session,
+                                                  portfolio_log=existing_portfolio_log,
+                                                  transaction_number=portfolio_log_row.TRANS_NR,
+                                                  transaction_code=portfolio_log_row.TRANS_CODE,
+                                                  transaction_date=portfolio_log_row.TRANS_DATE,
+                                                  c_total_value=portfolio_log_row.CTOT_VALUE,
+                                                  portfolio_id=portfolio_id,
+                                                  security_id=security.id,
+                                                  c_security_id=c_security_id,
+                                                  amount=portfolio_log_row.AMOUNT,
+                                                  c_price=portfolio_log_row.CPRICE,
+                                                  payment_date=payment_date,
+                                                  c_value=portfolio_log_row.CVALUE,
+                                                  provision=portfolio_log_row.PROVISION,
+                                                  status=portfolio_log_row.STATUS,
+                                                  updated=portfolio_log_row.UPDATED)
+
+                        synchronized_count = synchronized_count + 1
+
+                    offset += batch
+
+            if self.should_timeout(timeout=timeout):
+                self.print_message("Timed out.")
+
+            return synchronized_count
+
+    @staticmethod
+    def get_backend_updates(backend_session: Session) -> Dict[UUID, datetime]:
+        """
+        Returns dict of updated values from backend database
+        Args:
+            backend_session: backend database session
+
+        Returns: dict of updated values from backend database"""
+        result = {}
+        rows = backend_session.query(destination_models.PortfolioLog.security_id,
+                                     func.max(destination_models.PortfolioLog.updated)) \
+            .group_by(destination_models.PortfolioLog.security_id) \
+            .all()
+
+        for row in rows:
+            result[row[0]] = row[1]
+
+        return result
+
+    @staticmethod
+    def get_funds_updates(funds_session: Session) -> Dict[str, datetime]:
+        """
+        Returns dict of updated values from funds database
+        Args:
+            funds_session: fund database session
+
+        Returns: dict of updated values from funds database
+        """
+        result = {}
+        rows = funds_session.execute(
+            "SELECT SECID, max(UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME)) as LAST_DATE "
+            "FROM TABLE_PORTLOG GROUP BY SECID")
+        for row in rows:
+            result[row.SECID] = row.LAST_DATE
+        return result
+
+    @staticmethod
+    def list_portfolio_logs(funds_session: Session, security: destination_models.Security, updated: datetime,
+                            limit: int, offset: int):
+        """
+        Lists rates from funds database
+        Args:
+            funds_session: Funds database session
+            updated: min updated
+            security: security
+            limit: max results
+            offset: offset
+
+        Returns: rates from funds database
+        """
+        return funds_session.execute("SELECT SECID, CSECID, PORID, COM_CODE, TRANS_NR, TRANS_CODE, TRANS_DATE, "
+                                     "CTOT_VALUE, AMOUNT, CPRICE, PMT_DATE, CVALUE, PROVISION, STATUS, "
+                                     "UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) as UPDATED "
+                                     "FROM TABLE_PORTLOG "
+                                     "WHERE UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) >= :updated AND "
+                                     "SECID = :secid "
+                                     "ORDER BY UPDATED, SECID OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY;",
+                                     {
+                                         "limit": limit,
+                                         "offset": offset,
+                                         "updated": updated.isoformat(),
+                                         "secid": security.original_id
+                                     })
+
+    @staticmethod
+    def upsert_portfolio_log(session, portfolio_log, transaction_number, transaction_code, transaction_date,
+                             c_total_value,
+                             portfolio_id, security_id, c_security_id, amount, c_price, payment_date, c_value,
+                             provision, status, updated: datetime):
+        new_portfolio_log = portfolio_log if portfolio_log else destination_models.PortfolioLog()
+        new_portfolio_log.transaction_number = transaction_number
+        new_portfolio_log.transaction_code = transaction_code
+        new_portfolio_log.transaction_date = transaction_date
+        new_portfolio_log.c_total_value = c_total_value
+        new_portfolio_log.portfolio_id = portfolio_id
+        new_portfolio_log.security_id = security_id
+        new_portfolio_log.c_security_id = c_security_id
+        new_portfolio_log.amount = amount
+        new_portfolio_log.c_price = c_price
+        new_portfolio_log.payment_date = payment_date
+        new_portfolio_log.c_value = c_value
+        new_portfolio_log.provision = provision
+        new_portfolio_log.status = status
+        new_portfolio_log.updated = updated
+        session.add(new_portfolio_log)
+        return new_portfolio_log
 
 
 class MigrateFundsTask(AbstractMigrationTask):
