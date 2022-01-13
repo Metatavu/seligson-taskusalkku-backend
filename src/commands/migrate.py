@@ -2,6 +2,8 @@ import logging
 import os
 import sys
 from datetime import datetime, timedelta
+from typing import Optional
+
 from sqlalchemy import create_engine
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
@@ -12,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from commands.migration_tasks import AbstractMigrationTask, MigrateFundsTask, MigrateSecuritiesTask, \
     MigrateSecurityRatesTask, MigrateLastRatesTask, MigrateCompaniesTask, MigratePortfoliosTask, \
-    MigratePortfolioLogsTask
+    MigratePortfolioLogsTask, MigratePortfolioTransactionsTask
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,8 @@ logger = logging.getLogger(__name__)
 class KiidMigrateHandler:
 
     tasks = [MigrateFundsTask(), MigrateSecuritiesTask(), MigrateSecurityRatesTask(), MigrateLastRatesTask(),
-             MigrateCompaniesTask(), MigratePortfoliosTask(), MigratePortfolioLogsTask()]
+             MigrateCompaniesTask(), MigratePortfoliosTask(), MigratePortfolioTransactionsTask(),
+             MigratePortfolioLogsTask()]
 
     """
     Migration handler database
@@ -35,14 +38,17 @@ class KiidMigrateHandler:
         self.backend_engine = self.get_backend_engine()
         self.debug = debug
 
-    def handle(self):
+    def handle(self, task_name: Optional[str]):
         """
-        Runs all migrations
+        Runs migrations
+        Args:
+            task_name: name of the task to run. Runs everything is not specified
+
         """
-        timeout = datetime.now() + timedelta(minutes=3)
+        timeout = datetime.now() + timedelta(minutes=5)
 
         for task in self.tasks:
-            if timeout > datetime.now():
+            if timeout > datetime.now() and (not task_name or task_name == task.get_name()):
                 self.run_task(task, timeout)
 
     def run_task(self, task: AbstractMigrationTask, timeout: datetime):
@@ -101,10 +107,11 @@ class KiidMigrateHandler:
 
 @click.command()
 @click.option("--debug", default=False, help="Debug, readonly for testing purposes")
-def main(debug):
+@click.option("--task", default="", help="Only run specified task")
+def main(debug, task):
     """Migration method"""
     handler = KiidMigrateHandler(debug=debug)
-    handler.handle()
+    handler.handle(task)
 
 
 if __name__ == '__main__':
