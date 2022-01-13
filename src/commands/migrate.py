@@ -12,18 +12,12 @@ import click
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from commands.migration_exception import MigrationException
 from commands.migration_tasks import AbstractMigrationTask, MigrateFundsTask, MigrateSecuritiesTask, \
     MigrateSecurityRatesTask, MigrateLastRatesTask, MigrateCompaniesTask, MigratePortfoliosTask, \
     MigratePortfolioLogsTask, MigratePortfolioTransactionsTask
 
 logger = logging.getLogger(__name__)
-
-
-class MigrationException(Exception):
-    """
-    Migration exception
-    """
-    pass
 
 
 class MigrateHandler:
@@ -96,7 +90,7 @@ class MigrateHandler:
         """
         backend_database_url = os.environ.get("BACKEND_DATABASE_URL", "")
         if not backend_database_url:
-            raise Exception("BACKEND_DATABASE_URL environment variable is not set")
+            raise MigrationException("BACKEND_DATABASE_URL environment variable is not set")
         else:
             return create_engine(backend_database_url)
 

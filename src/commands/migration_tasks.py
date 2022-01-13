@@ -9,7 +9,7 @@ from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict
 
-from .migrate import MigrationException
+from .migration_exception import MigrationException
 from database import models as destination_models
 from datetime import datetime, date
 
@@ -278,7 +278,6 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
     def migrate(self, backend_session: Session, timeout: datetime) -> int:
         synchronized_count = 0
-        batch = 1000
 
         with Session(self.get_funds_database_engine()) as funds_session:
             last_funds_dates = self.get_last_funds_dates(funds_session=funds_session)
@@ -289,8 +288,6 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                 if self.should_timeout(timeout=timeout):
                     break
 
-                offset = 0
-
                 last_fund_date = last_funds_dates.get(security.original_id, None)
                 if not last_fund_date:
                     continue
@@ -300,49 +297,77 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                 if last_fund_date <= last_backend_date:
                     continue
 
-                while not self.should_timeout(timeout=timeout):
-                    self.print_message(f"Migrating security {security.original_id} rates from offset {offset}")
-
-                    rate_rows = self.list_security_rates(
-                        funds_session=funds_session,
-                        security=security,
-                        rdate=last_backend_date,
-                        offset=offset,
-                        limit=batch
-                    )
-
-                    if rate_rows.rowcount == 0:
-                        break
-
-                    for rate_row in rate_rows:
-                        rate_date = rate_row[0]
-                        rate_close = rate_row[1]
-
-                        has_rate = offset == 0 and self.has_security_rate(
-                            backend_session=backend_session,
-                            security=security,
-                            rate_date=rate_date
-                        )
-
-                        if not has_rate:
-                            self.insert_security_rate(
-                                backend_session=backend_session,
-                                security=security,
-                                rate_date=rate_date,
-                                rate_close=rate_close
-                            )
-
-                            synchronized_count = synchronized_count + 1
-
-                    if rate_rows.rowcount < batch:
-                        break
-
-                    offset += batch
+                synchronized_count += self.migrate_security_rates(security=security,
+                                                                  backend_session=backend_session,
+                                                                  funds_session=funds_session,
+                                                                  last_backend_date=last_backend_date,
+                                                                  timeout=timeout)
 
             if self.should_timeout(timeout=timeout):
                 self.print_message("Timed out.")
 
             return synchronized_count
+
+    def migrate_security_rates(self, security: destination_models.Security,
+                               funds_session: Session,
+                               backend_session: Session,
+                               last_backend_date: date,
+                               timeout: datetime) -> int:
+        """
+        Migrates security rates
+        Args:
+            security: security
+            funds_session: fund database session
+            backend_session: backend database session
+            last_backend_date: last backend update date
+            timeout: timeout
+
+        Returns: synchronized count
+        """
+        batch = 1000
+        offset = 0
+        synchronized_count = 0
+
+        while not self.should_timeout(timeout=timeout):
+            self.print_message(f"Migrating security {security.original_id} rates from offset {offset}")
+
+            rate_rows = self.list_security_rates(
+                funds_session=funds_session,
+                security=security,
+                rdate=last_backend_date,
+                offset=offset,
+                limit=batch
+            )
+
+            if rate_rows.rowcount == 0:
+                break
+
+            for rate_row in rate_rows:
+                rate_date = rate_row[0]
+                rate_close = rate_row[1]
+
+                has_rate = offset == 0 and self.has_security_rate(
+                    backend_session=backend_session,
+                    security=security,
+                    rate_date=rate_date
+                )
+
+                if not has_rate:
+                    self.insert_security_rate(
+                        backend_session=backend_session,
+                        security=security,
+                        rate_date=rate_date,
+                        rate_close=rate_close
+                    )
+
+                    synchronized_count = synchronized_count + 1
+
+            if rate_rows.rowcount < batch:
+                break
+
+            offset += batch
+
+        return synchronized_count
 
     @staticmethod
     def get_last_backend_dates(backend_session: Session) -> Dict[UUID, date]:
@@ -379,7 +404,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
         return result
 
     @staticmethod
-    def list_security_rates(funds_session: Session, security: destination_models.Security, rdate: datetime,
+    def list_security_rates(funds_session: Session, security: destination_models.Security, rdate: date,
                             limit: int, offset: int):
         """
         Lists rates from funds database
