@@ -13,6 +13,8 @@ from .migration_exception import MigrationException
 from database import models as destination_models
 from datetime import datetime, date
 
+TIMED_OUT = "Timed out."
+
 logger = logging.getLogger(__name__)
 
 
@@ -304,7 +306,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                                                                   timeout=timeout)
 
             if self.should_timeout(timeout=timeout):
-                self.print_message("Timed out.")
+                self.print_message(TIMED_OUT)
 
             return synchronized_count
 
@@ -585,7 +587,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
                 offset += batch
 
             if self.should_timeout(timeout=timeout):
-                self.print_message("Timed out.")
+                self.print_message(TIMED_OUT)
 
             return synchronized_count
 
@@ -756,7 +758,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
                 offset += batch
 
             if self.should_timeout(timeout=timeout):
-                self.print_message("Timed out.")
+                self.print_message(TIMED_OUT)
 
             return synchronized_count
 
@@ -968,7 +970,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                     offset += batch
 
             if self.should_timeout(timeout=timeout):
-                self.print_message("Timed out.")
+                self.print_message(TIMED_OUT)
 
             return synchronized_count
 
@@ -1160,7 +1162,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                     offset += batch
 
             if self.should_timeout(timeout=timeout):
-                self.print_message("Timed out.")
+                self.print_message(TIMED_OUT)
 
             return synchronized_count
 
