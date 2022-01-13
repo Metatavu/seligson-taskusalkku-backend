@@ -362,7 +362,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
                     synchronized_count = synchronized_count + 1
 
-            if rate_rows.rowcount < batch:
+            if rate_rows.rowcount != -1 and rate_rows.rowcount < batch:
                 break
 
             offset += batch
@@ -684,8 +684,8 @@ class MigratePortfoliosTask(AbstractFundsTask):
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             backend_count = self.count_backend_portfolios(backend_session=backend_session)
-            funds_count = funds_session.execute(statement="SELECT COUNT(COM_CODE) FROM TABLE_PORTFOL").fetchone()[0]
-            return backend_count >= funds_count
+            funds_count = self.count_fund_portfolios(funds_session=funds_session)
+            return backend_count == funds_count
 
     @staticmethod
     def count_backend_portfolios(backend_session: Session):
@@ -702,9 +702,20 @@ class MigratePortfoliosTask(AbstractFundsTask):
     def migrate(self, backend_session: Session, timeout: datetime) -> int:
         synchronized_count = 0
         batch = 1000
-        offset = self.count_backend_portfolios(backend_session=backend_session)
 
         with Session(self.get_funds_database_engine()) as funds_session:
+            backend_count = self.count_backend_portfolios(backend_session=backend_session)
+            funds_count = self.count_fund_portfolios(funds_session=funds_session)
+            offset = 0
+
+            if backend_count > funds_count:
+                self.print_message(f"Backend portfolio count exceeds funds portfolio count. Purging extra companies")
+                valid_por_ids = self.list_portfolio_com_codes(funds_session=funds_session)
+                backend_session.query(destination_models.Portfolio) \
+                    .filter(destination_models.Portfolio.original_id.not_in(valid_por_ids)) \
+                    .delete(synchronize_session=False)
+            else:
+                offset = backend_count
 
             while not self.should_timeout(timeout=timeout):
                 self.print_message(f"Migrating portfolios from offset {offset}")
@@ -739,7 +750,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
 
                         synchronized_count = synchronized_count + 1
 
-                if portfolio_rows.rowcount < batch:
+                if portfolio_rows.rowcount != -1 and portfolio_rows.rowcount < batch:
                     break
 
                 offset += batch
@@ -748,6 +759,32 @@ class MigratePortfoliosTask(AbstractFundsTask):
                 self.print_message("Timed out.")
 
             return synchronized_count
+
+    def count_fund_portfolios(self, funds_session: Session):
+        """
+        Counts portfolios from funds database
+        Args:
+            funds_session: Funds database session
+
+        Returns: count of portfolios from funds database
+        """
+        exclude_query = self.get_excluded_por_ids_query()
+        return funds_session.execute('SELECT COUNT(PORID) FROM TABLE_PORTFOL '
+                                     f'WHERE PORID NOT IN ({exclude_query})') \
+            .fetchone()[0]
+
+    def list_portfolio_com_codes(self, funds_session: Session):
+        """
+        Lists portfolio por ids from funds database
+        Args:
+            funds_session: Funds database session
+
+        Returns: portfolio por ids from funds database
+        """
+        exclude_query = self.get_excluded_por_ids_query()
+        rows = funds_session.execute(f"SELECT PORID FROM TABLE_PORTFOL "
+                                     f'WHERE PORID NOT IN ({exclude_query})')
+        return list(map(lambda i: i.PORID, rows))
 
     def list_portfolios(self, funds_session: Session, limit: int, offset: int):
         """
