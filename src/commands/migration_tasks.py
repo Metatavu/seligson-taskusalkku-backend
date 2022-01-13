@@ -778,13 +778,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         return "portfolio-logs"
 
     def up_to_date(self, backend_session: Session) -> bool:
-        with Session(self.get_funds_database_engine()) as funds_session:
-            backend_updated = self.max_updated_backend(backend_session=backend_session)
-            if not backend_updated:
-                return False
-
-            funds_updated = self.max_updated_funds(funds_session=funds_session)
-            return funds_updated > backend_updated
+        return False
 
     def migrate(self, backend_session: Session, timeout: datetime) -> int:
         synchronized_count = 0
@@ -922,33 +916,6 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             return synchronized_count
 
     @staticmethod
-    def max_updated_backend(backend_session: Session):
-        """
-        Returns max updated value from backend database
-        Args:
-            backend_session: backend database session
-
-        Returns: max updated value from backend database
-
-        """
-        return backend_session.query(func.max(destination_models.PortfolioLog.updated)).scalar()
-
-    def max_updated_funds(self, funds_session: Session) -> int:
-        """
-        Returns max updated value from funds database
-        Args:
-            funds_session: Funds database session
-
-        Returns: max updated value from funds database
-        """
-        excluded = self.get_excluded_por_ids_query()
-        return funds_session\
-            .execute(f"SELECT max(UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME)) "
-                     f"FROM TABLE_PORTLOG "
-                     f"WHERE PORID NOT IN ({excluded})") \
-            .fetchone()[0]
-
-    @staticmethod
     def get_backend_updates(backend_session: Session) -> Dict[UUID, datetime]:
         """
         Returns dict of updated values from backend database
@@ -1047,13 +1014,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
         return "portfolio-transactions"
 
     def up_to_date(self, backend_session: Session) -> bool:
-        with Session(self.get_funds_database_engine()) as funds_session:
-            backend_updated = self.max_updated_backend(backend_session=backend_session)
-            if not backend_updated:
-                return False
-
-            funds_updated = self.max_updated_funds(funds_session=funds_session)
-            return funds_updated > backend_updated
+        return False
 
     def migrate(self, backend_session: Session, timeout: datetime) -> int:
         synchronized_count = 0
@@ -1145,33 +1106,6 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                 self.print_message("Timed out.")
 
             return synchronized_count
-
-    @staticmethod
-    def max_updated_backend(backend_session: Session):
-        """
-        Returns max updated value from backend database
-        Args:
-            backend_session: backend database session
-
-        Returns: max updated value from backend database
-
-        """
-        return backend_session.query(func.max(destination_models.PortfolioTransaction.updated)).scalar()
-
-    def max_updated_funds(self, funds_session: Session) -> int:
-        """
-        Returns max updated value from funds database
-        Args:
-            funds_session: Funds database session
-
-        Returns: max updated value from funds database
-        """
-        excluded = self.get_excluded_por_ids_query()
-        return funds_session\
-            .execute(f"SELECT max(UPD_DATE + CAST(UPD_TIME as DATETIME)) "
-                     f"FROM TABLE_PORTRANS "
-                     f"WHERE PORID NOT IN ({excluded})") \
-            .fetchone()[0]
 
     @staticmethod
     def get_backend_updates(backend_session: Session) -> Dict[UUID, datetime]:
