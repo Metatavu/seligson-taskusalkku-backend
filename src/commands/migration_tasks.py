@@ -780,6 +780,9 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             backend_updated = self.max_updated_backend(backend_session=backend_session)
+            if not backend_updated:
+                return False
+
             funds_updated = self.max_updated_funds(funds_session=funds_session)
             return funds_updated > backend_updated
 
