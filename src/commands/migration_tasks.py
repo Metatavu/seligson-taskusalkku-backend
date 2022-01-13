@@ -712,7 +712,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
 
             if backend_count > funds_count:
                 self.print_message(f"Backend portfolio count exceeds funds portfolio count. Purging extra companies")
-                valid_por_ids = self.list_portfolio_com_codes(funds_session=funds_session)
+                valid_por_ids = self.list_portfolio_por_ids(funds_session=funds_session)
                 backend_session.query(destination_models.Portfolio) \
                     .filter(destination_models.Portfolio.original_id.not_in(valid_por_ids)) \
                     .delete(synchronize_session=False)
@@ -732,25 +732,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
                     break
 
                 for portfolio_row in portfolio_rows:
-                    por_id = portfolio_row[0]
-                    name = portfolio_row[1]
-                    com_code = portfolio_row[2]
-
-                    existing_portfolio = self.get_portfolio_id_by_original_id(backend_session=backend_session,
-                                                                              original_id=por_id)
-                    if not existing_portfolio:
-                        company = self.get_company_by_original_id(backend_session=backend_session, original_id=com_code)
-                        if not company:
-                            raise MigrationException(f"Could not find company {com_code}")
-
-                        self.insert_portfolio(
-                            backend_session=backend_session,
-                            original_id=por_id,
-                            company_id=company.id,
-                            name=name
-                        )
-
-                        synchronized_count = synchronized_count + 1
+                    synchronized_count += self.migrate_portfolio(backend_session, portfolio_row)
 
                 if portfolio_rows.rowcount != -1 and portfolio_rows.rowcount < batch:
                     break
@@ -761,6 +743,37 @@ class MigratePortfoliosTask(AbstractFundsTask):
                 self.print_message(TIMED_OUT)
 
             return synchronized_count
+
+    def migrate_portfolio(self, backend_session, portfolio_row):
+        """
+        Migrates single portfolio
+        Args:
+            backend_session: backend database session
+            portfolio_row: portfolio row
+
+        Returns: synchronized count
+        """
+        synchronized_count = 0
+        por_id = portfolio_row[0]
+        name = portfolio_row[1]
+        com_code = portfolio_row[2]
+        existing_portfolio = self.get_portfolio_id_by_original_id(backend_session=backend_session,
+                                                                  original_id=por_id)
+        if not existing_portfolio:
+            company = self.get_company_by_original_id(backend_session=backend_session, original_id=com_code)
+            if not company:
+                raise MigrationException(f"Could not find company {com_code}")
+
+            self.insert_portfolio(
+                backend_session=backend_session,
+                original_id=por_id,
+                company_id=company.id,
+                name=name
+            )
+
+            synchronized_count = synchronized_count + 1
+
+        return synchronized_count
 
     def count_fund_portfolios(self, funds_session: Session):
         """
@@ -775,7 +788,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
                                      f'WHERE PORID NOT IN ({exclude_query})') \
             .fetchone()[0]
 
-    def list_portfolio_com_codes(self, funds_session: Session):
+    def list_portfolio_por_ids(self, funds_session: Session):
         """
         Lists portfolio por ids from funds database
         Args:
