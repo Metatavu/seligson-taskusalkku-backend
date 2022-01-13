@@ -8,17 +8,12 @@ from sqlalchemy import create_engine, and_, func
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict
+
+from .migrate import MigrationException
 from database import models as destination_models
 from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
-
-
-class MigrationException(Exception):
-    """
-    Migration exception
-    """
-    pass
 
 
 class AbstractMigrationTask(ABC):

@@ -19,7 +19,14 @@ from commands.migration_tasks import AbstractMigrationTask, MigrateFundsTask, Mi
 logger = logging.getLogger(__name__)
 
 
-class KiidMigrateHandler:
+class MigrationException(Exception):
+    """
+    Migration exception
+    """
+    pass
+
+
+class MigrateHandler:
 
     tasks = [MigrateFundsTask(), MigrateSecuritiesTask(), MigrateSecurityRatesTask(), MigrateLastRatesTask(),
              MigrateCompaniesTask(), MigratePortfoliosTask(), MigratePortfolioTransactionsTask(),
@@ -110,7 +117,7 @@ class KiidMigrateHandler:
 @click.option("--task", default="", help="Only run specified task")
 def main(debug, task):
     """Migration method"""
-    handler = KiidMigrateHandler(debug=debug)
+    handler = MigrateHandler(debug=debug)
     handler.handle(task)
 
 
