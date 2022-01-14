@@ -163,7 +163,7 @@ class AbstractFundsTask(AbstractMigrationTask, ABC):
             return create_engine(database_url)
 
     @staticmethod
-    def get_excluded_por_ids_query():
+    def get_excluded_portfolio_ids_query():
         """
         Returns exclude query for excluded porids
         Returns: exclude query for excluded porids
@@ -253,8 +253,8 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
-            backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM security_rate").fetchone()[0]
-            funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATE").fetchone()[0]
+            backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM security_rate").scalar()
+            funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATE").scalar()
             return backend_count >= funds_count
 
     def migrate(self, backend_session: Session, timeout: datetime) -> int:
@@ -421,7 +421,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
         return backend_session.query(destination_models.SecurityRate.id) \
             .filter(and_(destination_models.SecurityRate.security_id == security.id,
                          destination_models.SecurityRate.rate_date == rate_date)) \
-            .one_or_none()
+            .scalar() is not None
 
     @staticmethod
     def insert_security_rate(backend_session: Session, security: destination_models.Security, rate_date: date,
@@ -452,8 +452,8 @@ class MigrateLastRatesTask(AbstractFundsTask):
 
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
-            backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM last_rate").fetchone()[0]
-            funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATELAST").fetchone()[0]
+            backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM last_rate").scalar()
+            funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATELAST").scalar()
             return backend_count >= funds_count
 
     def migrate(self, backend_session: Session, timeout: datetime) -> int:
@@ -582,7 +582,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
         return funds_session\
             .execute(f"SELECT count(COM_CODE) FROM TABLE_COMPANY WHERE COM_TYPE = '3' "
                      f"AND COM_CODE NOT IN ({excluded})") \
-            .fetchone()[0]
+            .scalar()
 
     def list_company_com_codes(self, funds_session: Session):
         """
@@ -762,10 +762,10 @@ class MigratePortfoliosTask(AbstractFundsTask):
 
         Returns: count of portfolios from funds database
         """
-        exclude_query = self.get_excluded_por_ids_query()
+        exclude_query = self.get_excluded_portfolio_ids_query()
         return funds_session.execute('SELECT COUNT(PORID) FROM TABLE_PORTFOL '
                                      f'WHERE PORID NOT IN ({exclude_query})') \
-            .fetchone()[0]
+            .scalar()
 
     def list_portfolio_por_ids(self, funds_session: Session):
         """
@@ -775,7 +775,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
 
         Returns: portfolio por ids from funds database
         """
-        exclude_query = self.get_excluded_por_ids_query()
+        exclude_query = self.get_excluded_portfolio_ids_query()
         rows = funds_session.execute(f"SELECT PORID FROM TABLE_PORTFOL "
                                      f'WHERE PORID NOT IN ({exclude_query})')
         return list(map(lambda i: i.PORID, rows))
@@ -790,7 +790,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
 
         Returns: portfolios from funds database
         """
-        exclude_query = self.get_excluded_por_ids_query()
+        exclude_query = self.get_excluded_portfolio_ids_query()
         return funds_session.execute('SELECT PORID, NAME1, COM_CODE FROM TABLE_PORTFOL '
                                      f'WHERE PORID NOT IN ({exclude_query})'
                                      'ORDER BY COM_CODE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
@@ -1015,7 +1015,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
         Returns: rates from funds database
         """
-        porid_exclude_query = self.get_excluded_por_ids_query()
+        porid_exclude_query = self.get_excluded_portfolio_ids_query()
 
         return funds_session.execute("SELECT SECID, CSECID, PORID, COM_CODE, TRANS_NR, TRANS_CODE, TRANS_DATE, "
                                      "CTOT_VALUE, AMOUNT, CPRICE, PMT_DATE, CVALUE, PROVISION, STATUS, "
@@ -1186,7 +1186,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
         Returns: dict of updated values from funds database
         """
         result = {}
-        excluded = self.get_excluded_por_ids_query()
+        excluded = self.get_excluded_portfolio_ids_query()
         rows = funds_session.execute(
             "SELECT SECID, max(UPD_DATE + CAST(UPD_TIME as DATETIME)) as LAST_DATE "
             f"FROM TABLE_PORTRANS WHERE PORID NOT IN ({excluded}) GROUP BY SECID")
@@ -1207,7 +1207,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
 
         Returns: portfolio transactions from funds database
         """
-        porid_exclude_query = self.get_excluded_por_ids_query()
+        porid_exclude_query = self.get_excluded_portfolio_ids_query()
         return funds_session.execute("SELECT PORID, COM_CODE, TRANS_NR, TRANS_DATE, AMOUNT, PUR_CVALUE, "
                                      "UPD_DATE + CAST(UPD_TIME as DATETIME) as UPDATED "
                                      "FROM TABLE_PORTRANS "

@@ -46,7 +46,7 @@ class MigrateHandler:
             task_name: name of the task to run. Runs everything is not specified
 
         """
-        timeout = datetime.now() + timedelta(minutes=5)
+        timeout = datetime.now() + timedelta(minutes=15)
 
         for task in self.tasks:
             if timeout > datetime.now() and (not task_name or task_name == task.get_name()):
