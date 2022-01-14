@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from .sqlalchemy_uuid import SqlAlchemyUuid
-from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR
+from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -100,6 +100,7 @@ class PortfolioLog(Base):
     c_value = Column(DECIMAL(15, 2), nullable=False)
     provision = Column(DECIMAL(15, 2), nullable=False)
     status = Column(CHAR(1), nullable=False)
+    updated = Column(DateTime, nullable=False)
 
     portfolio = relationship("Portfolio", back_populates="portfolio_logs", lazy=True)
     c_security = relationship("Security", back_populates="c_portfolio_logs", lazy=True, foreign_keys="PortfolioLog.c_security_id")
@@ -118,3 +119,4 @@ class PortfolioTransaction(Base):
     portfolio = relationship("Portfolio", back_populates="portfolio_transactions", lazy=True)
     security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=False)
     security = relationship("Security", back_populates="portfolio_transactions", lazy=True)
+    updated = Column(DateTime, nullable=False)
