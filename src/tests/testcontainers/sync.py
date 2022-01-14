@@ -8,7 +8,7 @@ BACKEND_DATABASE_URL = "BACKEND_DATABASE_URL"
 class SyncContainer(DockerContainer):
     """Sync container."""
 
-    def __init__(self, kafka_ip: str, database_url: str, image="seligson-sync", **kwargs):
+    def __init__(self, kafka_ip: str, database_url: str, image="seligson-taskusalkku-backend", **kwargs):
         """Constructor
 
         Args:
@@ -39,3 +39,4 @@ class SyncContainer(DockerContainer):
         """Configures the Kafka container"""
         self.with_env(KAFKA_BOOTSTRAP_SERVERS, "kafka:9092")
         self.with_env(BACKEND_DATABASE_URL, self.database_url)
+        self.with_command("python app/sync.py")

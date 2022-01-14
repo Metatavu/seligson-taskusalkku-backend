@@ -79,7 +79,7 @@ pytest
 
 if it fails, you can run tests for the first time like this:
 ```bash
-docker build -t seligson-sync -f src/Dockerfile-sync src/ && cd src && pytest --setup-show -s -o log_cli=true
+docker build -t seligson-taskusalkku-backend -f src/Dockerfile src/ && cd src && pytest --setup-show -s -o log_cli=true
 ```
 
 
@@ -133,6 +133,8 @@ pip install -r requirements.txt
 ```bash
 sqlacodegen  <database url> --outfile <path>
 ```
-### Run the commands
-docker run  --net=host seligson-taskusalkku-backend:latest /bin/sh -c "python commands/migrate.py --debug=False --batch=100000 --target= --sleep=500 --update=True --starting_row=199999"
+### Run commands
 
+#### migrate command
+
+docker run  --net=host seligson-taskusalkku-backend:latest /bin/sh -c "python commands/migrate.py --debug=False --batch=100000 --target= --sleep=500 --update=True --starting_row=199999"
