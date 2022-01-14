@@ -142,27 +142,6 @@ class AbstractMigrationTask(ABC):
         return backend_session.query(destination_models.Security).all()
 
 
-class AbstractSalkkuTask(AbstractMigrationTask, ABC):
-    """
-    Abstract base class for salkku migrations
-    """
-
-    @staticmethod
-    def get_salkku_database_engine() -> MockConnection:
-        """
-        Initializes salkku database engine
-
-        Returns:
-            engine
-        """
-        salkku_database_url = os.environ.get("SALKKU_DATABASE_URL", "")
-
-        if not salkku_database_url:
-            raise MigrationException("SALKKU_DATABASE_URL environment variable is not set")
-        else:
-            return create_engine(salkku_database_url)
-
-
 class AbstractFundsTask(AbstractMigrationTask, ABC):
     """
     Abstract base class for fund migrations
