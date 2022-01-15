@@ -44,12 +44,13 @@ class AbstractMigrationTask(ABC):
         ...
 
     @abstractmethod
-    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         """
         Runs migration task
         Args:
             backend_session: backend database session
             timeout: timeout
+            force_recheck: Whether task should be forced to recheck all entities
 
         Returns:
             count of updated entries
@@ -188,7 +189,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
             funds_security_count = funds_session.execute(statement="SELECT COUNT(SECID) FROM TABLE_SECURITY").fetchone()
             return backend_security_count >= funds_security_count
 
-    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
         with Session(self.get_funds_database_engine()) as funds_session:
 
@@ -257,7 +258,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
             funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATE").scalar()
             return backend_count >= funds_count
 
-    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
 
         with Session(self.get_funds_database_engine()) as funds_session:
@@ -456,7 +457,7 @@ class MigrateLastRatesTask(AbstractFundsTask):
             funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATELAST").scalar()
             return backend_count >= funds_count
 
-    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
 
         with Session(self.get_funds_database_engine()) as funds_session:
@@ -517,17 +518,16 @@ class MigrateCompaniesTask(AbstractFundsTask):
         """
         return backend_session.query(func.count(destination_models.Company.id)).scalar()
 
-    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
         batch = 1000
         offset = 0
 
         with Session(self.get_funds_database_engine()) as funds_session:
             backend_count = self.count_backend_companies(backend_session=backend_session)
-            funds_count = self.count_fund_companies(funds_session=funds_session)
 
-            if backend_count > funds_count:
-                self.print_message(f"Backend company count exceeds funds company count. Purging extra companies")
+            if force_recheck:
+                self.print_message(f"Forced recheck, purging extra companies")
                 valid_com_codes = self.list_company_com_codes(funds_session=funds_session)
                 backend_session.query(destination_models.Company)\
                     .filter(destination_models.Company.original_id.not_in(valid_com_codes))\
@@ -680,17 +680,16 @@ class MigratePortfoliosTask(AbstractFundsTask):
         """
         return backend_session.query(func.count(destination_models.Portfolio.id)).scalar()
 
-    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
         batch = 1000
 
         with Session(self.get_funds_database_engine()) as funds_session:
             backend_count = self.count_backend_portfolios(backend_session=backend_session)
-            funds_count = self.count_fund_portfolios(funds_session=funds_session)
             offset = 0
 
-            if backend_count > funds_count:
-                self.print_message(f"Backend portfolio count exceeds funds portfolio count. Purging extra companies")
+            if force_recheck:
+                self.print_message(f"Forced recheck, purging extra portfolios")
                 valid_por_ids = self.list_portfolio_por_ids(funds_session=funds_session)
                 backend_session.query(destination_models.Portfolio) \
                     .filter(destination_models.Portfolio.original_id.not_in(valid_por_ids)) \
@@ -831,7 +830,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
     def up_to_date(self, backend_session: Session) -> bool:
         return False
 
-    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
         batch = 1000
         unix_time = datetime(1970, 1, 1, 0, 0)
@@ -1067,7 +1066,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
     def up_to_date(self, backend_session: Session) -> bool:
         return False
 
-    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
         batch = 1000
 
@@ -1279,7 +1278,7 @@ class MigrateFundsTask(AbstractMigrationTask):
             kiid_fund_count = kiid_session.execute(statement="SELECT COUNT(ID) FROM FUND").fetchone()
             return backend_fund_count >= kiid_fund_count
 
-    def migrate(self, backend_session: Session, timeout: datetime) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
         with Session(self.kiid_engine) as kiid_session:
 
