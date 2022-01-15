@@ -792,7 +792,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
         exclude_query = self.get_excluded_portfolio_ids_query()
         return funds_session.execute('SELECT PORID, NAME1, COM_CODE FROM TABLE_PORTFOL '
                                      f'WHERE PORID NOT IN ({exclude_query})'
-                                     'ORDER BY COM_CODE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
+                                     'ORDER BY CREA_DATE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
                                      {
                                          "limit": limit,
                                          "offset": offset
