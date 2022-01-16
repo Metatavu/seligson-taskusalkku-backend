@@ -1022,6 +1022,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                      "FROM TABLE_PORTLOG "
                                      "WHERE UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) >= :updated AND "
                                      "SECID = :secid AND "
+                                     "PORID IN (SELECT PORID FROM TABLE_PORTFOL) AND "
                                      f"PORID NOT IN ({porid_exclude_query}) "
                                      "ORDER BY UPDATED, SECID OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY;",
                                      {
