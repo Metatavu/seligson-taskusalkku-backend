@@ -30,14 +30,16 @@ class MigrateHandler:
     Migration handler database
     """
 
-    def __init__(self, debug: bool):
+    def __init__(self, debug: bool, force_recheck: bool):
         """
         Constructor
         Args:
             debug: whether to run the command in debug mode
+            force_recheck: Whether task should be forced to recheck all entities
         """
         self.backend_engine = self.get_backend_engine()
         self.debug = debug
+        self.force_recheck = force_recheck
 
     def handle(self, task_name: Optional[str]):
         """
@@ -64,13 +66,22 @@ class MigrateHandler:
         self.print_message(f"Start time: {start_time}")
 
         with Session(self.backend_engine) as backend_session:
-            up_to_date = task.up_to_date(backend_session)
-            if up_to_date:
-                self.print_message(f"\n{name} is already up-to-date.")
-            else:
-                self.print_message(f"\n{name} is not up-to-date. Migrating...")
-                count = task.migrate(backend_session, timeout)
+            if self.force_recheck:
+                self.print_message(f"\nForced recheck, migrating {name}...")
+                count = task.migrate(backend_session=backend_session,
+                                     timeout=timeout,
+                                     force_recheck=self.force_recheck)
                 self.print_message(f"\n{name} migration complete. {count} updated entries")
+            else:
+                up_to_date = task.up_to_date(backend_session)
+                if up_to_date:
+                    self.print_message(f"\n{name} is already up-to-date.")
+                else:
+                    self.print_message(f"\n{name} is not up-to-date. Migrating...")
+                    count = task.migrate(backend_session=backend_session,
+                                         timeout=timeout,
+                                         force_recheck=self.force_recheck)
+                    self.print_message(f"\n{name} migration complete. {count} updated entries")
 
             if not self.debug:
                 backend_session.commit()
@@ -109,9 +120,10 @@ class MigrateHandler:
 @click.command()
 @click.option("--debug", default=False, help="Debug, readonly for testing purposes")
 @click.option("--task", default="", help="Only run specified task")
-def main(debug, task):
+@click.option("--force-recheck", default=False, help="Forces task to recheck all entities")
+def main(debug, task, force_recheck):
     """Migration method"""
-    handler = MigrateHandler(debug=debug)
+    handler = MigrateHandler(debug=debug, force_recheck=force_recheck)
     handler.handle(task)
 
 
