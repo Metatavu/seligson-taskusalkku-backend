@@ -31,6 +31,18 @@ class AbstractMigrationTask(ABC):
         """
         ...
 
+    def prepare(self, backend_session: Session):
+        """
+        Task can override this method to perform preparations for the task.
+        Method is executed before up_to_date and migrate functions.
+        Args:
+            backend_session:
+
+        Returns:
+
+        """
+        pass
+
     @abstractmethod
     def up_to_date(self, backend_session: Session) -> bool:
         """
@@ -419,10 +431,10 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
         Returns: whether rate exists for given security and date
         """
-        return backend_session.query(destination_models.SecurityRate.id) \
-            .filter(and_(destination_models.SecurityRate.security_id == security.id,
-                         destination_models.SecurityRate.rate_date == rate_date)) \
-            .scalar() is not None
+        return backend_session.query(destination_models.SecurityRate.id)\
+                              .filter(and_(destination_models.SecurityRate.security_id == security.id,
+                                           destination_models.SecurityRate.rate_date == rate_date)) \
+                              .scalar() is not None
 
     @staticmethod
     def insert_security_rate(backend_session: Session, security: destination_models.Security, rate_date: date,
@@ -448,46 +460,80 @@ class MigrateLastRatesTask(AbstractFundsTask):
     Migration task for last rates
     """
 
+    def __init__(self):
+        self.backend_entities = None
+        self.funds_entities = None
+
     def get_name(self):
         return "last-rate"
 
-    def up_to_date(self, backend_session: Session) -> bool:
+    def prepare(self, backend_session: Session):
         with Session(self.get_funds_database_engine()) as funds_session:
-            backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM last_rate").scalar()
-            funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATELAST").scalar()
-            return backend_count >= funds_count
+            fund_rows = funds_session.execute("SELECT SECID, RDATE, RCLOSE FROM TABLE_RATELAST")
+            backend_rows = backend_session.query(destination_models.LastRate).all()
+            self.funds_entities = {x.SECID: x for x in fund_rows}
+            self.backend_entities = {x.security.original_id: x for x in backend_rows}
+
+    def up_to_date(self, backend_session: Session) -> bool:
+        for security_original_id, funds_row in self.funds_entities.items():
+            if security_original_id not in self.backend_entities:
+                self.print_message(f"Not found {security_original_id}")
+                return False
+
+            existing_last_rate = self.backend_entities[security_original_id]
+            if existing_last_rate.rate_date < funds_row.RDATE.date():
+                self.print_message(f"Security {security_original_id} last rate is not up-to-date")
+                return False
+
+        return True
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
 
-        with Session(self.get_funds_database_engine()) as funds_session:
+        for security_original_id, funds_row in self.funds_entities.items():
+            existing_last_rate = self.backend_entities.get(security_original_id, None)
+            funds_rate_date = funds_row.RDATE.date()
 
-            rate_last_rows = funds_session.execute("SELECT SECID, RDATE, RCLOSE FROM TABLE_RATELAST")
-            for rate_last_row in rate_last_rows:
+            if not existing_last_rate or existing_last_rate.rate_date < funds_rate_date:
+                self.print_message(f"Updating security {security_original_id} last rate "
+                                   f"({existing_last_rate.rate_date} < {funds_rate_date})")
+
                 security = self.get_security_by_original_id(backend_session=backend_session,
-                                                            original_id=rate_last_row.SECID)
+                                                            original_id=funds_row.SECID)
                 if not security:
-                    raise MigrationException(f"Could not find security {rate_last_row.SECID}")
-
-                existing_last_rate: destination_models.LastRate = backend_session.query(
-                    destination_models.LastRate).filter(
-                    destination_models.LastRate.security_id == security.id).one_or_none()
+                    raise MigrationException(f"Could not find security {funds_row.SECID}")
 
                 self.upsert_last_rate(backend_session=backend_session,
                                       last_rate=existing_last_rate,
                                       security_id=security.id,
-                                      rate_close=rate_last_row.RCLOSE
+                                      rate_close=funds_row.RCLOSE,
+                                      rate_date=funds_row.RDATE
                                       )
                 synchronized_count = synchronized_count + 1
 
-            return synchronized_count
+        return synchronized_count
 
     @staticmethod
-    def upsert_last_rate(backend_session, last_rate, security_id, rate_close) -> destination_models.LastRate:
+    def upsert_last_rate(backend_session: Session,
+                         last_rate: Optional[destination_models.LastRate],
+                         security_id: UUID,
+                         rate_close: Decimal,
+                         rate_date: date) -> destination_models.LastRate:
+        """
+        Upserts last rate entity
+        Args:
+            backend_session: database session for the backend database
+            last_rate: last rate table or null if creating new one
+            security_id: security id
+            rate_close: rate close
+            rate_date: rate date
 
+        Returns: updated last rate entity
+        """
         new_last_rate = last_rate if last_rate else destination_models.LastRate()
         new_last_rate.security_id = security_id
         new_last_rate.rate_close = rate_close
+        new_last_rate.rate_date = rate_date
         backend_session.add(new_last_rate)
         return new_last_rate
 
@@ -529,8 +575,8 @@ class MigrateCompaniesTask(AbstractFundsTask):
             if force_recheck:
                 self.print_message(f"Forced recheck, purging extra companies")
                 valid_com_codes = self.list_company_com_codes(funds_session=funds_session)
-                backend_session.query(destination_models.Company)\
-                    .filter(destination_models.Company.original_id.not_in(valid_com_codes))\
+                backend_session.query(destination_models.Company) \
+                    .filter(destination_models.Company.original_id.not_in(valid_com_codes)) \
                     .delete(synchronize_session=False)
             else:
                 offset = backend_count
@@ -579,7 +625,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
         Returns: company count from funds database
         """
         excluded = self.get_excluded_com_codes_query()
-        return funds_session\
+        return funds_session \
             .execute(f"SELECT count(COM_CODE) FROM TABLE_COMPANY WHERE COM_TYPE = '3' "
                      f"AND COM_CODE NOT IN ({excluded})") \
             .scalar()
@@ -1116,7 +1162,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                     trans_nrs = list(map(lambda i: i.TRANS_NR, portfolio_transaction_rows))
                     por_ids = set(map(lambda i: i.PORID, portfolio_transaction_rows))
 
-                    existing_transactions = backend_session.query(destination_models.PortfolioTransaction)\
+                    existing_transactions = backend_session.query(destination_models.PortfolioTransaction) \
                         .filter(destination_models.PortfolioTransaction.transaction_number.in_(trans_nrs)) \
                         .all()
 

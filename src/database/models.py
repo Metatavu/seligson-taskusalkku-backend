@@ -66,6 +66,7 @@ class LastRate(Base):
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), nullable=False)
     security = relationship("Security", back_populates="last_rate", lazy=True)
+    rate_date = Column(Date, nullable=False)
     rate_close = Column(DECIMAL(16, 6))
 
 

@@ -66,6 +66,8 @@ class MigrateHandler:
         self.print_message(f"Start time: {start_time}")
 
         with Session(self.backend_engine) as backend_session:
+            task.prepare(backend_session=backend_session)
+
             if self.force_recheck:
                 self.print_message(f"\nForced recheck, migrating {name}...")
                 count = task.migrate(backend_session=backend_session,
