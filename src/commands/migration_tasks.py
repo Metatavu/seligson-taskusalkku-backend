@@ -477,7 +477,8 @@ class MigrateLastRatesTask(AbstractFundsTask):
     def up_to_date(self, backend_session: Session) -> bool:
         for security_original_id, funds_row in self.funds_entities.items():
             existing_last_rate = self.backend_entities.get(security_original_id, None)
-            if not existing_last_rate or existing_last_rate.rate_date < funds_row.RDATE.date():
+            if not existing_last_rate or not existing_last_rate.rate_date or \
+                    existing_last_rate.rate_date < funds_row.RDATE.date():
                 self.print_message(f"Security {security_original_id} last rate is not up-to-date")
                 return False
 
@@ -490,7 +491,8 @@ class MigrateLastRatesTask(AbstractFundsTask):
             existing_last_rate = self.backend_entities.get(security_original_id, None)
             funds_rate_date = funds_row.RDATE.date()
 
-            if not existing_last_rate or existing_last_rate.rate_date < funds_rate_date:
+            if not existing_last_rate or not existing_last_rate.rate_date or \
+                    existing_last_rate.rate_date < funds_rate_date:
                 self.print_message(f"Updating security {security_original_id} last rate "
                                    f"({existing_last_rate.rate_date} < {funds_rate_date})")
 
