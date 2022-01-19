@@ -68,7 +68,7 @@ class FundsMetaController:
 
     data: Optional[List[FundMeta]] = None
     fund_options: Optional[FundOptions] = None
-    fund_values_basic: Optional[List[Dict[str, str]]] = None
+
     group_map = {
       "spiltan": "SPILTAN",
       "dimension": "DIMENSION",
@@ -282,20 +282,21 @@ class FundsMetaController:
 
         return self.fund_options
 
-    def get_fund_values_basic(self) -> Optional[List[Dict[str, str]]]:
+    @staticmethod
+    def get_fund_values_basic() -> Optional[List[Dict[str, str]]]:
         """Returns fund values basic
 
         Returns:
             dict: fund values object
         """
-        if not self.fund_values_basic:
-            with open(os.environ["FUND_VALUES_BASIC_CSV"]) as csv_file:
-                rows = DictReader(csv_file, delimiter=";")
-                self.fund_values_basic = []
-                for row in rows:
-                    basic_value = dict()
-                    for key, value in row.items():
-                        basic_value[key.strip()] = value
-                    self.fund_values_basic.append(basic_value)
+        result = []
 
-        return self.fund_values_basic
+        with open(os.environ["FUND_VALUES_BASIC_CSV"]) as csv_file:
+            rows = DictReader(csv_file, delimiter=";")
+            for row in rows:
+                basic_value = dict()
+                for key, value in row.items():
+                    basic_value[key.strip()] = value
+                result.append(basic_value)
+
+        return result
