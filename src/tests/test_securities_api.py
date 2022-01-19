@@ -1,16 +1,21 @@
 import uuid
 from typing import Optional
 
+from database.models import Fund, SecurityRate
+from .utils.database import wait_for_row_count, sql_backend_security_rates, sql_funds_rate
+
 from .constants import fund_ids, invalid_uuids, security_ids, invalid_auths
 from .fixtures.backend_mysql import *  # noqa
 from .fixtures.client import *  # noqa
 from .fixtures.kafka import *  # noqa
 from .fixtures.kafka_connect import *  # noqa
 from .fixtures.salkku_mysql import *  # noqa
+from .fixtures.funds_mssql import *  # noqa
 from .fixtures.sync import *  # noqa
 from .fixtures.users import *  # noqa
 from .fixtures.zookeeper import *  # noqa
 from .utils.database import sql_backend_security, sql_backend_funds
+from sqlalchemy import create_engine
 
 import logging
 
@@ -117,6 +122,92 @@ class TestSecurities:
                 expected_status=403,
                 auth=None
             )
+
+    def test_find_fund_values(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
+                sql_backend_security_rates(backend_mysql):
+            security_id = security_ids["PASSIVETEST01"]
+            start_date = "2020-01-01"
+            end_date = "2020-01-05"
+            response = client.get(f"/v1/securities/{security_id}/historyValues/"
+                                  f"?startDate={start_date}&endDate={end_date}",
+                                  auth=user_1_auth)
+
+            assert response.status_code == 200
+
+            values = response.json()
+            assert 5 == len(values)
+            assert "2020-01-01" == values[0]["date"]
+            assert "2020-01-05" == values[4]["date"]
+            assert "0.564846" == values[0]["value"]
+            assert "1.665009" == values[4]["value"]
+
+    @pytest.mark.parametrize("auth", invalid_auths)
+    def test_find_fund_values_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
+                                           keycloak: KeycloakContainer, auth: BearerAuth):
+        with sql_backend_funds(backend_mysql):
+            security_id = security_ids["PASSIVETEST01"]
+            start_date = "2020-01-01"
+            end_date = "2020-01-05"
+            response = client.get(f"/v1/securities/{security_id}/historyValues/?"
+                                  f"startDate={start_date}&endDate={end_date}",
+                                  auth=auth)
+            assert response.status_code == 403
+
+    def test_find_fund_values_anonymous(self, client: TestClient, backend_mysql: MySqlContainer,
+                                        keycloak: KeycloakContainer, anonymous_auth: BearerAuth):
+        with sql_backend_funds(backend_mysql):
+            security_id = security_ids["PASSIVETEST01"]
+            start_date = "2020-01-01"
+            end_date = "2020-01-05"
+            response = client.get(f"/v1/securities/{security_id}/historyValues/?"
+                                  f"startDate={start_date}&endDate={end_date}",
+                                  auth=anonymous_auth)
+            assert response.status_code == 200
+
+    def test_find_fund_values_unauthorized(self, client: TestClient, backend_mysql: MySqlContainer,
+                                           keycloak: KeycloakContainer):
+        with sql_backend_funds(backend_mysql):
+            security_id = security_ids["PASSIVETEST01"]
+            start_date = "2020-01-01"
+            end_date = "2020-01-05"
+            response = client.get(f"/v1/securities/{security_id}/historyValues/?"
+                                  f"startDate={start_date}&endDate={end_date}")
+            assert response.status_code == 403
+
+    def test_sync_security_rates(self,
+                                 client: TestClient,
+                                 backend_mysql: MySqlContainer,
+                                 salkku_mysql: MySqlContainer,
+                                 funds_mssql: SqlServerContainer,
+                                 kafka_connect: KafkaConnectContainer,
+                                 sync: SyncContainer,
+                                 user_1_auth: BearerAuth
+                                 ):
+        engine = create_engine(backend_mysql.get_connection_url())
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
+            wait_for_row_count(engine=engine, entity=Fund, count=6)
+
+            with sql_funds_rate(mssql=funds_mssql):
+                wait_for_row_count(engine=engine, entity=SecurityRate, count=546)
+                security_id = security_ids["PASSIVETEST01"]
+
+                start_date = "2020-01-01"
+                end_date = "2020-01-05"
+
+                response = client.get(
+                    f"/v1/securities/{security_id}/historyValues/?startDate={start_date}&endDate={end_date}",
+                    auth=user_1_auth)
+                assert response.status_code == 200
+
+                values = response.json()
+                assert 5 == len(values)
+                assert "2020-01-01" == values[0]["date"]
+                assert "2020-01-05" == values[4]["date"]
+                assert "0.654115" == values[0]["value"]
+                assert "4.743263" == values[4]["value"]
+
+            mysql_exec_sql(mysql=backend_mysql, sql_file="backend-security-rates-teardown.sql")
 
     @staticmethod
     def assert_find_security_fail(client: TestClient, expected_status: int, security_id: str,
