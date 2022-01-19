@@ -123,7 +123,8 @@ class TestSecurities:
                 auth=None
             )
 
-    def test_find_fund_values(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
+    def test_list_security_history_values(self, client: TestClient, backend_mysql: MySqlContainer,
+                                          user_1_auth: BearerAuth):
         with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
                 sql_backend_security_rates(backend_mysql):
             security_id = security_ids["PASSIVETEST01"]
@@ -143,9 +144,10 @@ class TestSecurities:
             assert "1.665009" == values[4]["value"]
 
     @pytest.mark.parametrize("auth", invalid_auths)
-    def test_find_fund_values_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
-                                           keycloak: KeycloakContainer, auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+    def test_list_security_history_values_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
+                                                       keycloak: KeycloakContainer, auth: BearerAuth):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
+                sql_backend_security_rates(backend_mysql):
             security_id = security_ids["PASSIVETEST01"]
             start_date = "2020-01-01"
             end_date = "2020-01-05"
@@ -154,9 +156,10 @@ class TestSecurities:
                                   auth=auth)
             assert response.status_code == 403
 
-    def test_find_fund_values_anonymous(self, client: TestClient, backend_mysql: MySqlContainer,
-                                        keycloak: KeycloakContainer, anonymous_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+    def test_list_security_history_values_anonymous(self, client: TestClient, backend_mysql: MySqlContainer,
+                                                    keycloak: KeycloakContainer, anonymous_auth: BearerAuth):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
+                sql_backend_security_rates(backend_mysql):
             security_id = security_ids["PASSIVETEST01"]
             start_date = "2020-01-01"
             end_date = "2020-01-05"
@@ -165,9 +168,10 @@ class TestSecurities:
                                   auth=anonymous_auth)
             assert response.status_code == 200
 
-    def test_find_fund_values_unauthorized(self, client: TestClient, backend_mysql: MySqlContainer,
-                                           keycloak: KeycloakContainer):
-        with sql_backend_funds(backend_mysql):
+    def test_list_security_history_values_unauthorized(self, client: TestClient, backend_mysql: MySqlContainer,
+                                                       keycloak: KeycloakContainer):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
+                sql_backend_security_rates(backend_mysql):
             security_id = security_ids["PASSIVETEST01"]
             start_date = "2020-01-01"
             end_date = "2020-01-05"
