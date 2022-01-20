@@ -118,12 +118,15 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
     ) -> List[PortfolioHistoryValue]:
         portfolio = self.get_portfolio(token_bearer=token_bearer, portfolio_id=portfolio_id)
 
+        if end_date > date.today():
+            end_date = date.today()
+
         """List portfolio transactions from given time period """
         rows: List[DbPortfolioLog] = operations.get_portfolio_logs(
             database=self.database,
             portfolio=portfolio,
             transaction_codes=['11', '31', '46', '80'],
-            transaction_date_min=start_date,
+            transaction_date_min=None,
             transaction_date_max=end_date,
         )
 
@@ -165,7 +168,6 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
         """Resolve if SEK rates if needed"""
         first_sek_date = None
-        last_sek_date = None
         sek_rates: Dict[date, Decimal] = {}
 
         for security_id in holdings.get_security_ids():
@@ -174,10 +176,6 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                 min_date = holdings.get_security_min_date(security_id=security_id)
                 if first_sek_date is None or min_date < first_sek_date:
                     first_sek_date = min_date
-
-                max_date = holdings.get_security_max_date(security_id=security_id)
-                if last_sek_date is None or max_date > last_sek_date:
-                    last_sek_date = max_date
 
         if first_sek_date is not None:
             sek_security = operations.find_security_by_original_id(
@@ -188,17 +186,16 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             sek_rates = self.get_security_rate_map(
                 security_id=sek_security.id,
                 min_date=first_sek_date,
-                max_date=last_sek_date
+                max_date=end_date
             )
 
         """Resolve EUR rates (including FIM for transactions before 1999-01-01) """
         holdings_min_date = holdings.get_min_date()
-        holdings_max_date = holdings.get_max_date()
         eur_rates: Dict[date, Decimal] = {}
         last_fim_date = date(1999, 1, 1)
         fim_convert_rate = Decimal(5.94573)
 
-        for i in range((holdings_max_date - holdings_min_date).days + 1):
+        for i in range((end_date - holdings_min_date).days + 1):
             eur_date = holdings_min_date + timedelta(days=i)
             if eur_date > last_fim_date:
                 eur_rates[eur_date] = Decimal(1)
@@ -208,13 +205,12 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         security_rates: Dict[UUID, Dict[date, Decimal]] = {}
 
         """Resolve rates for all securities"""
+        min_date = holdings.get_min_date()
         for security_id in holdings.get_security_ids():
-            min_date = holdings.get_security_min_date(security_id=security_id)
-            max_date = holdings.get_security_max_date(security_id=security_id)
             security_rates[security_id] = self.get_security_rate_map(
                 security_id=security_id,
                 min_date=min_date,
-                max_date=max_date
+                max_date=end_date
             )
 
         """Map correct currency rates to securities"""
@@ -228,8 +224,8 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                 currency_rates[security_id] = eur_rates
 
         """Calculate daily sums for all holdings"""
-        for i in range((holdings_max_date - holdings_min_date).days + 1):
-            holding_date = holdings_min_date + timedelta(days=i)
+        for i in range((end_date - start_date).days + 1):
+            holding_date = start_date + timedelta(days=i)
 
             day_sum = holdings.get_day_sum(
                 holding_date=holding_date,
