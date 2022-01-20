@@ -30,7 +30,6 @@ from sqlalchemy.orm import Session
 from spec.models.extra_models import TokenModel  # noqa: F401
 from spec.models.error import Error
 from spec.models.fund import Fund
-from spec.models.fund_history_value import FundHistoryValue
 from impl.security_api import get_token_bearer
 
 router = InferringRouter()
@@ -97,57 +96,6 @@ class FundsApiSpec(ABC):
 
         return await self.find_fund(
             fund_id=self.to_uuid(fund_id),
-            token_bearer=token_bearer
-        )
-
-    @abstractmethod
-    async def list_fund_history_values(
-        self,
-        fund_id: UUID,
-        first_result: Optional[int],
-        max_results: Optional[int],
-        start_date: Optional[date],
-        end_date: Optional[date],
-        token_bearer: TokenModel,
-    ) -> List[FundHistoryValue]:
-        ...
-
-    @router.get(
-        "/v1/funds/{fundId}/historyValues",
-        responses={
-            200: {"model": List[FundHistoryValue], "description": "List of fund history values"},
-            400: {"model": Error, "description": "Invalid request was sent to the server"},
-            403: {"model": Error, "description": "Attempted to make a call with unauthorized client"},
-            500: {"model": Error, "description": "Internal server error"},
-        },
-        tags=["Funds"],
-        summary="Lists fund history values",
-    )
-    async def list_fund_history_values_spec(
-        self,
-        fund_id: str = Path(None, description="fund id", alias="fundId"),
-        first_result: int = Query(None, description="First result. Defaults to 0", alias="firstResult"),
-        max_results: int = Query(None, description="Max results. Defaults to 10", alias="maxResults"),
-        start_date: str = Query(None, description="Filter starting from this date", alias="startDate"),
-        end_date: str = Query(None, description="Filter ending to this date", alias="endDate"),
-        token_bearer: TokenModel = FastAPISecurity(
-            get_token_bearer
-        ),
-    ) -> List[FundHistoryValue]:
-        """Lists fund history values"""
-
-        if fund_id is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Missing required parameter fundId"
-            )
-
-        return await self.list_fund_history_values(
-            fund_id=self.to_uuid(fund_id),
-            first_result=first_result,
-            max_results=max_results,
-            start_date=self.to_date(start_date),
-            end_date=self.to_date(end_date),
             token_bearer=token_bearer
         )
 

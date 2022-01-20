@@ -8,10 +8,8 @@ from typing import List, Optional
 from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
 from spec.apis.funds_api import FundsApiSpec, router as funds_api_router
-from datetime import date
 
 from spec.models.fund import Fund
-from spec.models.fund_history_value import FundHistoryValue
 from spec.models.extra_models import TokenModel
 from funds.funds_meta import FundsMetaController
 from funds.funds_meta import FundMeta
@@ -19,7 +17,6 @@ from spec.models.localized_value import LocalizedValue
 from spec.models.change_data import ChangeData
 
 from database.models import Fund as DbFund
-from database.models import SecurityRate
 
 logger = logging.getLogger(__name__)
 
@@ -85,38 +82,7 @@ class FundsApiImpl(FundsApiSpec):
 
         return list(filter(lambda x: x is not None, map(self.translate_fund, funds)))
 
-    async def list_fund_history_values(self,
-                                       fund_id: UUID,
-                                       first_result: Optional[int],
-                                       max_results: Optional[int],
-                                       start_date: Optional[date],
-                                       end_date: Optional[date],
-                                       token_bearer: TokenModel
-                                       ) -> List[FundHistoryValue]:
-
-        fund = database.find_fund(
-            database=self.database,
-            fund_id=fund_id
-        )
-
-        if not fund:
-            raise HTTPException(
-                status_code=404,
-                detail="Fund {fund_id} not found"
-            )
-
-        values = database.query_fund_security_rates(
-            database=self.database,
-            fund_id=fund.id,
-            rate_date_min=start_date,
-            rate_date_max=end_date,
-            first_result=first_result,
-            max_result=max_results
-        )
-
-        return list(map(self.translate_historical_value, values))
-
-    def translate_fund(self, fund: DbFund) -> Fund:
+    def translate_fund(self, fund: DbFund) -> Optional[Fund]:
         """Translates fund to REST resource
 
         Args:
@@ -199,18 +165,3 @@ class FundsApiImpl(FundsApiSpec):
             fi=fi,
             sv=sv
         )
-
-    @staticmethod
-    def translate_historical_value(security_rate: SecurityRate) -> FundHistoryValue:
-        """Translates historical value
-
-        Args:
-            security_rate (SecurityRate): security rate
-
-        Returns:
-            FundHistoryValue: REST resource
-        """
-        result = FundHistoryValue()
-        result.value = security_rate.rate_close
-        result.date = security_rate.rate_date
-        return result

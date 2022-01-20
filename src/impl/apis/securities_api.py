@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import logging
+from datetime import date
 from uuid import UUID
 from database import operations
 
@@ -12,7 +13,8 @@ from spec.apis.securities_api import SecuritiesApiSpec, router as securities_api
 from spec.models.security import Security, LocalizedValue
 from spec.models.extra_models import TokenModel
 
-from database.models import Security as DbSecurity
+from database.models import Security as DbSecurity, SecurityRate
+from spec.models.security_history_value import SecurityHistoryValue
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +74,37 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
 
         return list(map(self.translate_security, securities))
 
+    async def list_security_history_values(self,
+                                           security_id: UUID,
+                                           first_result: Optional[int],
+                                           max_results: Optional[int],
+                                           start_date: Optional[date],
+                                           end_date: Optional[date],
+                                           token_bearer: TokenModel
+                                           ) -> List[SecurityHistoryValue]:
+
+        security = operations.find_security(
+            database=self.database,
+            security_id=security_id
+        )
+
+        if not security:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Security {security_id} not found"
+            )
+
+        values = operations.query_security_rates(
+            database=self.database,
+            security_id=security.id,
+            rate_date_min=start_date,
+            rate_date_max=end_date,
+            first_result=first_result,
+            max_result=max_results
+        )
+
+        return list(map(self.translate_historical_value, values))
+
     @staticmethod
     def translate_security(security: DbSecurity) -> Security:
         """Translates security to REST resource
@@ -92,3 +125,18 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             ),
             currency=security.currency
         )
+
+    @staticmethod
+    def translate_historical_value(security_rate: SecurityRate) -> SecurityHistoryValue:
+        """Translates historical value
+
+        Args:
+            security_rate (SecurityRate): security rate
+
+        Returns:
+            SecurityHistoryValue: REST resource
+        """
+        result = SecurityHistoryValue()
+        result.value = security_rate.rate_close
+        result.date = security_rate.rate_date
+        return result
