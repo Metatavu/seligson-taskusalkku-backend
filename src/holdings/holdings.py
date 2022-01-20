@@ -50,7 +50,7 @@ class Holdings:
         """
         current_date = self.get_security_min_date(security_id)
         if current_date is None:
-            return  None
+            return None
 
         result = Decimal(0)
         while current_date <= holding_date:
@@ -62,7 +62,8 @@ class Holdings:
 
         return result
 
-    def get_day_sum(self, holding_date: date, currency_rates: Dict[UUID, Dict[date, Decimal]], security_rates: Dict[UUID, Dict[date, Decimal]]):
+    def get_day_sum(self, holding_date: date, currency_rates: Dict[UUID, Dict[date, Decimal]],
+                    security_rates: Dict[UUID, Dict[date, Decimal]]):
         """
         Calculates daily sum of holdings using day's currency and security rates as multipliers
         Args:
