@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Optional, Dict, List
 from uuid import UUID
-from datetime import date
+from datetime import date, timedelta
 
 
 class HoldingsException(Exception):
@@ -48,7 +48,19 @@ class Holdings:
         Returns: day's holding amount for a security
 
         """
-        return self.data[security_id].get(holding_date, None)
+        current_date = self.get_security_min_date(security_id)
+        if current_date is None:
+            return  None
+
+        result = Decimal(0)
+        while current_date <= holding_date:
+            change = self.data[security_id].get(current_date, None)
+            if change is not None:
+                result += change
+
+            current_date = current_date + timedelta(days=1)
+
+        return result
 
     def get_day_sum(self, holding_date: date, currency_rates: Dict[UUID, Dict[date, Decimal]], security_rates: Dict[UUID, Dict[date, Decimal]]):
         """
@@ -67,6 +79,7 @@ class Holdings:
             security_currency_rates = currency_rates[security_id]
             day_security_rate = security_security_rates.get(holding_date, None)
             day_currency_rate = security_currency_rates.get(holding_date, None)
+
             amount = self.get_day_amount(security_id=security_id, holding_date=holding_date)
             if amount is not None:
                 if day_security_rate is None:
