@@ -126,7 +126,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             database=self.database,
             portfolio=portfolio,
             transaction_codes=['11', '31', '46', '80'],
-            transaction_date_min=start_date,
+            transaction_date_min=None,
             transaction_date_max=end_date,
         )
 
@@ -224,8 +224,8 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                 currency_rates[security_id] = eur_rates
 
         """Calculate daily sums for all holdings"""
-        for i in range((end_date - holdings_min_date).days + 1):
-            holding_date = holdings_min_date + timedelta(days=i)
+        for i in range((end_date - start_date).days + 1):
+            holding_date = start_date + timedelta(days=i)
 
             day_sum = holdings.get_day_sum(
                 holding_date=holding_date,

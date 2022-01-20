@@ -82,13 +82,7 @@ class Holdings:
             day_currency_rate = security_currency_rates.get(holding_date, None)
 
             amount = self.get_day_amount(security_id=security_id, holding_date=holding_date)
-            if amount is not None:
-                if day_security_rate is None:
-                    raise HoldingsException(f"Missing day {str(holding_date)} rate for security {security_id}")
-
-                if day_currency_rate is None:
-                    raise HoldingsException(f"Missing day {str(holding_date)} currency rate for security {security_id}")
-
+            if amount is not None and day_security_rate is not None and day_currency_rate is not None:
                 result += amount * day_security_rate / day_currency_rate
 
         return result
