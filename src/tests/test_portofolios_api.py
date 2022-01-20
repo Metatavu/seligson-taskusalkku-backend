@@ -309,58 +309,9 @@ class TestPortfolio:
 
             portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
 
-            """
-            2020-06-01:
-             
-            3 transfers:
-            - subscription of PASSIVETEST01, amount 8.891322479445751
-            - redemption of PASSIVETEST01, amount 46.54840931204268 (ignored)
-            - transfer from PASSIVETEST01 to ACTIVETEST01, amount  35.19015936647667
-            
-            security rates:
-            - PASSIVETEST01 = 3.0411934114057058
-            - ACTIVETEST01 = 2.8414261328219794
-            
-            Sum for day should be: 
-            
-            (8.891322479445751 * 3.0411934114057058) + (35.19015936647667 * 2.8414261328219794) 
-
-            2020-06-06
-            3. transfers
-            - subscription of SPILTAN TEST with amount 25.034593204195833
-            - redemption of SPILTAN TEST with amount amount 12.602863875893721 (ignored)
-            - transfer from SPILTAN TEST PASSIVETEST01 with amount 14.24559022245685
-            
-            security rates:
-            - SPILTAN TEST = 10.2893454827978
-            - PASSIVETEST01 = 2.265510994165496
-            - SEK = 5.123123
-            
-            (25.034593204195833 * 10.2893454827978  / 5.123123) + (14.24559022245685 * 2.265510994165496) 
-            
-            1998-01-23
-            1. transfer
-            - subscription of PASSIVETEST01 with amount 30
-            - redemption of PASSIVETEST01 with amount 30 (ignored)
-            - removal of BALANCEDTEST01 with amount 3.5
-            
-            security rates:
-            - PASSIVETEST01 = 1.5151887883728388
-            - BALANCEDTEST01 = 8.510354920492162
-            
-            and because it's before 1999-01-01, it's in FIM
-            
-            (30 * 1.5151887883728388 / 5.94573) - (3.5 * 8.510354920492162 / 5.94573)
-            """
-
-            expected_value_1998_01_23 = (30 * 1.5151887883728388 / 5.94573) - \
-                                        (3.5 * 8.510354920492162 / 5.94573)
-
-            expected_value_2020_06_01 = (8.891322479445751 * 3.0411934114057058) + \
-                                        (35.19015936647667 * 2.8414261328219794)
-
-            expected_value_2020_06_06 = (25.034593204195833 * 10.2893454827978 / 5.123123) + \
-                                        (14.24559022245685 * 2.265510994165496)
+            expected_value_1998_01_23 = 2.6354
+            expected_value_2020_06_01 = 1120.0312
+            expected_value_2020_06_06 = 3263.4449
 
             responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
                                    f"startDate=1998-01-23&endDate=1998-01-23", auth=user_1_auth).json()
@@ -380,7 +331,7 @@ class TestPortfolio:
 
             responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
                                    f"startDate=1999-01-01&endDate=1999-01-01", auth=user_1_auth).json()
-            assert 0 == len(responses)
+            assert 1 == len(responses)
 
     def test_list_portfolio_history_values_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,
                                                       user_1_auth: BearerAuth):
