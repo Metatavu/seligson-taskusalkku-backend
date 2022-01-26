@@ -372,7 +372,3 @@ def find_security_by_original_id(database: Session, original_id: str) -> Optiona
     return database.query(Security) \
         .filter(Security.original_id == original_id) \
         .one_or_none()
-
-
-def get_portfolio_history():
-    pass  # todo development after new database changes

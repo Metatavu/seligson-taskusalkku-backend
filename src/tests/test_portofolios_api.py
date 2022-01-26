@@ -17,7 +17,8 @@ from .utils.database import sql_backend_company, sql_backend_security, sql_backe
     sql_backend_portfolio_transaction, sql_backend_last_rate, sql_backend_portfolio, sql_backend_funds, \
     sql_backend_security_rates, wait_for_row_count
 
-from ..database.models import Company, Security, LastRate, Portfolio, PortfolioTransaction, PortfolioLog
+from ..database.models import Company, Security, LastRate, Portfolio as DbPortfolio, PortfolioTransaction, PortfolioLog
+from spec.models.portfolio import Portfolio
 
 import logging
 
@@ -102,13 +103,15 @@ class TestPortfolio:
         main_expected_sum_total_amounts = sum(portfolio_values[main_portfolio_id]["total_amounts"])
         main_expected_sum_market_value_total = sum(portfolio_values[main_portfolio_id]["market_value_total"])
         main_expected_sum_purchase_total = sum(portfolio_values[main_portfolio_id]["purchase_total"])
-
+        main_portfolio_expected_reference_a = "1012300014"
+        main_portfolio_expected_reference_b = "2012300013"
         sub_portfolio_id = "84da0adf-db11-4be9-8c51-fcebc05a1d4f"
         sub_expected_sum_total_amounts = sum(portfolio_values[sub_portfolio_id]["total_amounts"])
         sub_expected_sum_market_value_total = sum(portfolio_values[sub_portfolio_id]["market_value_total"])
         sub_expected_sum_purchase_total = sum(portfolio_values[sub_portfolio_id]["purchase_total"])
-
-        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
+        sub_portfolio_expected_reference_a = "1012302012"
+        sub_portfolio_expected_reference_b = "2012302011"
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (DbPortfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 60)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_funds(backend_mysql), sql_backend_company(backend_mysql), \
@@ -125,6 +128,8 @@ class TestPortfolio:
             assert main_expected_sum_total_amounts == Decimal(main_portfolio["totalAmount"])
             assert main_expected_sum_market_value_total == Decimal(main_portfolio["marketValueTotal"])
             assert main_expected_sum_purchase_total == Decimal(main_portfolio["purchaseTotal"])
+            assert main_portfolio_expected_reference_a == main_portfolio["aReference"]
+            assert main_portfolio_expected_reference_b == main_portfolio["bReference"]
 
             sub_portfolio = self.get_portfolio(client=client, portfolio_id=sub_portfolio_id, auth=user_1_auth)
 
@@ -133,6 +138,8 @@ class TestPortfolio:
             assert sub_expected_sum_total_amounts == Decimal(sub_portfolio["totalAmount"])
             assert sub_expected_sum_market_value_total == Decimal(sub_portfolio["marketValueTotal"])
             assert sub_expected_sum_purchase_total == Decimal(sub_portfolio["purchaseTotal"])
+            assert sub_portfolio_expected_reference_a == sub_portfolio["aReference"]
+            assert sub_portfolio_expected_reference_b == sub_portfolio["bReference"]
 
     def test_find_portfolio_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,
                                        user_1_auth: BearerAuth):
@@ -213,7 +220,7 @@ class TestPortfolio:
         expected_redemption = Decimal("35000.00")
         expected_subscription = Decimal("30099.17")
 
-        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (DbPortfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 60)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
@@ -296,7 +303,7 @@ class TestPortfolio:
             )
 
     def test_portfolio_history_values(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
-        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (DbPortfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 60)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
@@ -399,7 +406,7 @@ class TestPortfolio:
         portfolio_table_ids = ["6bb05ba3-2b4f-4031-960f-0f20d5244440", "84da0adf-db11-4be9-8c51-fcebc05a1d4f",
                                "10b9cf58-669a-492a-9fb4-91e18129916d", "ba4869f3-dff4-409f-9208-69503f88f228"]
 
-        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (DbPortfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 60)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
@@ -483,7 +490,7 @@ class TestPortfolio:
         | SPILTAN TEST      |  233.527500 |      15000.00 |      0.7417133780667051 |
         +-------------------------------------------------------------+-------------+
         """
-        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (DbPortfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 60)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
@@ -779,7 +786,7 @@ class TestPortfolio:
             }
         ]
 
-        tables = [(Company, 4), (Security, 9), (LastRate, 9), (Portfolio, 5), (PortfolioTransaction, 30),
+        tables = [(Company, 4), (Security, 9), (LastRate, 9), (DbPortfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 60)]
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \

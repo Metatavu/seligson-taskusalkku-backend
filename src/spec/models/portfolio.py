@@ -21,12 +21,16 @@ class Portfolio(BaseModel):
         totalAmount: The totalAmount of this Portfolio [Optional].
         marketValueTotal: The marketValueTotal of this Portfolio [Optional].
         purchaseTotal: The purchaseTotal of this Portfolio [Optional].
+        aReference: The aReference of this Portfolio [Optional].
+        bReference: The bReference of this Portfolio [Optional].
     """
     id: Optional[str] = None
     name: str
     totalAmount: Optional[str] = None
     marketValueTotal: Optional[str] = None
     purchaseTotal: Optional[str] = None
+    aReference: Optional[str] = None
+    bReference: Optional[str] = None
 
     @classmethod
     @validator("total_amount")
@@ -44,6 +48,18 @@ class Portfolio(BaseModel):
     @validator("purchase_total")
     def purchase_total_pattern(cls, value):
         assert value is not None and re.match(r"^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)$", value)
+        return value
+
+    @classmethod
+    @validator("a_reference")
+    def a_reference_pattern(cls, value):
+        assert value is not None and re.match(r"^[0-9]{12,27}", value)
+        return value
+
+    @classmethod
+    @validator("b_reference")
+    def b_reference_pattern(cls, value):
+        assert value is not None and re.match(r"^[0-9]{12,27}", value)
         return value
 
 
