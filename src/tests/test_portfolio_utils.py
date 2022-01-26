@@ -13,16 +13,16 @@ class TestPortfolioUtils:
         result = PortfolioUtils.get_portfolio_key(key)
         assert result == "0201"
 
-    def test_make_reference(self, client:TestClient):
+    def test_make_reference(self, client: TestClient):
         share = "10"
         port = "0401"
         com = "12345"
-        result = PortfolioUtils.make_reference(share,com,port)
+        result = PortfolioUtils.make_reference(share, com, port)
         assert result == "101234504019"
         share = "20"
         port = "0401"
         com = "67890"
-        result = PortfolioUtils.make_reference(share,com,port)
+        result = PortfolioUtils.make_reference(share, com, port)
         assert result == "206789004011"
 
         share = "10"

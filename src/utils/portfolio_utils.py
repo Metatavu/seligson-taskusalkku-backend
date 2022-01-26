@@ -34,7 +34,7 @@ class PortfolioUtils:
         """
         multiplier = [7, 3, 1]
         sum_of_digits = 0
-        stem = share+company_code+portfolio_key
+        stem = share + company_code + portfolio_key
         i = len(stem) - 1
         j = 0
         while i >= 0:
