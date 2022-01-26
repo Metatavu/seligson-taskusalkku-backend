@@ -20,6 +20,7 @@ from spec.models.portfolio_security import PortfolioSecurity
 from spec.models.portfolio_transaction import PortfolioTransaction
 from spec.models.transaction_type import TransactionType
 from holdings.holdings import Holdings
+from utils.portfolio_utils import PortfolioUtils
 
 logger = logging.getLogger(__name__)
 
@@ -400,12 +401,22 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         market_value_total = "0" if portfolio_values.market_value_total is None else portfolio_values.market_value_total
         purchase_total = portfolio_values.purchase_total if portfolio_values.purchase_total is not None else "0"
 
+        company_code = portfolio.company.original_id
+
+        share_a = "10"  # 'A' type is for growth.
+        share_b = "20"  # 'B' type is for profit.
+        portfolio_key = PortfolioUtils.get_portfolio_key(portfolio.original_id)
+        reference_a = PortfolioUtils.make_reference(share_a, company_code, portfolio_key)
+        reference_b = PortfolioUtils.make_reference(share_b, company_code, portfolio_key)
+
         return Portfolio(
             id=str(portfolio.id),
             name=portfolio.name,
             totalAmount=total_amount,
             marketValueTotal=market_value_total,
-            purchaseTotal=purchase_total
+            purchaseTotal=purchase_total,
+            aReference=reference_a,
+            bReference=reference_b
         )
 
     def translate_portfolio_log(self, portfolio_log: DbPortfolioLog) -> PortfolioTransaction:
