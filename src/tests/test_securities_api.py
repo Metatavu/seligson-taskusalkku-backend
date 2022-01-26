@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from database.models import Fund, SecurityRate
+from ..database.models import Fund, SecurityRate
 from .utils.database import wait_for_row_count, sql_backend_security_rates, sql_funds_rate
 
 from .constants import fund_ids, invalid_uuids, security_ids, invalid_auths
@@ -25,6 +25,13 @@ security_1_data = {
     "id": security_ids["ACTIVETEST01"],
     "fundId": fund_ids["activetest01"],
     "name": {"fi": "Active test security 1 - fi", "sv": "Active test security 1 - sv"},
+    "currency": "EUR"
+}
+
+security_3_data = {
+    "id": security_ids["PASSIVETEST01"],
+    "fundId": fund_ids["passivetest01"],
+    "name": {"fi": "Passive test security 1 - fi", "sv": "Passive test security 1 - sv"},
     "currency": "EUR"
 }
 
@@ -122,6 +129,20 @@ class TestSecurities:
                 expected_status=403,
                 auth=None
             )
+
+    def test_list_securities_series_ids(self, client: TestClient, backend_mysql: MySqlContainer,
+                                        user_1_auth: BearerAuth):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
+
+            series_id = 1
+
+            response = client.get(f"/v1/securities?seriesId={series_id}", auth=user_1_auth)
+            assert response.status_code == 200
+
+            response_securities = response.json()
+            assert 4 == len(response_securities)
+            assert response_securities[0] == security_1_data
+            assert response_securities[3] == security_3_data
 
     def test_list_security_history_values(self, client: TestClient, backend_mysql: MySqlContainer,
                                           user_1_auth: BearerAuth):

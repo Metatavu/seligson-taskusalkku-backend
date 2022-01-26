@@ -225,7 +225,8 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                                      fund_id=fund_id,
                                      currency=security_row.CURRENCY,
                                      name_fi=security_row.NAME1,
-                                     name_sv=security_row.NAME2)
+                                     name_sv=security_row.NAME2,
+                                     series_id=security_row.SERIES_ID)
 
                 synchronized_count = synchronized_count + 1
 
@@ -240,18 +241,19 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
         Returns: securities from funds database
         """
-        statement = "SELECT SECID, SORTNAME, CURRENCY, NAME1, NAME2 FROM TABLE_SECURITY"
+        statement = "SELECT SECID, SORTNAME, CURRENCY, NAME1, NAME2, SERIES_ID FROM TABLE_SECURITY"
         return funds_session.execute(statement=statement)
 
     @staticmethod
     def upsert_security(backend_session: Session, security, original_id, fund_id=None, currency="", name_fi="",
-                        name_sv="") -> destination_models.Security:
+                        name_sv="", series_id=None) -> destination_models.Security:
         new_security = security if security else destination_models.Security()
         new_security.original_id = original_id
         new_security.fund_id = fund_id
         new_security.currency = currency
         new_security.name_fi = name_fi
         new_security.name_sv = name_sv
+        new_security.series_id = series_id
         backend_session.add(new_security)
         return new_security
 

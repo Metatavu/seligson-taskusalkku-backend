@@ -135,7 +135,8 @@ class FundsApiSpec(ABC):
             token_bearer=token_bearer
         )
 
-    def to_date(self, isodate: str) -> Optional[date]:
+    @staticmethod
+    def to_date(isodate: str) -> Optional[date]:
         """Translates given string to date
 
         Args:
@@ -158,7 +159,8 @@ class FundsApiSpec(ABC):
                 detail=f"Invalid date {isodate}"
             )
 
-    def to_uuid(self, hexadecimal_uuid: str) -> Optional[UUID]:
+    @staticmethod
+    def to_uuid(hexadecimal_uuid: str) -> Optional[UUID]:
         """Translates given hex to UUID
 
         Args:

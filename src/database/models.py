@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from .sqlalchemy_uuid import SqlAlchemyUuid
-from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime
+from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime, SmallInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -30,6 +30,7 @@ class Security(Base):
     currency = Column(CHAR(3))
     name_fi = Column(String(191), nullable=False)
     name_sv = Column(String(191), nullable=False)
+    series_id = Column(SmallInteger, nullable=True)
     rates = relationship("SecurityRate", back_populates="security", lazy=True)
     last_rate = relationship("LastRate", back_populates="security", lazy=True)
     fund = relationship("Fund", back_populates="securities", lazy=True)
@@ -76,7 +77,7 @@ class Portfolio(Base):
     # and n is a number with maximum value of 8
 
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
-    name = Column(String(192),nullable=False)
+    name = Column(String(192), nullable=False)
     original_id = Column(String(20), unique=True, nullable=False)
     company_id = Column("company_id", SqlAlchemyUuid, ForeignKey('company.id'), index=True, nullable=False)
     company = relationship("Company", back_populates="portfolios", lazy=True)
