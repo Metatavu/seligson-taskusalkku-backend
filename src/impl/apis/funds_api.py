@@ -15,6 +15,7 @@ from funds.funds_meta import FundsMetaController
 from funds.funds_meta import FundMeta
 from spec.models.localized_value import LocalizedValue
 from spec.models.change_data import ChangeData
+from spec.models.subscription_bank_account import SubscriptionBankAccount
 
 from database.models import Fund as DbFund
 
@@ -119,7 +120,8 @@ class FundsApiImpl(FundsApiSpec):
             bShareValue=fund_meta["b_share_value"],
             changeData=self.translate_change_date(fund_meta),
             profitProjection=fund_meta["profit_projection"],
-            profitProjectionDate=fund_meta["profit_projection_date"]
+            profitProjectionDate=fund_meta["profit_projection_date"],
+            subscriptionBankAccount=self.translate_subscription_bank_account(fund_meta)
         )
 
         return result
@@ -164,4 +166,14 @@ class FundsApiImpl(FundsApiSpec):
         return LocalizedValue(
             fi=fi,
             sv=sv
+        )
+
+    @staticmethod
+    def translate_subscription_bank_account(fund_meta: FundMeta) -> SubscriptionBankAccount:
+        return SubscriptionBankAccount(
+            BankAccountName=fund_meta["bank_account_name"],
+            IBAN=fund_meta["iban"],
+            AccountNumberOldFormat=fund_meta["account_number_old_format"],
+            BIC=fund_meta["bic"],
+            Currency=fund_meta["currency"]
         )

@@ -54,6 +54,38 @@ class TestFunds:
             assert "25.5" == fund["changeData"]["change20y"]
             assert "-0.32" == fund["profitProjection"]
             assert "2021-10-12" == fund["profitProjectionDate"]
+            assert "Bank for 123" == fund["subscriptionBankAccount"]["BankAccountName"]
+            assert "FI0112345678901123" == fund["subscriptionBankAccount"]["IBAN"]
+            assert "12345678901123" == fund["subscriptionBankAccount"]["AccountNumberOldFormat"]
+            assert "ABCDFIHH" == fund["subscriptionBankAccount"]["BIC"]
+            assert "EUR" == fund["subscriptionBankAccount"]["Currency"]
+
+    def test_find_fund_no_bank_details(self, client: TestClient, backend_mysql: MySqlContainer,
+                                       user_1_auth: BearerAuth):
+        with sql_backend_funds(backend_mysql):
+            fund_id = fund_ids["activetest01"]
+            response = client.get(f"/v1/funds/{fund_id}", auth=user_1_auth)
+            assert response.status_code == 200
+
+            fund = response.json()
+            assert fund_id == fund["id"]
+            assert fund["subscriptionBankAccount"]["BankAccountName"] is None
+            assert fund["subscriptionBankAccount"]["IBAN"] is None
+
+    def test_find_fund_partial_bank_details(self, client: TestClient, backend_mysql: MySqlContainer,
+                                            user_1_auth: BearerAuth):
+        with sql_backend_funds(backend_mysql):
+            fund_id = fund_ids["balancedtst01"]
+            response = client.get(f"/v1/funds/{fund_id}", auth=user_1_auth)
+            assert response.status_code == 200
+
+            fund = response.json()
+            assert fund_id == fund["id"]
+            assert "Bank for 345" == fund["subscriptionBankAccount"]["BankAccountName"]
+            assert fund["subscriptionBankAccount"]["IBAN"] is None
+            assert "18765432101345" == fund["subscriptionBankAccount"]["AccountNumberOldFormat"]
+            assert "IJKLFIHH" == fund["subscriptionBankAccount"]["BIC"]
+            assert "EUR" == fund["subscriptionBankAccount"]["Currency"]
 
     @pytest.mark.parametrize("auth", invalid_auths)
     def test_find_fund_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
@@ -64,7 +96,7 @@ class TestFunds:
             assert response.status_code == 403
 
     def test_find_fund_anonymous(self, client: TestClient, backend_mysql: MySqlContainer,
-                                 keycloak: KeycloakContainer,anonymous_auth: BearerAuth):
+                                 keycloak: KeycloakContainer, anonymous_auth: BearerAuth):
         with sql_backend_funds(backend_mysql):
             fund_id = fund_ids["passivetest01"]
             response = client.get(f"/v1/funds/{fund_id}", auth=anonymous_auth)
@@ -102,7 +134,7 @@ class TestFunds:
         assert response.status_code == 403
 
     def test_list_funds_anonymous(self, client: TestClient, backend_mysql: MySqlContainer,
-                                  keycloak: KeycloakContainer,anonymous_auth: BearerAuth):
+                                  keycloak: KeycloakContainer, anonymous_auth: BearerAuth):
         response = client.get(f"/v1/funds", auth=anonymous_auth)
         assert response.status_code == 200
 

@@ -35,6 +35,11 @@ class FundMeta(TypedDict, total=False):
     _20y_change: str
     profit_projection: str
     profit_projection_date: date
+    bank_account_name: str
+    iban: str
+    account_number_old_format: str
+    bic: str
+    currency: str
 
 
 class FundJsonEntry(TypedDict, total=False):
@@ -128,6 +133,9 @@ class FundsMetaController:
 
         group = self.get_fund_group(fund_code=code)
         values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
+        funds_banks = self.load_subscription_bank_accounts()
+        fund_bank = self.get_fund_bank_info(funds_banks=funds_banks, fund_id=fund_id)
+
         price_date = self.parse_csv_date(values_basic["price_date"])
         a_share_value = self.parse_csv_float(values_basic["a_share_value"])
         b_share_value = self.parse_csv_float(values_basic["b_share_value"])
@@ -165,7 +173,12 @@ class FundsMetaController:
                         _15y_change=_15y_change,
                         _20y_change=_20y_change,
                         profit_projection=profit_projection,
-                        profit_projection_date=profit_projection_date
+                        profit_projection_date=profit_projection_date,
+                        bank_account_name=fund_bank.get("BankAccountName", None),
+                        iban=fund_bank.get("IBAN", None),
+                        account_number_old_format=fund_bank.get("AccountNumber_OldFormat", None),
+                        bic=fund_bank.get("BIC", None),
+                        currency=fund_bank.get("Currency", None)
                       )
 
     @staticmethod
@@ -211,14 +224,43 @@ class FundsMetaController:
         """
         return next((entry for entry in self.get_fund_values_basic() if fund_id == entry["fund_id"]), None)
 
-    @staticmethod
-    def load_funds() -> Dict:
+    def get_fund_bank_account_for_fund_id(self,
+                                          fund_id: str
+                                          ) -> Dict[str, str]:
+        """Resolves CSV row from basic values basic CSV for given fund_id
+
+        Args:
+            fund_id (str): fund id
+
+        Returns:
+            dict[str, str]: CSV row data
+        """
+        return next((entry for entry in self.get_fund_values_basic() if fund_id == entry["fund_id"]), None)
+
+    def load_funds(self) -> Dict:
         """Loads fund JSON file
 
         Returns:
             dict: JSON object
         """
-        with open(os.environ["FUND_JSON"]) as json_file:
+        return self.load_file_as_json(os.environ["FUND_JSON"])
+
+    def load_subscription_bank_accounts(self) -> Dict:
+        """Loads subscription bank accounts JSON file
+
+        Returns:
+            dict: JSON object
+        """
+        return self.load_file_as_json(os.environ["SUBSCRIPTION_BANK_ACCOUNTS_JSON"])
+
+    @staticmethod
+    def load_file_as_json(environment_variable) -> Dict:
+        """Loads a JSON file from a path set by environment variable
+
+        Returns:
+            dict: JSON object
+        """
+        with open(environment_variable) as json_file:
             return json.load(json_file)
 
     def get_fund_id(self, fund_code: str) -> Optional[str]:
@@ -300,3 +342,7 @@ class FundsMetaController:
                 result.append(basic_value)
 
         return result
+
+    @staticmethod
+    def get_fund_bank_info(funds_banks, fund_id: str):
+        return next((fund_bank for fund_bank in funds_banks if fund_id == str(fund_bank["FundID"])), {})

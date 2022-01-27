@@ -77,20 +77,25 @@ def find_security(database: Session, security_id: UUID) -> Optional[Security]:
 
 def list_securities_with_fund(database: Session,
                               first_result: int,
-                              max_result: int
+                              max_result: int,
+                              series_id: Optional[int] = None,
                               ) -> List[Security]:
     """Lists securities with not null fund
 
     Args:
         database (Session): database session
-        first_result (int, optional): first result. Defaults to 0.
-        max_result (int, optional): max results. Defaults to 100.
+        first_result (int): first result. Defaults to 0.
+        max_result (int): max results. Defaults to 100.
+        series_id(int, optional): the class type of the security 1,2 or None.
 
     Returns:
         List[Security]: list of security with fund_id
     """
-    return database.query(Security) \
-        .filter(Security.fund_id.is_not(None)) \
+    query = database.query(Security)
+    if series_id:
+        query = query.filter(Security.series_id == series_id)
+    # if no series id then return all of them despite the class
+    return query.filter(Security.fund_id.is_not(None)) \
         .order_by(Security.original_id) \
         .offset(first_result) \
         .limit(max_result) \
@@ -372,7 +377,3 @@ def find_security_by_original_id(database: Session, original_id: str) -> Optiona
     return database.query(Security) \
         .filter(Security.original_id == original_id) \
         .one_or_none()
-
-
-def get_portfolio_history():
-    pass  # todo development after new database changes
