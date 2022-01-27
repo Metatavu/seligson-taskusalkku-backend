@@ -52,7 +52,7 @@ class Fund(BaseModel):
     color: Optional[str] = None
     risk: Optional[int] = None
     KIID: Optional[LocalizedValue] = None
-    subscriptionBankAccounts: Optional[SubscriptionBankAccount] = None
+    subscriptionBankAccounts: Optional[List[SubscriptionBankAccount]] = None
 
     @classmethod
     @validator("a_share_value")

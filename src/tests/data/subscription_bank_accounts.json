@@ -1,41 +1,64 @@
 [
   {
     "FundID": 123,
-    "BankAccountName": "Bank for 123",
+    "BankAccountName": "fund 123 / Bank A",
     "IBAN": "FI0112345678901123",
     "AccountNumber_OldFormat": "12345678901123",
-    "BIC": "ABCDFIHH",
+    "BIC": "ABCDFIAA",
+    "Currency": "EUR"
+  },
+  {
+    "FundID": 123,
+    "BankAccountName": "fund 123 / Bank B",
+    "IBAN": "FI0112345678902123",
+    "AccountNumber_OldFormat": "12345678902123",
+    "BIC": "IJKLFIBB",
+    "Currency": "EUR"
+  },
+  {
+    "FundID": 123,
+    "BankAccountName": "fund 123 / Bank C",
+    "IBAN": "FI0112345678903123",
+    "AccountNumber_OldFormat": "12345678903123",
+    "BIC": "MNOPFICC",
     "Currency": "EUR"
   },
   {
     "FundID": 345,
-    "BankAccountName": "Bank for 345",
+    "BankAccountName": "fund 345 / Bank A",
     "AccountNumber_OldFormat": "18765432101345",
-    "BIC": "IJKLFIHH",
+    "BIC": "ABCDFIAA",
+    "Currency": "EUR"
+  },
+    {
+    "FundID": 345,
+    "BankAccountName": "fund 345 / Bank C",
+    "IBAN": "FI0112345678903123",
+    "BIC": "MNOPFICC",
     "Currency": "EUR"
   },
   {
     "FundID": 456,
-    "BankAccountName": "Bank for 456",
+    "BankAccountName": "fund 456 / Bank A",
     "IBAN": "FI0318765432101456",
     "AccountNumber_OldFormat": "18765432101456",
-    "BIC": "MNOPFIHH",
+    "BIC": "ABCDFIAA",
     "Currency": "EUR"
   },
   {
     "FundID": 678,
-    "BankAccountName": "Bank for 678",
+    "BankAccountName": "fund 678 / Bank B",
     "IBAN": "FI0318765432101678",
     "AccountNumber_OldFormat": "18765432101678",
-    "BIC": "QRSTFIHH",
+    "BIC": "IJKLFIBB",
     "Currency": "EUR"
   },
   {
     "FundID": 789,
-    "BankAccountName": "Bank for 789",
+    "BankAccountName": "fund 789 / Bank C",
     "IBAN": "FI0318765432101789",
     "AccountNumber_OldFormat": "18765432101789",
-    "BIC": "XYWZFIHH",
+    "BIC": "MNOPFICC",
     "Currency": "EUR"
   }
 ]
