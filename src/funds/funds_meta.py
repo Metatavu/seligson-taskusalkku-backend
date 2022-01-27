@@ -149,11 +149,6 @@ class FundsMetaController:
         _20y_change = self.parse_csv_float(values_basic["20y_change"])
         profit_projection = self.parse_csv_float(values_basic["profit_projection"])
         profit_projection_date = self.parse_csv_date(values_basic["profit_projection_date"])
-        bank_account_name = fund_bank["BankAccountName"]
-        iban = fund_bank["IBAN"]
-        account_number_old_format = fund_bank["AccountNumber_OldFormat"]
-        bic = fund_bank["BIC"]
-        currency = fund_bank["Currency"]
 
         return FundMeta(
                         fund_code=code,
@@ -179,11 +174,11 @@ class FundsMetaController:
                         _20y_change=_20y_change,
                         profit_projection=profit_projection,
                         profit_projection_date=profit_projection_date,
-                        bank_account_name=bank_account_name,
-                        iban=iban,
-                        account_number_old_format=account_number_old_format,
-                        bic=bic,
-                        currency=currency
+                        bank_account_name=fund_bank.get("BankAccountName", None),
+                        iban=fund_bank.get("IBAN", None),
+                        account_number_old_format=fund_bank.get("AccountNumber_OldFormat", None),
+                        bic=fund_bank.get("BIC", None),
+                        currency=fund_bank.get("Currency", None)
                       )
 
     @staticmethod
@@ -350,4 +345,4 @@ class FundsMetaController:
 
     @staticmethod
     def get_fund_bank_info(funds_banks, fund_id: str):
-        return next((fund_bank for fund_bank in funds_banks if fund_id == str(fund_bank["FundID"])), None)
+        return next((fund_bank for fund_bank in funds_banks if fund_id == str(fund_bank["FundID"])), {})
