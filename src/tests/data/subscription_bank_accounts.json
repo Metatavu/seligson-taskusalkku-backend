@@ -8,17 +8,8 @@
     "Currency": "EUR"
   },
   {
-    "FundID": 234,
-    "BankAccountName": "Bank for 234",
-    "IBAN": "FI0298765432101234",
-    "AccountNumber_OldFormat": "98765432101234",
-    "BIC": "EFGHFIHH",
-    "Currency": "EUR"
-  },
-  {
     "FundID": 345,
     "BankAccountName": "Bank for 345",
-    "IBAN": "FI0318765432101345",
     "AccountNumber_OldFormat": "18765432101345",
     "BIC": "IJKLFIHH",
     "Currency": "EUR"
