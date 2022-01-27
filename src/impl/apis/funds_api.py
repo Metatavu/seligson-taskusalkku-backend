@@ -121,7 +121,7 @@ class FundsApiImpl(FundsApiSpec):
             changeData=self.translate_change_date(fund_meta),
             profitProjection=fund_meta["profit_projection"],
             profitProjectionDate=fund_meta["profit_projection_date"],
-            subscriptionBankAccount=self.translate_subscription_bank_account(fund_meta)
+            subscriptionBankAccounts=self.translate_subscription_bank_account(fund_meta)
         )
 
         return result
@@ -169,11 +169,11 @@ class FundsApiImpl(FundsApiSpec):
         )
 
     @staticmethod
-    def translate_subscription_bank_account(fund_meta: FundMeta) -> SubscriptionBankAccount:
-        return SubscriptionBankAccount(
-            BankAccountName=fund_meta["bank_account_name"],
-            IBAN=fund_meta["iban"],
-            AccountNumberOldFormat=fund_meta["account_number_old_format"],
-            BIC=fund_meta["bic"],
-            Currency=fund_meta["currency"]
-        )
+    def translate_subscription_bank_account(fund_meta: FundMeta) -> Optional[List[SubscriptionBankAccount]]:
+        return [
+            SubscriptionBankAccount(BankAccountName=fund_meta_entry.get("bank_account_name", None),
+                                    IBAN=fund_meta_entry.get("iban", None),
+                                    AccountNumberOldFormat=fund_meta_entry.get("account_number_old_format", None),
+                                    BIC=fund_meta_entry.get("bic", None),
+                                    Currency=fund_meta_entry.get("currency", None))
+            for fund_meta_entry in fund_meta["bank_info"]] if fund_meta["bank_info"] else None
