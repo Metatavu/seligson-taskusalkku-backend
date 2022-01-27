@@ -10,6 +10,7 @@ from pydantic import AnyUrl, BaseModel, EmailStr, validator  # noqa: F401
 from spec.models.change_data import ChangeData
 from spec.models.fund_group import FundGroup
 from spec.models.localized_value import LocalizedValue
+from spec.models.subscription_bank_account import SubscriptionBankAccount
 
 
 class Fund(BaseModel):
@@ -34,6 +35,7 @@ class Fund(BaseModel):
         color: The color of this Fund [Optional].
         risk: The risk of this Fund [Optional].
         KIID: The KIID of this Fund [Optional].
+        subscriptionBankAccount: The subscriptionBankAccount of this Fund [Optional].
     """
     id: Optional[str] = None
     name: LocalizedValue
@@ -50,6 +52,7 @@ class Fund(BaseModel):
     color: Optional[str] = None
     risk: Optional[int] = None
     KIID: Optional[LocalizedValue] = None
+    subscriptionBankAccount: Optional[SubscriptionBankAccount] = None
 
     @classmethod
     @validator("a_share_value")

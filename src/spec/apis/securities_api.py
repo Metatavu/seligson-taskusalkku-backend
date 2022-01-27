@@ -103,6 +103,7 @@ class SecuritiesApiSpec(ABC):
     @abstractmethod
     async def list_securities(
         self,
+        series_id: Optional[int],
         first_result: Optional[int],
         max_results: Optional[int],
         token_bearer: TokenModel,
@@ -122,6 +123,7 @@ class SecuritiesApiSpec(ABC):
     )
     async def list_securities_spec(
         self,
+        series_id: int = Query(None, description="Series id.", alias="seriesId"),
         first_result: int = Query(None, description="First result. Defaults to 0", alias="firstResult"),
         max_results: int = Query(None, description="Max results. Defaults to 10", alias="maxResults"),
         token_bearer: TokenModel = FastAPISecurity(
@@ -131,6 +133,7 @@ class SecuritiesApiSpec(ABC):
         """Lists securities."""
 
         return await self.list_securities(
+            series_id=series_id,
             first_result=first_result,
             max_results=max_results,
             token_bearer=token_bearer
@@ -187,7 +190,8 @@ class SecuritiesApiSpec(ABC):
             token_bearer=token_bearer
         )
 
-    def to_date(self, isodate: str) -> Optional[date]:
+    @staticmethod
+    def to_date(isodate: str) -> Optional[date]:
         """Translates given string to date
 
         Args:
@@ -210,7 +214,8 @@ class SecuritiesApiSpec(ABC):
                 detail=f"Invalid date {isodate}"
             )
 
-    def to_uuid(self, hexadecimal_uuid: str) -> Optional[UUID]:
+    @staticmethod
+    def to_uuid(hexadecimal_uuid: str) -> Optional[UUID]:
         """Translates given hex to UUID
 
         Args:
