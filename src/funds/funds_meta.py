@@ -9,6 +9,15 @@ from datetime import date, datetime
 logger = logging.getLogger(__name__)
 
 
+class BankInfo(TypedDict, total=False):
+    """Defines a bank info entry"""
+    bank_account_name: Optional[str]
+    iban: Optional[str]
+    account_number_old_format: Optional[str]
+    bic: Optional[str]
+    currency: Optional[str]
+
+
 class FundMeta(TypedDict, total=False):
     """Defines a fund meta entry"""
 
@@ -35,11 +44,7 @@ class FundMeta(TypedDict, total=False):
     _20y_change: str
     profit_projection: str
     profit_projection_date: date
-    bank_account_name: str
-    iban: str
-    account_number_old_format: str
-    bic: str
-    currency: str
+    bank_info: Optional[List[BankInfo]]
 
 
 class FundJsonEntry(TypedDict, total=False):
@@ -134,7 +139,7 @@ class FundsMetaController:
         group = self.get_fund_group(fund_code=code)
         values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
         funds_banks = self.load_subscription_bank_accounts()
-        fund_bank = self.get_fund_bank_info(funds_banks=funds_banks, fund_id=fund_id)
+        fund_bank_info = self.get_fund_bank_info(funds_banks=funds_banks, fund_id=fund_id)
 
         price_date = self.parse_csv_date(values_basic["price_date"])
         a_share_value = self.parse_csv_float(values_basic["a_share_value"])
@@ -174,11 +179,7 @@ class FundsMetaController:
                         _20y_change=_20y_change,
                         profit_projection=profit_projection,
                         profit_projection_date=profit_projection_date,
-                        bank_account_name=fund_bank.get("BankAccountName", None),
-                        iban=fund_bank.get("IBAN", None),
-                        account_number_old_format=fund_bank.get("AccountNumber_OldFormat", None),
-                        bic=fund_bank.get("BIC", None),
-                        currency=fund_bank.get("Currency", None)
+                        bank_info=fund_bank_info if fund_bank_info else None
                       )
 
     @staticmethod
@@ -343,6 +344,15 @@ class FundsMetaController:
 
         return result
 
+    def get_fund_bank_info(self, funds_banks, fund_id: str) -> List[BankInfo]:
+        return [self.translate_fund_bank_info(fund_bank) for fund_bank in funds_banks if
+                fund_id == str(fund_bank["FundID"])]
+
     @staticmethod
-    def get_fund_bank_info(funds_banks, fund_id: str):
-        return next((fund_bank for fund_bank in funds_banks if fund_id == str(fund_bank["FundID"])), {})
+    def translate_fund_bank_info(fund_bank_info):
+        return BankInfo(
+            bank_account_name=fund_bank_info.get("BankAccountName", None),
+            iban=fund_bank_info.get("IBAN", None),
+            account_number_old_format=fund_bank_info.get("AccountNumber_OldFormat", None),
+            bic=fund_bank_info.get("BIC", None),
+            currency=fund_bank_info.get("Currency", None))

@@ -54,11 +54,22 @@ class TestFunds:
             assert "25.5" == fund["changeData"]["change20y"]
             assert "-0.32" == fund["profitProjection"]
             assert "2021-10-12" == fund["profitProjectionDate"]
-            assert "Bank for 123" == fund["subscriptionBankAccount"]["BankAccountName"]
-            assert "FI0112345678901123" == fund["subscriptionBankAccount"]["IBAN"]
-            assert "12345678901123" == fund["subscriptionBankAccount"]["AccountNumberOldFormat"]
-            assert "ABCDFIHH" == fund["subscriptionBankAccount"]["BIC"]
-            assert "EUR" == fund["subscriptionBankAccount"]["Currency"]
+
+            assert "fund 123 / Bank A" == fund["subscriptionBankAccounts"][0]["BankAccountName"]
+            assert "FI0112345678901123" == fund["subscriptionBankAccounts"][0]["IBAN"]
+            assert "12345678901123" == fund["subscriptionBankAccounts"][0]["AccountNumberOldFormat"]
+            assert "ABCDFIAA" == fund["subscriptionBankAccounts"][0]["BIC"]
+            assert "EUR" == fund["subscriptionBankAccounts"][0]["Currency"]
+            assert "fund 123 / Bank B" == fund["subscriptionBankAccounts"][1]["BankAccountName"]
+            assert "FI0112345678902123" == fund["subscriptionBankAccounts"][1]["IBAN"]
+            assert "12345678902123" == fund["subscriptionBankAccounts"][1]["AccountNumberOldFormat"]
+            assert "IJKLFIBB" == fund["subscriptionBankAccounts"][1]["BIC"]
+            assert "EUR" == fund["subscriptionBankAccounts"][2]["Currency"]
+            assert "fund 123 / Bank C" == fund["subscriptionBankAccounts"][2]["BankAccountName"]
+            assert "FI0112345678903123" == fund["subscriptionBankAccounts"][2]["IBAN"]
+            assert "12345678903123" == fund["subscriptionBankAccounts"][2]["AccountNumberOldFormat"]
+            assert "MNOPFICC" == fund["subscriptionBankAccounts"][2]["BIC"]
+            assert "EUR" == fund["subscriptionBankAccounts"][2]["Currency"]
 
     def test_find_fund_no_bank_details(self, client: TestClient, backend_mysql: MySqlContainer,
                                        user_1_auth: BearerAuth):
@@ -69,8 +80,7 @@ class TestFunds:
 
             fund = response.json()
             assert fund_id == fund["id"]
-            assert fund["subscriptionBankAccount"]["BankAccountName"] is None
-            assert fund["subscriptionBankAccount"]["IBAN"] is None
+            assert fund["subscriptionBankAccounts"] is None
 
     def test_find_fund_partial_bank_details(self, client: TestClient, backend_mysql: MySqlContainer,
                                             user_1_auth: BearerAuth):
@@ -81,11 +91,16 @@ class TestFunds:
 
             fund = response.json()
             assert fund_id == fund["id"]
-            assert "Bank for 345" == fund["subscriptionBankAccount"]["BankAccountName"]
-            assert fund["subscriptionBankAccount"]["IBAN"] is None
-            assert "18765432101345" == fund["subscriptionBankAccount"]["AccountNumberOldFormat"]
-            assert "IJKLFIHH" == fund["subscriptionBankAccount"]["BIC"]
-            assert "EUR" == fund["subscriptionBankAccount"]["Currency"]
+            assert "fund 345 / Bank A" == fund["subscriptionBankAccounts"][0]["BankAccountName"]
+            assert fund["subscriptionBankAccounts"][0]["IBAN"] is None
+            assert "18765432101345" == fund["subscriptionBankAccounts"][0]["AccountNumberOldFormat"]
+            assert "ABCDFIAA" == fund["subscriptionBankAccounts"][0]["BIC"]
+            assert "EUR" == fund["subscriptionBankAccounts"][0]["Currency"]
+            assert "fund 345 / Bank C" == fund["subscriptionBankAccounts"][1]["BankAccountName"]
+            assert fund["subscriptionBankAccounts"][1]["AccountNumberOldFormat"] is None
+            assert "FI0112345678903123" == fund["subscriptionBankAccounts"][1]["IBAN"]
+            assert "MNOPFICC" == fund["subscriptionBankAccounts"][1]["BIC"]
+            assert "EUR" == fund["subscriptionBankAccounts"][1]["Currency"]
 
     @pytest.mark.parametrize("auth", invalid_auths)
     def test_find_fund_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
