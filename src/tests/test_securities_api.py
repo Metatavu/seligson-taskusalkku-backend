@@ -241,7 +241,7 @@ class TestSecurities:
             response = client.get(f"/v1/securities?fundId={fund_id}", auth=user_1_auth)
             assert response.status_code == 200
             security = response.json()
-            assert security == security_1_data
+            assert security[0] == security_1_data
 
     def test_find_security_by_non_existing_fund_id(self, client: TestClient, backend_mysql: MySqlContainer,
                                                    user_1_auth: BearerAuth):
