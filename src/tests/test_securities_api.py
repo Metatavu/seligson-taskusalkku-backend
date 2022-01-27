@@ -234,6 +234,24 @@ class TestSecurities:
 
             mysql_exec_sql(mysql=backend_mysql, sql_file="backend-security-rates-teardown.sql")
 
+    def test_find_securities_by_fund_id(self, client: TestClient, backend_mysql: MySqlContainer,
+                                        user_1_auth: BearerAuth):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
+            fund_id = fund_ids["activetest01"]
+            response = client.get(f"/v1/securities?fundId={fund_id}", auth=user_1_auth)
+            assert response.status_code == 200
+            security = response.json()
+            assert security == security_1_data
+
+    def test_find_security_by_non_existing_fund_id(self, client: TestClient, backend_mysql: MySqlContainer,
+                                                   user_1_auth: BearerAuth):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
+            fund_id = "541f8d59-50ae-4953-bc1a-432fe33517e3"
+            response = client.get(f"/v1/securities?fundId={fund_id}", auth=user_1_auth)
+            assert response.status_code == 200
+            security = response.json()
+            assert security == []
+
     @staticmethod
     def assert_find_security_fail(client: TestClient, expected_status: int, security_id: str,
                                   auth: Optional[BearerAuth]):

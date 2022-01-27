@@ -44,6 +44,7 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
     async def list_securities(
             self,
             series_id: Optional[int],
+            fund_id: Optional[UUID],
             first_result: Optional[int],
             max_results: Optional[int],
             token_bearer: TokenModel,
@@ -71,7 +72,8 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             database=self.database,
             first_result=first_result,
             max_result=max_results,
-            series_id=series_id
+            series_id=series_id,
+            fund_id=fund_id
         )
 
         return list(map(self.translate_security, securities))

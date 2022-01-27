@@ -104,6 +104,7 @@ class SecuritiesApiSpec(ABC):
     async def list_securities(
         self,
         series_id: Optional[int],
+        fund_id: Optional[UUID],
         first_result: Optional[int],
         max_results: Optional[int],
         token_bearer: TokenModel,
@@ -124,6 +125,7 @@ class SecuritiesApiSpec(ABC):
     async def list_securities_spec(
         self,
         series_id: int = Query(None, description="Series id.", alias="seriesId"),
+        fund_id: str = Query(None, description="Fund ID.", alias="fundId"),
         first_result: int = Query(None, description="First result. Defaults to 0", alias="firstResult"),
         max_results: int = Query(None, description="Max results. Defaults to 10", alias="maxResults"),
         token_bearer: TokenModel = FastAPISecurity(
@@ -134,6 +136,7 @@ class SecuritiesApiSpec(ABC):
 
         return await self.list_securities(
             series_id=series_id,
+            fund_id=self.to_uuid(fund_id),
             first_result=first_result,
             max_results=max_results,
             token_bearer=token_bearer

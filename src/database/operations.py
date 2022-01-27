@@ -79,6 +79,7 @@ def list_securities_with_fund(database: Session,
                               first_result: int,
                               max_result: int,
                               series_id: Optional[int] = None,
+                              fund_id: Optional[UUID] = None
                               ) -> List[Security]:
     """Lists securities with not null fund
 
@@ -87,11 +88,14 @@ def list_securities_with_fund(database: Session,
         first_result (int): first result. Defaults to 0.
         max_result (int): max results. Defaults to 100.
         series_id(int, optional): the class type of the security 1,2 or None.
+        fund_id(UUID, optional): fund id.
 
     Returns:
         List[Security]: list of security with fund_id
     """
     query = database.query(Security)
+    if fund_id:
+        query = query.filter(Security.fund_id == fund_id)
     if series_id:
         query = query.filter(Security.series_id == series_id)
     # if no series id then return all of them despite the class
