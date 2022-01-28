@@ -1,3 +1,4 @@
+import math
 import os
 import logging
 from decimal import Decimal
@@ -11,7 +12,7 @@ from typing import Optional, List, Dict
 
 from .migration_exception import MigrationException
 from database import models as destination_models
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 TIMED_OUT = "Timed out."
 
@@ -201,10 +202,11 @@ class MigrateSecuritiesTask(AbstractFundsTask):
             max_date_source = self.get_source_last_update_date(funds_session=funds_session)
             if max_date_source is None or max_date_backend is None:
                 return False
-            elif max_date_backend.last_update.date() < max_date_source.LAST_UPDATE.date():
-                return False
-            else:
-                return True
+
+            funds_updated = self.round_datetime_to_seconds(max_date_source.LAST_UPDATE)
+            backend_updated = self.round_datetime_to_seconds(max_date_backend.last_update)
+
+            return backend_updated == funds_updated
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
@@ -223,21 +225,24 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
                 existing_security: destination_models.Security = self.get_security_by_original_id(
                     backend_session=backend_session, original_id=original_security_id)
-                if security_row.UPD_DATE is not None \
-                        and security_row.UPD_DATE.date() == existing_security.updated.date():
-                    continue
 
-                self.upsert_security(backend_session=backend_session,
-                                     security=existing_security,
-                                     original_id=original_security_id,
-                                     fund_id=fund_id,
-                                     currency=security_row.CURRENCY,
-                                     name_fi=security_row.NAME1,
-                                     name_sv=security_row.NAME2,
-                                     series_id=security_row.SERIES_ID,
-                                     updated=security_row.UPD_DATE)
+                fund_updated = security_row.UPD_DATE
+                if fund_updated is None:
+                    fund_updated = datetime(1970, 1, 1, 0, 0)
 
-                synchronized_count = synchronized_count + 1
+                if not existing_security or self.round_datetime_to_seconds(fund_updated) > \
+                        self.round_datetime_to_seconds(existing_security.updated):
+                    self.upsert_security(backend_session=backend_session,
+                                         security=existing_security,
+                                         original_id=original_security_id,
+                                         fund_id=fund_id,
+                                         currency=security_row.CURRENCY,
+                                         name_fi=security_row.NAME1,
+                                         name_sv=security_row.NAME2,
+                                         series_id=security_row.SERIES_ID,
+                                         updated=security_row.UPD_DATE)
+
+                    synchronized_count = synchronized_count + 1
 
             return synchronized_count
 
@@ -274,7 +279,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
         Returns: date from backend database
         """
-        return backend_session.query(func.min(destination_models.Security.updated).label("last_update")).one_or_none()
+        return backend_session.query(func.max(destination_models.Security.updated).label("last_update")).one_or_none()
 
     @staticmethod
     def upsert_security(backend_session: Session, security, original_id, updated, fund_id=None, currency="", name_fi="",
@@ -289,6 +294,19 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         new_security.updated = updated
         backend_session.add(new_security)
         return new_security
+
+    @staticmethod
+    def round_datetime_to_seconds(value: datetime) -> datetime:
+        """
+        Rounds datetime to seconds
+        Args:
+            value: datetime
+
+        Returns: datetime rounded to seconds
+        """
+        if value.microsecond >= 500_000:
+            value += timedelta(seconds=1)
+        return value.replace(microsecond=0)
 
 
 class MigrateSecurityRatesTask(AbstractFundsTask):
