@@ -262,7 +262,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         Returns: date from funds database
         """
         statement = "SELECT MAX(UPD_DATE) AS LAST_UPDATE FROM TABLE_SECURITY"
-        return funds_session.execute(statement=statement)
+        return funds_session.execute(statement=statement).one_or_none()
 
     @staticmethod
     def get_backend_last_update_date(backend_session: Session):
