@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from .sqlalchemy_uuid import SqlAlchemyUuid
-from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime, SmallInteger
+from sqlalchemy import Index, Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime, SmallInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -36,8 +36,11 @@ class Security(Base):
     fund = relationship("Fund", back_populates="securities", lazy=True)
     fund_id = Column("fund_id", SqlAlchemyUuid, ForeignKey('fund.id'), nullable=True)
     portfolio_transactions = relationship("PortfolioTransaction", back_populates="security", lazy=True)
-    c_portfolio_logs = relationship("PortfolioLog", back_populates="c_security", lazy=True, foreign_keys="PortfolioLog.c_security_id")
-    portfolio_logs = relationship("PortfolioLog", back_populates="security", lazy=True, foreign_keys="PortfolioLog.security_id")
+    c_portfolio_logs = relationship("PortfolioLog", back_populates="c_security", lazy=True,
+                                    foreign_keys="PortfolioLog.c_security_id")
+    portfolio_logs = relationship("PortfolioLog", back_populates="security", lazy=True,
+                                  foreign_keys="PortfolioLog.security_id")
+    updated = Column(DateTime, index=True, server_default="1970-01-01")
 
 
 class SecurityRate(Base):
@@ -48,6 +51,7 @@ class SecurityRate(Base):
     security = relationship("Security", back_populates="rates", lazy=True)
     rate_date = Column("rate_date", Date)
     rate_close = Column(DECIMAL(19, 6), nullable=False)
+    __table_args__ = (Index("ix_security_rate_security_id_rate_date", "security_id", "rate_date", unique=True),)
 
 
 class Company(Base):
@@ -69,6 +73,7 @@ class LastRate(Base):
     security = relationship("Security", back_populates="last_rate", lazy=True)
     rate_date = Column(Date, nullable=False)
     rate_close = Column(DECIMAL(16, 6))
+    __table_args__ = (Index("ix_last_rate_security_id_rate_date", "security_id", "rate_date"),)
 
 
 class Portfolio(Base):
@@ -105,8 +110,11 @@ class PortfolioLog(Base):
     updated = Column(DateTime, nullable=False)
 
     portfolio = relationship("Portfolio", back_populates="portfolio_logs", lazy=True)
-    c_security = relationship("Security", back_populates="c_portfolio_logs", lazy=True, foreign_keys="PortfolioLog.c_security_id")
-    security = relationship("Security", back_populates="portfolio_logs", lazy=True, foreign_keys="PortfolioLog.security_id")
+    c_security = relationship("Security", back_populates="c_portfolio_logs", lazy=True,
+                              foreign_keys="PortfolioLog.c_security_id")
+    security = relationship("Security", back_populates="portfolio_logs", lazy=True,
+                            foreign_keys="PortfolioLog.security_id")
+    __table_args__ = (Index("ix_portfolio_log_security_id_updated", "security_id", "updated"),)
 
 
 class PortfolioTransaction(Base):
@@ -122,3 +130,4 @@ class PortfolioTransaction(Base):
     security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=False)
     security = relationship("Security", back_populates="portfolio_transactions", lazy=True)
     updated = Column(DateTime, nullable=False)
+    __table_args__ = (Index("ix_portfolio_transaction_security_id_updated", "security_id", "updated"),)
