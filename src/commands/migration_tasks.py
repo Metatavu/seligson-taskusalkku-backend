@@ -234,7 +234,8 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                                      currency=security_row.CURRENCY,
                                      name_fi=security_row.NAME1,
                                      name_sv=security_row.NAME2,
-                                     series_id=security_row.SERIES_ID)
+                                     series_id=security_row.SERIES_ID,
+                                     updated=security_row.UPD_DATE)
 
                 synchronized_count = synchronized_count + 1
 
@@ -276,7 +277,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         return backend_session.query(func.min(destination_models.Security.updated).label("last_update")).one_or_none()
 
     @staticmethod
-    def upsert_security(backend_session: Session, security, original_id, fund_id=None, currency="", name_fi="",
+    def upsert_security(backend_session: Session, security, original_id, updated, fund_id=None, currency="", name_fi="",
                         name_sv="", series_id=None) -> destination_models.Security:
         new_security = security if security else destination_models.Security()
         new_security.original_id = original_id
@@ -285,6 +286,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         new_security.name_fi = name_fi
         new_security.name_sv = name_sv
         new_security.series_id = series_id
+        new_security.updated = updated
         backend_session.add(new_security)
         return new_security
 
