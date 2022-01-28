@@ -4,7 +4,7 @@ from .sqlalchemy_uuid import SqlAlchemyUuid
 from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime, SmallInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-
+from datetime import date
 Base = declarative_base()
 metadata = Base.metadata
 
@@ -38,6 +38,7 @@ class Security(Base):
     portfolio_transactions = relationship("PortfolioTransaction", back_populates="security", lazy=True)
     c_portfolio_logs = relationship("PortfolioLog", back_populates="c_security", lazy=True, foreign_keys="PortfolioLog.c_security_id")
     portfolio_logs = relationship("PortfolioLog", back_populates="security", lazy=True, foreign_keys="PortfolioLog.security_id")
+    updated = Column(DateTime, index=True, server_default="1970-01-01")
 
 
 class SecurityRate(Base):

@@ -196,10 +196,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         return "securities"
 
     def up_to_date(self, backend_session: Session) -> bool:
-        with Session(self.get_funds_database_engine()) as funds_session:
-            backend_security_count = backend_session.execute(statement="SELECT COUNT(ID) FROM security").fetchone()
-            funds_security_count = funds_session.execute(statement="SELECT COUNT(SECID) FROM TABLE_SECURITY").fetchone()
-            return backend_security_count >= funds_security_count
+        return False
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
@@ -218,6 +215,9 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
                 existing_security: destination_models.Security = self.get_security_by_original_id(
                     backend_session=backend_session, original_id=original_security_id)
+                if security_row.UPD_DATE is not None \
+                        and security_row.UPD_DATE.date() == existing_security.updated.date():
+                    continue
 
                 self.upsert_security(backend_session=backend_session,
                                      security=existing_security,
@@ -241,7 +241,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
         Returns: securities from funds database
         """
-        statement = "SELECT SECID, SORTNAME, CURRENCY, NAME1, NAME2, SERIES_ID FROM TABLE_SECURITY"
+        statement = "SELECT SECID, SORTNAME, CURRENCY, NAME1, NAME2, SERIES_ID, UPD_DATE FROM TABLE_SECURITY"
         return funds_session.execute(statement=statement)
 
     @staticmethod
