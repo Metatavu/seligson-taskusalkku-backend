@@ -107,10 +107,7 @@ class FundsMetaController:
         funds = self.load_funds()
         data: List[FundMeta] = []
         for (code, value) in funds.items():
-            fund_meta = self.translate_fund_meta(
-                                                 code=code,
-                                                 fund_json_entry=value
-                                                )
+            fund_meta = self.translate_fund_meta(code=code, fund_json_entry=value)
             if fund_meta:
                 data.append(fund_meta)
 
