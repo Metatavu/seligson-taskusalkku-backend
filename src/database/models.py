@@ -4,7 +4,6 @@ from .sqlalchemy_uuid import SqlAlchemyUuid
 from sqlalchemy import Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime, SmallInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from datetime import date
 Base = declarative_base()
 metadata = Base.metadata
 

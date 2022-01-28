@@ -196,7 +196,15 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         return "securities"
 
     def up_to_date(self, backend_session: Session) -> bool:
-        return False
+        with Session(self.get_funds_database_engine()) as funds_session:
+            max_date_backend = self.get_backend_last_update_date(backend_session=backend_session)
+            max_date_source = self.get_source_last_update_date(funds_session=funds_session)
+            if max_date_source is None or max_date_backend is None:
+                return False
+            elif max_date_backend.last_update.date() < max_date_source.LAST_UPDATE.date():
+                return False
+            else:
+                return True
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
@@ -243,6 +251,29 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         """
         statement = "SELECT SECID, SORTNAME, CURRENCY, NAME1, NAME2, SERIES_ID, UPD_DATE FROM TABLE_SECURITY"
         return funds_session.execute(statement=statement)
+
+    @staticmethod
+    def get_source_last_update_date(funds_session: Session):
+        """
+        get last update date of security table from funds database
+        Args:
+            funds_session: Funds database session
+
+        Returns: date from funds database
+        """
+        statement = "SELECT MAX(UPD_DATE) AS LAST_UPDATE FROM TABLE_SECURITY"
+        return funds_session.execute(statement=statement)
+
+    @staticmethod
+    def get_backend_last_update_date(backend_session: Session):
+        """
+        get last update date of security table from backend database
+        Args:
+            backend_session: Backend database session
+
+        Returns: date from backend database
+        """
+        return backend_session.query(func.min(destination_models.Security.updated).label("last_update")).one_or_none()
 
     @staticmethod
     def upsert_security(backend_session: Session, security, original_id, fund_id=None, currency="", name_fi="",
