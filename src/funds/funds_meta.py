@@ -76,7 +76,6 @@ class FundOptions(TypedDict):
 class FundsMetaController:
     """Funds meta controller"""
 
-    data: Optional[List[FundMeta]] = None
     fund_options: Optional[FundOptions] = None
 
     group_map = {
@@ -105,19 +104,17 @@ class FundsMetaController:
         Returns:
             List[FundMeta]: Fund metas
         """
-        if not self.data:
-            funds = self.load_funds()
-            data: List[FundMeta] = []
-            for (code, value) in funds.items():
-                fund_meta = self.translate_fund_meta(
-                                                     code=code,
-                                                     fund_json_entry=value
-                                                    )
-                if fund_meta:
-                    data.append(fund_meta)
-            self.data = data
+        funds = self.load_funds()
+        data: List[FundMeta] = []
+        for (code, value) in funds.items():
+            fund_meta = self.translate_fund_meta(
+                                                 code=code,
+                                                 fund_json_entry=value
+                                                )
+            if fund_meta:
+                data.append(fund_meta)
 
-        return self.data
+        return data
 
     def translate_fund_meta(self,
                             code: str,
