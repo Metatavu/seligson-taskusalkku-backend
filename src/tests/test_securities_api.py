@@ -211,7 +211,7 @@ class TestSecurities:
                                  ):
         engine = create_engine(backend_mysql.get_connection_url())
         with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
-            wait_for_row_count(engine=engine, entity=Fund, count=6)
+            wait_for_row_count(engine=engine, entity=Fund, count=7)
 
             with sql_funds_rate(mssql=funds_mssql):
                 wait_for_row_count(engine=engine, entity=SecurityRate, count=546)
