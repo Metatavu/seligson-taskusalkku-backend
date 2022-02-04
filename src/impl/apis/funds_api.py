@@ -7,6 +7,7 @@ from uuid import UUID
 from typing import List, Optional
 from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
+from business_logics import business_logics
 from spec.apis.funds_api import FundsApiSpec, router as funds_api_router
 
 from spec.models.fund import Fund
@@ -121,7 +122,8 @@ class FundsApiImpl(FundsApiSpec):
             changeData=self.translate_change_date(fund_meta),
             profitProjection=fund_meta["profit_projection"],
             profitProjectionDate=fund_meta["profit_projection_date"],
-            subscriptionBankAccounts=self.translate_subscription_bank_account(fund_meta)
+            subscriptionBankAccounts=self.translate_subscription_bank_account(fund_meta),
+            subscribable=business_logics.fund_is_subscribable(fund_code=fund_meta["fund_code"])
         )
 
         return result

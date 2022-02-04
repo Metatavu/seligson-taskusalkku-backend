@@ -36,6 +36,7 @@ class Fund(BaseModel):
         risk: The risk of this Fund [Optional].
         KIID: The KIID of this Fund [Optional].
         subscriptionBankAccounts: The subscriptionBankAccounts of this Fund [Optional].
+        subscribable: The subscribable of this Fund [Optional].
     """
     id: Optional[str] = None
     name: LocalizedValue
@@ -53,6 +54,7 @@ class Fund(BaseModel):
     risk: Optional[int] = None
     KIID: Optional[LocalizedValue] = None
     subscriptionBankAccounts: Optional[List[SubscriptionBankAccount]] = None
+    subscribable: Optional[bool] = None
 
     @classmethod
     @validator("a_share_value")
