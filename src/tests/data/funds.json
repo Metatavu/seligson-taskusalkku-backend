@@ -112,5 +112,22 @@
     ],
     "color": "#000000",
     "risk": 7
+  },
+  "HEX25ETF": {
+    "name": [
+      "ETF test fund 1 - fi, long",
+      "ETF test fund 1 - en, long"
+    ],
+    "longName": [
+      "ETF test fund 1 - fi, long",
+      "ETF test fund 1 - en, long"
+    ],
+    "shortName": [
+      "ETF test fund 1 - fi, long",
+      "ETF test fund 1 - en, long"
+    ],
+    "kiid": ["HEX25ETFFI", "HEX25ETFSV"],
+    "color": "#145462",
+    "risk": 8
   }
 }
