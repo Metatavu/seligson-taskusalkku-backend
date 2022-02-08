@@ -334,8 +334,8 @@ def get_portfolio_logs(database: Session,
             transaction_codes (List[str]): filter by transaction codes
             transaction_date_min (date): filter results by transaction_date after given date
             transaction_date_max (date): filter results by transaction_date before given date
-            first_result (int, optional): first result. Defaults to 0.
-            max_result (int, optional): max results. Defaults to 100.
+            first_result (int, optional): first result.
+            max_result (int, optional): max results.
 
         Returns:
              List[PortfolioLog]: list of portfolio logs
@@ -352,10 +352,14 @@ def get_portfolio_logs(database: Session,
     if transaction_date_max:
         query = query.filter(PortfolioLog.transaction_date <= transaction_date_max)
 
+    if first_result:
+        query = query.offset(first_result)
+
+    if max_result:
+        query = query.limit(max_result)
+
     return query \
         .order_by(PortfolioLog.transaction_date) \
-        .offset(first_result) \
-        .limit(max_result) \
         .all()
 
 
