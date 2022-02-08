@@ -323,8 +323,8 @@ def get_portfolio_logs(database: Session,
                        transaction_codes: List[str],
                        transaction_date_min: Optional[date],
                        transaction_date_max: Optional[date],
-                       first_result: Optional[int],
-                       max_result: Optional[int]
+                       first_result: Optional[int] = None,
+                       max_result: Optional[int] = None
                        ) -> List[PortfolioLog]:
     """ Queries for portfolio logs
 
