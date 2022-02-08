@@ -804,9 +804,6 @@ class TestPortfolio:
             assert list_response.status_code == 200
             responses = list_response.json()
             assert len(expected_response) == len(responses)
-
-            json.dumps(list_response.json())
-
             assert expected_response == list_response.json()
 
             for transaction_type in ["SUBSCRIPTION", "REDEMPTION", "SECURITY"]:
