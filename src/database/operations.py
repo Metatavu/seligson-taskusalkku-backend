@@ -352,15 +352,15 @@ def get_portfolio_logs(database: Session,
     if transaction_date_max:
         query = query.filter(PortfolioLog.transaction_date <= transaction_date_max)
 
+    query.order_by(PortfolioLog.transaction_date)
+
     if first_result:
         query = query.offset(first_result)
 
     if max_result:
         query = query.limit(max_result)
 
-    return query \
-        .order_by(PortfolioLog.transaction_date) \
-        .all()
+    return query.all()
 
 
 def find_portfolio_log(database: Session, portfolio_log_id: UUID) -> Optional[PortfolioLog]:
