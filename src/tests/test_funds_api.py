@@ -70,6 +70,17 @@ class TestFunds:
             assert "12345678903123" == fund["subscriptionBankAccounts"][2]["AccountNumberOldFormat"]
             assert "MNOPFICC" == fund["subscriptionBankAccounts"][2]["BIC"]
             assert "EUR" == fund["subscriptionBankAccounts"][2]["Currency"]
+            assert fund["subscribable"]
+
+    def test_find_etf_fund(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
+        with sql_backend_funds(backend_mysql):
+            fund_id = fund_ids["HEX25ETF"]
+            response = client.get(f"/v1/funds/{fund_id}", auth=user_1_auth)
+            assert response.status_code == 200
+
+            fund = response.json()
+            assert fund_id == fund["id"]
+            assert not fund["subscribable"]
 
     def test_find_fund_no_bank_details(self, client: TestClient, backend_mysql: MySqlContainer,
                                        user_1_auth: BearerAuth):
@@ -138,7 +149,7 @@ class TestFunds:
 
             response_funds = response.json()
             response_ids = list(map(lambda i: i["id"], response_funds))
-            assert 6 == len(response_funds)
+            assert 7 == len(response_funds)
             for fund_id in fund_ids.values():
                 assert fund_id in response_ids
 
@@ -181,7 +192,8 @@ class TestFunds:
                     fund_ids["balancedtst01"],
                     fund_ids["fixedtest0"],
                     fund_ids["dimetest01"],
-                    fund_ids["spiltan_test"]
+                    fund_ids["spiltan_test"],
+                    fund_ids["HEX25ETF"],
                 ]
             )
 
