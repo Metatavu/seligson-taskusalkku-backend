@@ -18,9 +18,11 @@ class LocalizedValue(BaseModel):
 
         fi: The fi of this LocalizedValue.
         sv: The sv of this LocalizedValue.
+        en: The en of this LocalizedValue [Optional].
     """
     fi: str
     sv: str
+    en: Optional[str] = None
 
 
 LocalizedValue.update_forward_refs()
