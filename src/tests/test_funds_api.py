@@ -39,6 +39,7 @@ class TestFunds:
             assert 1 == fund["risk"]
             assert "https://example.com/PASSIVETESTFI" == fund["KIID"]["fi"]
             assert "https://example.com/PASSIVETESTSV" == fund["KIID"]["sv"]
+            assert "https://example.com/PASSIVETESTEN" == fund["KIID"]["en"]
             assert "Passive test fund 1 - subs" == fund["bankReceiverName"]
             assert "PASSIVE" == fund["group"]
             assert "2021-11-10" == fund["priceDate"]
