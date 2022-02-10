@@ -110,7 +110,8 @@ class FundsApiImpl(FundsApiSpec):
             shortName=short_name,
             KIID=LocalizedValue(
                 fi=fund.kiid_url_fi,
-                sv=fund.kiid_url_sv
+                sv=fund.kiid_url_sv,
+                en=fund.kiid_url_en
             ),
             color=fund_meta["color"],
             risk=fund.risk_level,
