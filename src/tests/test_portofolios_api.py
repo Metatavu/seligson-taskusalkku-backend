@@ -207,18 +207,18 @@ class TestPortfolio:
         +------------+
         | redemption |
         +------------+
-        |   35000.00 |
+        |   30099.17 |
         +------------+
         +--------------+
         | subscription |
         +--------------+
-        |     30099.17 |
+        |     35000.00 |
         +--------------+
 
         """
 
-        expected_redemption = Decimal("35000.00")
-        expected_subscription = Decimal("30099.17")
+        expected_redemption = Decimal("30099.17")
+        expected_subscription = Decimal("35000.00")
 
         tables = [(Company, 4), (Security, 9), (LastRate, 9), (DbPortfolio, 5), (PortfolioTransaction, 30),
                   (PortfolioLog, 60)]
