@@ -229,7 +229,8 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                 if fund_updated is None:
                     fund_updated = datetime(1970, 1, 1, 0, 0)
 
-                if not existing_security or self.round_datetime_to_seconds(fund_updated) > \
+                if not existing_security or existing_security.name_en is None or \
+                        self.round_datetime_to_seconds(fund_updated) > \
                         self.round_datetime_to_seconds(existing_security.updated):
                     self.upsert_security(backend_session=backend_session,
                                          security=existing_security,
@@ -238,6 +239,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                                          currency=security_row.CURRENCY,
                                          name_fi=security_row.NAME1,
                                          name_sv=security_row.NAME2,
+                                         name_en=security_row.NAME3,
                                          series_id=security_row.SERIES_ID,
                                          updated=security_row.UPD_DATE)
 
@@ -254,7 +256,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
         Returns: securities from funds database
         """
-        statement = "SELECT SECID, SORTNAME, CURRENCY, NAME1, NAME2, SERIES_ID, UPD_DATE FROM TABLE_SECURITY"
+        statement = "SELECT SECID, SORTNAME, CURRENCY, NAME1, NAME2, NAME3, SERIES_ID, UPD_DATE FROM TABLE_SECURITY"
         return funds_session.execute(statement=statement)
 
     @staticmethod
@@ -282,13 +284,14 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
     @staticmethod
     def upsert_security(backend_session: Session, security, original_id, updated, fund_id=None, currency="", name_fi="",
-                        name_sv="", series_id=None) -> destination_models.Security:
+                        name_sv="", name_en='', series_id=None) -> destination_models.Security:
         new_security = security if security else destination_models.Security()
         new_security.original_id = original_id
         new_security.fund_id = fund_id
         new_security.currency = currency
         new_security.name_fi = name_fi
         new_security.name_sv = name_sv
+        new_security.name_en = name_en
         new_security.series_id = series_id
         new_security.updated = updated
         backend_session.add(new_security)

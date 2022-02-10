@@ -24,21 +24,33 @@ logger = logging.getLogger(__name__)
 security_1_data = {
     "id": security_ids["ACTIVETEST01"],
     "fundId": fund_ids["activetest01"],
-    "name": {"fi": "Active test security 1 - fi", "sv": "Active test security 1 - sv"},
+    "name": {
+        "fi": "Active test security 1 - fi",
+        "sv": "Active test security 1 - sv",
+        "en": "Active test security 1 - en"
+    },
     "currency": "EUR"
 }
 
 security_3_data = {
     "id": security_ids["PASSIVETEST01"],
     "fundId": fund_ids["passivetest01"],
-    "name": {"fi": "Passive test security 1 - fi", "sv": "Passive test security 1 - sv"},
+    "name": {
+        "fi": "Passive test security 1 - fi",
+        "sv": "Passive test security 1 - sv",
+        "en": "Passive test security 1 - en"
+    },
     "currency": "EUR"
 }
 
 security_5_data = {
     "id": security_ids["SPILTAN TEST"],
     "fundId": fund_ids["spiltan_test"],
-    "name": {"fi": "Spiltan test security 1 - fi", "sv": "Spiltan test security 1 - sv"},
+    "name": {
+        "fi": "Spiltan test security 1 - fi",
+        "sv": "Spiltan test security 1 - sv",
+        "en": "Spiltan test security 1 - en"
+    },
     "currency": "SEK"
 }
 

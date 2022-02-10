@@ -30,6 +30,7 @@ class Security(Base):
     currency = Column(CHAR(3))
     name_fi = Column(String(191), nullable=False)
     name_sv = Column(String(191), nullable=False)
+    name_en = Column(String(191), nullable=False)
     series_id = Column(SmallInteger, nullable=True)
     rates = relationship("SecurityRate", back_populates="security", lazy=True)
     last_rate = relationship("LastRate", back_populates="security", lazy=True)

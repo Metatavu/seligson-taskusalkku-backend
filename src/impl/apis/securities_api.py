@@ -125,7 +125,8 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             fundId=str(security.fund_id),
             name=LocalizedValue(
                 fi=security.name_fi,
-                sv=security.name_sv
+                sv=security.name_sv,
+                en=security.name_en
             ),
             currency=security.currency
         )
