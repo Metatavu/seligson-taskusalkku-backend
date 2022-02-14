@@ -104,7 +104,7 @@ class FundsApiImpl(FundsApiSpec):
             database=self.database,
             fund_id=fund.id
         )
-        
+
         if security is None:
             logger.warning("Fund security for fund id %s not found", fund.original_id)
             return None

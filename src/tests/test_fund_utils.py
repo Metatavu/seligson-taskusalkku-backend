@@ -26,7 +26,7 @@ class TestFundUtils:
             "Seligson & Co Euro-obligaatio (VA)": "Seligson & Co Euro-obligaatio",
             "Seligson & Co Euro Bond Fund (VA)": "Seligson & Co Euro Bond Fund",
             "Seligson & Co Euroobligation (VA)": "Seligson & Co Euroobligation",
-            "Seligson & Co OMX pörssinoteerattu rahasto UCITS":  "Seligson & Co OMX pörssinoteerattu rahasto UCITS",
+            "Seligson & Co OMX pörssinoteerattu rahasto UCITS": "Seligson & Co OMX pörssinoteerattu rahasto UCITS",
             "Seligson & Co OMX Exchange Traded Fund UCITS ETF": "Seligson & Co OMX Exchange Traded Fund UCITS ETF",
             "Seligson & Co OMX börshandlad fond UCITS ETF": "Seligson & Co OMX börshandlad fond UCITS ETF"
         }
@@ -53,7 +53,7 @@ class TestFundUtils:
             "Seligson & Co Euro-obligaatio (VA)": "Euro-obligaatio",
             "Seligson & Co Euro Bond Fund (VA)": "Euro Bond Fund",
             "Seligson & Co Euroobligation (VA)": "Euroobligation",
-            "Seligson & Co OMX pörssinoteerattu rahasto UCITS":  "OMX pörssinoteerattu rahasto UCITS",
+            "Seligson & Co OMX pörssinoteerattu rahasto UCITS": "OMX pörssinoteerattu rahasto UCITS",
             "Seligson & Co OMX Exchange Traded Fund UCITS ETF": "OMX Exchange Traded Fund UCITS ETF",
             "Seligson & Co OMX börshandlad fond UCITS ETF": "OMX börshandlad fond UCITS ETF"
         }
