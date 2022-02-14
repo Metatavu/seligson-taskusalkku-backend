@@ -95,6 +95,10 @@ class FundsApiImpl(FundsApiSpec):
             Fund: Translated REST resource
         """
 
+        if fund.group is None:
+            logger.warning("Fund group for fund id %s not found", fund.original_id)
+            return None
+
         fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id=str(fund.original_id))
         if fund_meta is None:
             logger.warning("Fund meta for fund id %s not found", fund.original_id)
@@ -126,6 +130,7 @@ class FundsApiImpl(FundsApiSpec):
             name=long_name,
             longName=long_name,
             shortName=short_name,
+            bankReceiverName=fund_meta["subs_name"],
             KIID=LocalizedValue(
                 fi=fund.kiid_url_fi,
                 sv=fund.kiid_url_sv,
@@ -133,8 +138,7 @@ class FundsApiImpl(FundsApiSpec):
             ),
             color=fund_meta["color"],
             risk=fund.risk_level,
-            bankReceiverName=fund_meta.get("subs_name", None),
-            group=fund_meta["group"],
+            group=fund.group,
             priceDate=fund_meta["price_date"],
             aShareValue=fund_meta["a_share_value"],
             bShareValue=fund_meta["b_share_value"],

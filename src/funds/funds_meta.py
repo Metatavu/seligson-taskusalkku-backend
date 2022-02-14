@@ -27,7 +27,6 @@ class FundMeta(TypedDict, total=False):
     color: str
     risk: int
     kiid: Optional[List[str]]
-    group: str
     price_date: date
     a_share_value: str
     b_share_value: str
@@ -53,33 +52,16 @@ class FundJsonEntry(TypedDict, total=False):
     kiid: Optional[List[str]]
 
 
-class FundValueGroup(TypedDict):
-    """Defines a fund value group in fund options file """
-    group: str
-    name: List[str]
-    funds: List[str]
-
-
 class FundOptions(TypedDict):
     """Defines fund options file structure"""
     fundId: Dict[str, str]
     fundKey: Dict[str, str]
-    fundValueGroups: List[FundValueGroup]
 
 
 class FundsMetaController:
     """Funds meta controller"""
 
     fund_options: Optional[FundOptions] = None
-
-    group_map = {
-      "spiltan": "SPILTAN",
-      "dimension": "DIMENSION",
-      "fixedIncome": "FIXED_INCOME",
-      "balanced": "BALANCED",
-      "active": "ACTIVE",
-      "passive": "PASSIVE"
-    }
 
     def get_fund_meta_by_fund_id(self, fund_id: str) -> Optional[FundMeta]:
         """Returns fund meta entry for given fund code
@@ -124,7 +106,6 @@ class FundsMetaController:
         if not fund_id:
             return None
 
-        group = self.get_fund_group(fund_code=code)
         values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
         funds_banks = self.load_subscription_bank_accounts()
         fund_bank_info = self.get_fund_bank_info(funds_banks=funds_banks, fund_id=fund_id)
@@ -150,7 +131,6 @@ class FundsMetaController:
                         kiid=fund_json_entry.get("kiid", None),
                         risk=fund_json_entry["risk"],
                         subs_name=fund_json_entry.get("subsName", None),
-                        group=group,
                         price_date=price_date,
                         a_share_value=a_share_value,
                         b_share_value=b_share_value,
@@ -265,38 +245,6 @@ class FundsMetaController:
             return list(fund_id.keys())[fund_index]
         except ValueError:
             return None
-
-    def get_fund_group(self, fund_code: str) -> Optional[str]:
-        """Returns group for given fund code
-
-        Args:
-            fund_code (str): fund code
-
-        Returns:
-            Optional[str]: fund group or None if not found
-        """
-        fund_value_group = self.get_fund_value_group(fund_code=fund_code)
-        if not fund_value_group:
-            return None
-
-        group = fund_value_group["group"]
-        if not group:
-            return None
-
-        return self.group_map.get(group, None)
-
-    def get_fund_value_group(self, fund_code: str) -> Optional[FundValueGroup]:
-        """Resolves fund value group for given fund code
-
-        Args:
-            fund_code (str): fund code
-
-        Returns:
-            Optional[FundValueGroup]: fund value group
-        """
-        fund_options = self.get_fund_options()
-        groups = fund_options["fundValueGroups"]
-        return next((group for group in groups if fund_code in group["funds"]), None)
 
     def get_fund_options(self) -> FundOptions:
         """Returns fund options
