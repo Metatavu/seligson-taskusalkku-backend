@@ -43,7 +43,7 @@ security_3_data = {
     "currency": "EUR"
 }
 
-security_5_data = {
+security_6_data = {
     "id": security_ids["SPILTAN TEST"],
     "fundId": fund_ids["spiltan_test"],
     "name": {
@@ -115,7 +115,7 @@ class TestSecurities:
             assert 7 == len(response_securities)
 
             assert response_securities[0] == security_1_data
-            assert response_securities[5] == security_5_data
+            assert response_securities[6] == security_6_data
 
     @pytest.mark.parametrize("auth", invalid_auths)
     def test_list_securities_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
