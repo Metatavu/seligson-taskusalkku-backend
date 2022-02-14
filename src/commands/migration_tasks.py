@@ -1418,11 +1418,7 @@ class MigrateFundsTask(AbstractMigrationTask):
                     fund.risk_level = fund_row.RISK_LEVEL
 
                 if fund_row.FUND_TYPE:
-                    fund_group = re.sub(r'(?=[A-Z])', '_', fund_row.FUND_TYPE).upper()
-                    if fund_group in ["PASSIVE", "ACTIVE", "BALANCED", "FIXED_INCOME", "DIMENSION", "SPILTAN"]:
-                        fund.group = fund_group
-                    else:
-                        raise MigrationException(f"Could not recognize fund type ${fund_row.FUND_TYPE}")
+                    fund.group = self.get_fund_group(fund_type=fund_row.FUND_TYPE)
 
                 backend_session.add(fund)
                 synchronized_count = synchronized_count + 1
@@ -1441,6 +1437,22 @@ class MigrateFundsTask(AbstractMigrationTask):
         risk_query = "SELECT TOP 1 risk_level FROM TextContent WHERE fund_name = NAME_KIID ORDER BY modification_time"
         statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, ({risk_query}) as RISK_LEVEL, FUND_TYPE FROM FUND"
         return kiid_session.execute(statement=statement)
+
+    @staticmethod
+    def get_fund_group(fund_type: str) -> str:
+        """
+        Returns fund group from fund type
+        Args:
+            fund_type: fund type
+
+        Returns:
+            fund group
+        """
+        fund_group = re.sub(r'(?=[A-Z])', '_', fund_type).upper()
+        if fund_group in ["PASSIVE", "ACTIVE", "BALANCED", "FIXED_INCOME", "DIMENSION", "SPILTAN"]:
+            return fund_group
+        else:
+            raise MigrationException(f"Could not recognize fund type ${fund_type}")
 
     @staticmethod
     def get_kiid_engine() -> MockConnection:
