@@ -152,7 +152,7 @@ class TestSecurities:
             assert response.status_code == 200
 
             response_securities = response.json()
-            assert 5 == len(response_securities)
+            assert 4 == len(response_securities)
             assert response_securities[0] == security_1_data
             assert response_securities[3] == security_3_data
 
