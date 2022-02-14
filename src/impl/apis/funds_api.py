@@ -130,7 +130,6 @@ class FundsApiImpl(FundsApiSpec):
             name=long_name,
             longName=long_name,
             shortName=short_name,
-            bankReceiverName=fund_meta["subs_name"],
             KIID=LocalizedValue(
                 fi=fund.kiid_url_fi,
                 sv=fund.kiid_url_sv,
@@ -138,6 +137,7 @@ class FundsApiImpl(FundsApiSpec):
             ),
             color=fund_meta["color"],
             risk=fund.risk_level,
+            bankReceiverName=fund_meta.get("subs_name", None),
             group=fund.group,
             priceDate=fund_meta["price_date"],
             aShareValue=fund_meta["a_share_value"],
