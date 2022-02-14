@@ -1,8 +1,8 @@
 """add fund group column to fund table
 
-Revision ID: 0008
-Revises: 0007
-Create Date: 2021-12-17 11:00:00.000000
+Revision ID: 0016
+Revises: 0015
+Create Date: 2022-02-14 11:00:00.000000
 
 """
 from alembic import op

@@ -15,6 +15,8 @@ from .migration_exception import MigrationException
 from database import models as destination_models
 from datetime import datetime, date, timedelta
 
+FUND_GROUPS = ["PASSIVE", "ACTIVE", "BALANCED", "FIXED_INCOME", "DIMENSION", "SPILTAN"]
+
 TIMED_OUT = "Timed out."
 
 logger = logging.getLogger(__name__)
@@ -1449,7 +1451,7 @@ class MigrateFundsTask(AbstractMigrationTask):
             fund group
         """
         fund_group = re.sub(r'(?=[A-Z])', '_', fund_type).upper()
-        if fund_group in ["PASSIVE", "ACTIVE", "BALANCED", "FIXED_INCOME", "DIMENSION", "SPILTAN"]:
+        if fund_group in FUND_GROUPS:
             return fund_group
         else:
             raise MigrationException(f"Could not recognize fund type ${fund_type}")
