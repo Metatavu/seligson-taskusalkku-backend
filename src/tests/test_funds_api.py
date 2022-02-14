@@ -1,6 +1,6 @@
 from typing import List
 
-from .utils.database import sql_backend_funds
+from .utils.database import sql_backend_funds, sql_backend_security
 
 from .constants import fund_ids, invalid_uuids, invalid_auths
 
@@ -22,19 +22,22 @@ class TestFunds:
     """Tests for funds endpoints"""
 
     def test_find_fund(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             fund_id = fund_ids["passivetest01"]
             response = client.get(f"/v1/funds/{fund_id}", auth=user_1_auth)
             assert response.status_code == 200
 
             fund = response.json()
             assert fund_id == fund["id"]
-            assert "Passive test fund 1 - fi" == fund["name"]["fi"]
-            assert "Passive test fund 1 - en" == fund["name"]["sv"]
-            assert "Passive test fund 1 - fi, long" == fund["longName"]["fi"]
-            assert "Passive test fund 1 - en, long" == fund["longName"]["sv"]
-            assert "Passive test fund 1 - fi, short" == fund["shortName"]["fi"]
-            assert "Passive test fund 1 - en, short" == fund["shortName"]["sv"]
+            assert "Seligson & Co FI - Passive test 1" == fund["name"]["fi"]
+            assert "Seligson & Co SV - Passive test 1" == fund["name"]["sv"]
+            assert "Seligson & Co EN - Passive test 1" == fund["name"]["en"]
+            assert "Seligson & Co FI - Passive test 1" == fund["longName"]["fi"]
+            assert "Seligson & Co SV - Passive test 1" == fund["longName"]["sv"]
+            assert "Seligson & Co EN - Passive test 1" == fund["longName"]["en"]
+            assert "FI - Passive test 1" == fund["shortName"]["fi"]
+            assert "SV - Passive test 1" == fund["shortName"]["sv"]
+            assert "EN - Passive test 1" == fund["shortName"]["en"]
             assert "#123456" == fund["color"]
             assert 1 == fund["risk"]
             assert "https://example.com/PASSIVETESTFI" == fund["KIID"]["fi"]
@@ -74,7 +77,7 @@ class TestFunds:
             assert fund["subscribable"]
 
     def test_find_etf_fund(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             fund_id = fund_ids["HEX25ETF"]
             response = client.get(f"/v1/funds/{fund_id}", auth=user_1_auth)
             assert response.status_code == 200
@@ -85,7 +88,7 @@ class TestFunds:
 
     def test_find_fund_no_bank_details(self, client: TestClient, backend_mysql: MySqlContainer,
                                        user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             fund_id = fund_ids["activetest01"]
             response = client.get(f"/v1/funds/{fund_id}", auth=user_1_auth)
             assert response.status_code == 200
@@ -96,7 +99,7 @@ class TestFunds:
 
     def test_find_fund_partial_bank_details(self, client: TestClient, backend_mysql: MySqlContainer,
                                             user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             fund_id = fund_ids["balancedtst01"]
             response = client.get(f"/v1/funds/{fund_id}", auth=user_1_auth)
             assert response.status_code == 200
@@ -117,34 +120,34 @@ class TestFunds:
     @pytest.mark.parametrize("auth", invalid_auths)
     def test_find_fund_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
                                     keycloak: KeycloakContainer, auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             fund_id = fund_ids["passivetest01"]
             response = client.get(f"/v1/funds/{fund_id}", auth=auth)
             assert response.status_code == 403
 
     def test_find_fund_anonymous(self, client: TestClient, backend_mysql: MySqlContainer,
                                  keycloak: KeycloakContainer, anonymous_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             fund_id = fund_ids["passivetest01"]
             response = client.get(f"/v1/funds/{fund_id}", auth=anonymous_auth)
             assert response.status_code == 200
 
     def test_find_fund_unauthorized(self, client: TestClient, backend_mysql: MySqlContainer,
                                     keycloak: KeycloakContainer):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             fund_id = fund_ids["passivetest01"]
             response = client.get(f"/v1/funds/{fund_id}")
             assert response.status_code == 403
 
     def test_find_fund_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             for invalid_uuid in invalid_uuids:
                 url = f"/v1/funds/{invalid_uuid}"
                 response = client.get(url, auth=user_1_auth)
                 assert response.status_code == 400
 
     def test_list_funds(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             response = client.get("/v1/funds", auth=user_1_auth)
             assert response.status_code == 200
 
@@ -171,7 +174,7 @@ class TestFunds:
         assert response.status_code == 403
 
     def test_list_funds_limits(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             self.assert_list(
                 client=client,
                 auth=user_1_auth,

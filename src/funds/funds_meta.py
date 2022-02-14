@@ -23,10 +23,7 @@ class FundMeta(TypedDict, total=False):
 
     fund_id: str
     fund_code: str
-    name: List[str]
     subs_name: Optional[str]
-    long_name: List[str]
-    short_name: List[str]
     color: str
     risk: int
     kiid: Optional[List[str]]
@@ -50,10 +47,7 @@ class FundMeta(TypedDict, total=False):
 class FundJsonEntry(TypedDict, total=False):
     """Defines a fund meta entry in funds file"""
 
-    name: List[str]
     subsName: Optional[str]
-    longName: List[str]
-    shortName: List[str]
     color: str
     risk: int
     kiid: Optional[List[str]]
@@ -154,10 +148,7 @@ class FundsMetaController:
                         fund_id=fund_id,
                         color=fund_json_entry["color"],
                         kiid=fund_json_entry.get("kiid", None),
-                        long_name=fund_json_entry["longName"],
-                        name=fund_json_entry["name"],
                         risk=fund_json_entry["risk"],
-                        short_name=fund_json_entry["shortName"],
                         subs_name=fund_json_entry.get("subsName", None),
                         group=group,
                         price_date=price_date,
