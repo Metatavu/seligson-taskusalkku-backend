@@ -1,5 +1,7 @@
 import os
 import logging
+import re
+
 from decimal import Decimal
 
 from uuid import UUID
@@ -1373,9 +1375,18 @@ class MigrateFundsTask(AbstractMigrationTask):
         return "funds"
 
     def up_to_date(self, backend_session: Session) -> bool:
+        null_group_count = backend_session.execute("SELECT COUNT(id) FROM fund WHERE fund_group is null") \
+            .scalar()
+
+        if null_group_count > 0:
+            return False
+
         with Session(self.kiid_engine) as kiid_session:
-            backend_fund_count = backend_session.execute(statement="SELECT COUNT(id) FROM fund").fetchone()
-            kiid_fund_count = kiid_session.execute(statement="SELECT COUNT(ID) FROM FUND").fetchone()
+            backend_fund_count = backend_session.execute("SELECT COUNT(id) FROM fund") \
+                .scalar()
+            kiid_fund_count = kiid_session.execute("SELECT COUNT(ID) FROM FUND")\
+                .scalar()
+
             return backend_fund_count >= kiid_fund_count
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
@@ -1406,6 +1417,13 @@ class MigrateFundsTask(AbstractMigrationTask):
                 if fund_row.RISK_LEVEL:
                     fund.risk_level = fund_row.RISK_LEVEL
 
+                if fund_row.FUND_TYPE:
+                    fund_group = re.sub(r'(?=[A-Z])', '_', fund_row.FUND_TYPE).upper()
+                    if fund_group in ["PASSIVE", "ACTIVE", "BALANCED", "FIXED_INCOME", "DIMENSION", "SPILTAN"]:
+                        fund.group = fund_group
+                    else:
+                        raise MigrationException(f"Could not recognize fund type ${fund_row.FUND_TYPE}")
+
                 backend_session.add(fund)
                 synchronized_count = synchronized_count + 1
 
@@ -1421,7 +1439,7 @@ class MigrateFundsTask(AbstractMigrationTask):
         Returns: rows from the kiid funds table
         """
         risk_query = "SELECT TOP 1 risk_level FROM TextContent WHERE fund_name = NAME_KIID ORDER BY modification_time"
-        statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, ({risk_query}) as RISK_LEVEL FROM FUND"
+        statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, ({risk_query}) as RISK_LEVEL, FUND_TYPE FROM FUND"
         return kiid_session.execute(statement=statement)
 
     @staticmethod
