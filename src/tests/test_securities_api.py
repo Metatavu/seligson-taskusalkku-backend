@@ -112,7 +112,7 @@ class TestSecurities:
 
             response_securities = response.json()
 
-            assert 6 == len(response_securities)
+            assert 7 == len(response_securities)
 
             assert response_securities[0] == security_1_data
             assert response_securities[5] == security_5_data
@@ -131,7 +131,7 @@ class TestSecurities:
         with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             response = client.get(f"/v1/securities", auth=anonymous_auth)
             assert response.status_code == 200
-            assert 6 == len(response.json())
+            assert 7 == len(response.json())
 
     def test_list_securities_unauthorized(self, client: TestClient, backend_mysql: MySqlContainer,
                                           keycloak: KeycloakContainer):
@@ -152,7 +152,7 @@ class TestSecurities:
             assert response.status_code == 200
 
             response_securities = response.json()
-            assert 4 == len(response_securities)
+            assert 5 == len(response_securities)
             assert response_securities[0] == security_1_data
             assert response_securities[3] == security_3_data
 
