@@ -25,9 +25,9 @@ security_1_data = {
     "id": security_ids["ACTIVETEST01"],
     "fundId": fund_ids["activetest01"],
     "name": {
-        "fi": "Active test security 1 - fi",
-        "sv": "Active test security 1 - sv",
-        "en": "Active test security 1 - en"
+        "fi": "Seligson & Co FI - Active test 1 (VA)",
+        "sv": "Seligson & Co SV - Active test 1 (VA)",
+        "en": "Seligson & Co EN - Active test 1 (VA)"
     },
     "currency": "EUR"
 }
@@ -36,9 +36,9 @@ security_3_data = {
     "id": security_ids["PASSIVETEST01"],
     "fundId": fund_ids["passivetest01"],
     "name": {
-        "fi": "Passive test security 1 - fi",
-        "sv": "Passive test security 1 - sv",
-        "en": "Passive test security 1 - en"
+        "fi": "Seligson & Co FI - Passive test 1 (A)",
+        "sv": "Seligson & Co SV - Passive test 1 (A)",
+        "en": "Seligson & Co EN - Passive test 1 (A)"
     },
     "currency": "EUR"
 }
@@ -47,9 +47,9 @@ security_5_data = {
     "id": security_ids["SPILTAN TEST"],
     "fundId": fund_ids["spiltan_test"],
     "name": {
-        "fi": "Spiltan test security 1 - fi",
-        "sv": "Spiltan test security 1 - sv",
-        "en": "Spiltan test security 1 - en"
+        "fi": "Seligson & Co FI - Spiltan test 1",
+        "sv": "Seligson & Co SV - Spiltan test 1",
+        "en": "Seligson & Co EN - Spiltan test 1"
     },
     "currency": "SEK"
 }
