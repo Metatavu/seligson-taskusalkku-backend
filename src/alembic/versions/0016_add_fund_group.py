@@ -25,5 +25,6 @@ def upgrade():
     op.execute("UPDATE fund SET fund_group = 'PASSIVE' WHERE original_id in ('800','5555','818423','7777','795',"
                "'88511','581','4444')")
 
+
 def downgrade():
     op.drop_column("fund", column_name="fund_group")
