@@ -60,3 +60,15 @@ class TestFundUtils:
 
         for security_name, expected in expect_shorts.items():
             assert FundUtils.get_fund_short_name_from_security_name(security_name=security_name) == expected
+
+    def test_get_fund_color(self):
+        """Tests for fund color generation"""
+        assert FundUtils.get_fund_color("PASSIVE", 2).to_css() == "rgb(240, 179, 179)"
+        assert FundUtils.get_fund_color("ACTIVE", 3).to_css() == "rgb(234, 149, 149)"
+        assert FundUtils.get_fund_color("BALANCED", 4).to_css() == "rgb(255, 180, 82)"
+        assert FundUtils.get_fund_color("FIXED_INCOME", 5).to_css() == "rgb(116, 176, 116)"
+        assert FundUtils.get_fund_color("OTHER", 6).to_css() == "rgb(118, 118, 118)"
+        assert FundUtils.get_fund_color("OTHER", 8).to_css() == "rgb(100, 100, 100)"
+        assert FundUtils.get_fund_color("PASSIVE", 0).to_css() == "rgb(246, 209, 209)"
+        assert FundUtils.get_fund_color("PASSIVE", -22).to_css() == "rgb(246, 209, 209)"
+        assert FundUtils.get_fund_color("SOMETHING", -22).to_css() == "rgb(207, 207, 207)"
