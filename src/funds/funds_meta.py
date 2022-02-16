@@ -50,7 +50,13 @@ class FundsMetaController:
             FundMeta: FundMeta entry
         """
         values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
+        if not values_basic:
+            return None
+
         funds_banks = self.load_subscription_bank_accounts()
+        if not funds_banks:
+            return None
+
         fund_bank_info = self.get_fund_bank_info(funds_banks=funds_banks, fund_id=fund_id)
         price_date = self.parse_csv_date(values_basic["price_date"])
         a_share_value = self.parse_csv_float(values_basic["a_share_value"])
