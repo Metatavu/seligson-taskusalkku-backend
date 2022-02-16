@@ -233,9 +233,13 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                 if fund_updated is None:
                     fund_updated = datetime(1970, 1, 1, 0, 0)
 
+                backend_updated = existing_security.updated
+                if backend_updated is None:
+                    backend_updated = datetime(1970, 1, 1, 0, 0)
+
                 if not existing_security or existing_security.name_en is None or \
                         self.round_datetime_to_seconds(fund_updated) > \
-                        self.round_datetime_to_seconds(existing_security.updated):
+                        self.round_datetime_to_seconds(backend_updated):
                     self.upsert_security(backend_session=backend_session,
                                          security=existing_security,
                                          original_id=original_security_id,
@@ -245,7 +249,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                                          name_sv=security_row.NAME2,
                                          name_en=security_row.NAME3,
                                          series_id=security_row.SERIES_ID,
-                                         updated=security_row.UPD_DATE)
+                                         updated=fund_updated)
 
                     synchronized_count = synchronized_count + 1
 
