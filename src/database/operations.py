@@ -3,6 +3,8 @@ from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import func
+from sqlalchemy.sql.functions import coalesce
+
 from .models import Fund, SecurityRate, Company, PortfolioTransaction, LastRate, Security, Portfolio, PortfolioLog
 from datetime import date
 
@@ -72,6 +74,24 @@ def find_security(database: Session, security_id: UUID) -> Optional[Security]:
         """
     return database.query(Security) \
         .filter(Security.id == security_id) \
+        .one_or_none()
+
+
+def find_main_security_for_fund(database: Session, fund_id: UUID) -> Optional[Security]:
+    """
+    Finds 'main' security for a fund. Main security is a security with the lowest series id.
+
+    Args:
+        database (Session): database session
+        fund_id (UUID): fund id
+
+    Returns:
+            Optional[Security]: found security or none if not found
+    """
+    return database.query(Security)\
+        .filter(Security.fund_id == fund_id)\
+        .order_by(coalesce(Security.series_id, 99))\
+        .limit(1)\
         .one_or_none()
 
 

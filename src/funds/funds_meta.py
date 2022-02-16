@@ -21,16 +21,6 @@ class BankInfo(TypedDict, total=False):
 class FundMeta(TypedDict, total=False):
     """Defines a fund meta entry"""
 
-    fund_id: str
-    fund_code: str
-    name: List[str]
-    subs_name: Optional[str]
-    long_name: List[str]
-    short_name: List[str]
-    color: str
-    risk: int
-    kiid: Optional[List[str]]
-    group: str
     price_date: date
     a_share_value: str
     b_share_value: str
@@ -47,94 +37,27 @@ class FundMeta(TypedDict, total=False):
     bank_info: Optional[List[BankInfo]]
 
 
-class FundJsonEntry(TypedDict, total=False):
-    """Defines a fund meta entry in funds file"""
-
-    name: List[str]
-    subsName: Optional[str]
-    longName: List[str]
-    shortName: List[str]
-    color: str
-    risk: int
-    kiid: Optional[List[str]]
-
-
-class FundValueGroup(TypedDict):
-    """Defines a fund value group in fund options file """
-    group: str
-    name: List[str]
-    funds: List[str]
-
-
-class FundOptions(TypedDict):
-    """Defines fund options file structure"""
-    fundId: Dict[str, str]
-    fundKey: Dict[str, str]
-    fundValueGroups: List[FundValueGroup]
-
-
 class FundsMetaController:
     """Funds meta controller"""
 
-    fund_options: Optional[FundOptions] = None
-
-    group_map = {
-      "spiltan": "SPILTAN",
-      "dimension": "DIMENSION",
-      "fixedIncome": "FIXED_INCOME",
-      "balanced": "BALANCED",
-      "active": "ACTIVE",
-      "passive": "PASSIVE"
-    }
-
-    def get_fund_meta_by_fund_id(self, fund_id: str) -> Optional[FundMeta]:
-        """Returns fund meta entry for given fund code
-
-        Args:
-            fund_id (uuid): Fund id
-
-        Returns:
-            FundMeta: fund meta
-        """
-        return next((entry for entry in self.get_all_fund_metas() if entry["fund_id"] == fund_id), None)
-
-    def get_all_fund_metas(self) -> List[FundMeta]:
-        """Returns all fund metas
-
-        Returns:
-            List[FundMeta]: Fund metas
-        """
-        funds = self.load_funds()
-        data: List[FundMeta] = []
-        for (code, value) in funds.items():
-            fund_meta = self.translate_fund_meta(code=code, fund_json_entry=value)
-            if fund_meta:
-                data.append(fund_meta)
-
-        return data
-
-    def translate_fund_meta(self,
-                            code: str,
-                            fund_json_entry: FundJsonEntry
-                            ) -> Optional[FundMeta]:
+    def get_fund_meta(self, fund_id: str) -> Optional[FundMeta]:
         """Translates single JSON file entry to FundMeta entry
 
         Args:
-            code (str): Fund code
-            fund_json_entry (FundJsonEntry): JSON entry
+            fund_id (str): Fund id
 
         Returns:
             FundMeta: FundMeta entry
         """
-        fund_id = self.get_fund_id(fund_code=code)
-        if not fund_id:
+        values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
+        if not values_basic:
             return None
 
-        group = self.get_fund_group(fund_code=code)
-        values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
         funds_banks = self.load_subscription_bank_accounts()
-        fund_bank_info = self.get_fund_bank_info(funds_banks=funds_banks, fund_id=fund_id)
+        if not funds_banks:
+            return None
 
+        fund_bank_info = self.get_fund_bank_info(funds_banks=funds_banks, fund_id=fund_id)
         price_date = self.parse_csv_date(values_basic["price_date"])
         a_share_value = self.parse_csv_float(values_basic["a_share_value"])
         b_share_value = self.parse_csv_float(values_basic["b_share_value"])
@@ -150,16 +73,6 @@ class FundsMetaController:
         profit_projection_date = self.parse_csv_date(values_basic["profit_projection_date"])
 
         return FundMeta(
-                        fund_code=code,
-                        fund_id=fund_id,
-                        color=fund_json_entry["color"],
-                        kiid=fund_json_entry.get("kiid", None),
-                        long_name=fund_json_entry["longName"],
-                        name=fund_json_entry["name"],
-                        risk=fund_json_entry["risk"],
-                        short_name=fund_json_entry["shortName"],
-                        subs_name=fund_json_entry.get("subsName", None),
-                        group=group,
                         price_date=price_date,
                         a_share_value=a_share_value,
                         b_share_value=b_share_value,
@@ -232,14 +145,6 @@ class FundsMetaController:
         """
         return next((entry for entry in self.get_fund_values_basic() if fund_id == entry["fund_id"]), None)
 
-    def load_funds(self) -> Dict:
-        """Loads fund JSON file
-
-        Returns:
-            dict: JSON object
-        """
-        return self.load_file_as_json(os.environ["FUND_JSON"])
-
     def load_subscription_bank_accounts(self) -> Dict:
         """Loads subscription bank accounts JSON file
 
@@ -257,67 +162,6 @@ class FundsMetaController:
         """
         with open(environment_variable) as json_file:
             return json.load(json_file)
-
-    def get_fund_id(self, fund_code: str) -> Optional[str]:
-        """Resolves fund id for given fund code
-
-        Args:
-            fund_code (str): fund code
-
-        Returns:
-            str: fund id for given fund code or None if not found
-        """
-        fund_options = self.get_fund_options()
-        fund_id = fund_options["fundId"]
-        try:
-            fund_index = list(fund_id.values()).index(fund_code)
-            return list(fund_id.keys())[fund_index]
-        except ValueError:
-            return None
-
-    def get_fund_group(self, fund_code: str) -> Optional[str]:
-        """Returns group for given fund code
-
-        Args:
-            fund_code (str): fund code
-
-        Returns:
-            Optional[str]: fund group or None if not found
-        """
-        fund_value_group = self.get_fund_value_group(fund_code=fund_code)
-        if not fund_value_group:
-            return None
-
-        group = fund_value_group["group"]
-        if not group:
-            return None
-
-        return self.group_map.get(group, None)
-
-    def get_fund_value_group(self, fund_code: str) -> Optional[FundValueGroup]:
-        """Resolves fund value group for given fund code
-
-        Args:
-            fund_code (str): fund code
-
-        Returns:
-            Optional[FundValueGroup]: fund value group
-        """
-        fund_options = self.get_fund_options()
-        groups = fund_options["fundValueGroups"]
-        return next((group for group in groups if fund_code in group["funds"]), None)
-
-    def get_fund_options(self) -> FundOptions:
-        """Returns fund options
-
-        Returns:
-            dict: JSON object
-        """
-        if not self.fund_options:
-            with open(os.environ["FUND_OPTIONS_JSON"]) as json_file:
-                self.fund_options = json.load(json_file)
-
-        return self.fund_options
 
     @staticmethod
     def get_fund_values_basic() -> Optional[List[Dict[str, str]]]:

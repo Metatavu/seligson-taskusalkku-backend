@@ -19,6 +19,7 @@ from spec.models.change_data import ChangeData
 from spec.models.subscription_bank_account import SubscriptionBankAccount
 
 from database.models import Fund as DbFund
+from utils.fund_utils import FundUtils
 
 logger = logging.getLogger(__name__)
 
@@ -94,18 +95,46 @@ class FundsApiImpl(FundsApiSpec):
             Fund: Translated REST resource
         """
 
-        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id=str(fund.original_id))
+        group = fund.group
+        if group is None:
+            logger.warning("Fund group for fund id %s not found", fund.original_id)
+            return None
+
+        risk_level = fund.risk_level
+        if risk_level is None:
+            logger.warning("Fund risk_level for fund id %s not found", fund.original_id)
+            return None
+
+        color = FundUtils.get_fund_color(fund_group=group, risk_level=int(risk_level))
+
+        fund_meta = self.fundsMetaController.get_fund_meta(fund_id=str(fund.original_id))
         if fund_meta is None:
             logger.warning("Fund meta for fund id %s not found", fund.original_id)
             return None
 
-        name = self.translate_meta_locale(fund_meta["name"])
-        long_name = self.translate_meta_locale(fund_meta["long_name"])
-        short_name = self.translate_meta_locale(fund_meta["short_name"])
+        security = database.find_main_security_for_fund(
+            database=self.database,
+            fund_id=fund.id
+        )
+
+        if security is None:
+            logger.warning("Fund security for fund id %s not found", fund.original_id)
+            return None
+
+        long_name = LocalizedValue(
+            fi=FundUtils.get_fund_long_name_from_security_name(security_name=security.name_fi),
+            sv=FundUtils.get_fund_long_name_from_security_name(security_name=security.name_sv),
+            en=FundUtils.get_fund_long_name_from_security_name(security_name=security.name_en)
+        )
+
+        short_name = LocalizedValue(
+            fi=FundUtils.get_fund_short_name_from_security_name(security_name=security.name_fi),
+            sv=FundUtils.get_fund_short_name_from_security_name(security_name=security.name_sv),
+            en=FundUtils.get_fund_short_name_from_security_name(security_name=security.name_en)
+        )
 
         result = Fund(
             id=str(fund.id),
-            name=name,
             longName=long_name,
             shortName=short_name,
             KIID=LocalizedValue(
@@ -113,10 +142,9 @@ class FundsApiImpl(FundsApiSpec):
                 sv=fund.kiid_url_sv,
                 en=fund.kiid_url_en
             ),
-            color=fund_meta["color"],
-            risk=fund.risk_level,
-            bankReceiverName=fund_meta.get("subs_name", None),
-            group=fund_meta["group"],
+            color=color.to_css(),
+            risk=int(risk_level),
+            group=group,
             priceDate=fund_meta["price_date"],
             aShareValue=fund_meta["a_share_value"],
             bShareValue=fund_meta["b_share_value"],
@@ -124,7 +152,7 @@ class FundsApiImpl(FundsApiSpec):
             profitProjection=fund_meta["profit_projection"],
             profitProjectionDate=fund_meta["profit_projection_date"],
             subscriptionBankAccounts=self.translate_subscription_bank_account(fund_meta),
-            subscribable=business_logics.fund_is_subscribable(fund_code=fund_meta["fund_code"])
+            subscribable=business_logics.fund_is_subscribable(fund_original_id=fund.original_id)
         )
 
         return result
@@ -148,27 +176,6 @@ class FundsApiImpl(FundsApiSpec):
             change10y=fund_meta["_10y_change"],
             change15y=fund_meta["_15y_change"],
             change20y=fund_meta["_20y_change"],
-        )
-
-    @staticmethod
-    def translate_meta_locale(meta_locale: Optional[List[str]]) -> Optional[LocalizedValue]:
-        """Translates localized value from fund meta to LocalizedValue
-
-        Args:
-            meta_locale (List[str]): [description]
-
-        Returns:
-            LocalizedValue: [description]
-        """
-        if not meta_locale:
-            return None
-
-        fi = meta_locale[0] if len(meta_locale) > 0 else None
-        sv = meta_locale[1] if len(meta_locale) > 1 else None
-
-        return LocalizedValue(
-            fi=fi,
-            sv=sv
         )
 
     @staticmethod

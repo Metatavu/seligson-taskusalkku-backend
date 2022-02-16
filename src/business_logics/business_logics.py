@@ -19,8 +19,8 @@ def get_transaction_codes_for_subscription_redemption() -> [str]:
     return ["11", "12"]
 
 
-def fund_is_subscribable(fund_code: str) -> bool:
+def fund_is_subscribable(fund_original_id: int) -> bool:
     """
-    verifies the specific case of HEX25ETF. This fund is not subscribable because ETF funds are not subscribable.
+    verifies the fund id of 4444. This fund is not subscribable because ETF funds are not subscribable.
     """
-    return fund_code != "HEX25ETF"
+    return fund_original_id != 4444

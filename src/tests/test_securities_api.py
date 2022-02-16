@@ -25,9 +25,9 @@ security_1_data = {
     "id": security_ids["ACTIVETEST01"],
     "fundId": fund_ids["activetest01"],
     "name": {
-        "fi": "Active test security 1 - fi",
-        "sv": "Active test security 1 - sv",
-        "en": "Active test security 1 - en"
+        "fi": "Seligson & Co FI - Active test 1 (VA)",
+        "sv": "Seligson & Co SV - Active test 1 (VA)",
+        "en": "Seligson & Co EN - Active test 1 (VA)"
     },
     "currency": "EUR"
 }
@@ -36,20 +36,20 @@ security_3_data = {
     "id": security_ids["PASSIVETEST01"],
     "fundId": fund_ids["passivetest01"],
     "name": {
-        "fi": "Passive test security 1 - fi",
-        "sv": "Passive test security 1 - sv",
-        "en": "Passive test security 1 - en"
+        "fi": "Seligson & Co FI - Passive test 1 (A)",
+        "sv": "Seligson & Co SV - Passive test 1 (A)",
+        "en": "Seligson & Co EN - Passive test 1 (A)"
     },
     "currency": "EUR"
 }
 
-security_5_data = {
+security_6_data = {
     "id": security_ids["SPILTAN TEST"],
     "fundId": fund_ids["spiltan_test"],
     "name": {
-        "fi": "Spiltan test security 1 - fi",
-        "sv": "Spiltan test security 1 - sv",
-        "en": "Spiltan test security 1 - en"
+        "fi": "Seligson & Co FI - Spiltan test 1",
+        "sv": "Seligson & Co SV - Spiltan test 1",
+        "en": "Seligson & Co EN - Spiltan test 1"
     },
     "currency": "SEK"
 }
@@ -112,10 +112,10 @@ class TestSecurities:
 
             response_securities = response.json()
 
-            assert 6 == len(response_securities)
+            assert 7 == len(response_securities)
 
             assert response_securities[0] == security_1_data
-            assert response_securities[5] == security_5_data
+            assert response_securities[6] == security_6_data
 
     @pytest.mark.parametrize("auth", invalid_auths)
     def test_list_securities_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
@@ -131,7 +131,7 @@ class TestSecurities:
         with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
             response = client.get(f"/v1/securities", auth=anonymous_auth)
             assert response.status_code == 200
-            assert 6 == len(response.json())
+            assert 7 == len(response.json())
 
     def test_list_securities_unauthorized(self, client: TestClient, backend_mysql: MySqlContainer,
                                           keycloak: KeycloakContainer):
