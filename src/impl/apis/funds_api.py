@@ -95,11 +95,19 @@ class FundsApiImpl(FundsApiSpec):
             Fund: Translated REST resource
         """
 
-        if fund.group is None:
+        group = fund.group
+        if group is None:
             logger.warning("Fund group for fund id %s not found", fund.original_id)
             return None
 
-        fund_meta = self.fundsMetaController.get_fund_meta_by_fund_id(fund_id=str(fund.original_id))
+        risk_level = fund.risk_level
+        if risk_level is None:
+            logger.warning("Fund risk_level for fund id %s not found", fund.original_id)
+            return None
+
+        color = FundUtils.get_fund_color(fund_group=group, risk_level=int(risk_level))
+
+        fund_meta = self.fundsMetaController.get_fund_meta(fund_id=str(fund.original_id))
         if fund_meta is None:
             logger.warning("Fund meta for fund id %s not found", fund.original_id)
             return None
@@ -127,7 +135,6 @@ class FundsApiImpl(FundsApiSpec):
 
         result = Fund(
             id=str(fund.id),
-            name=long_name,
             longName=long_name,
             shortName=short_name,
             KIID=LocalizedValue(
@@ -135,10 +142,9 @@ class FundsApiImpl(FundsApiSpec):
                 sv=fund.kiid_url_sv,
                 en=fund.kiid_url_en
             ),
-            color=fund_meta["color"],
-            risk=fund.risk_level,
-            bankReceiverName=fund_meta.get("subs_name", None),
-            group=fund.group,
+            color=color.to_css(),
+            risk=int(risk_level),
+            group=group,
             priceDate=fund_meta["price_date"],
             aShareValue=fund_meta["a_share_value"],
             bShareValue=fund_meta["b_share_value"],
@@ -146,7 +152,7 @@ class FundsApiImpl(FundsApiSpec):
             profitProjection=fund_meta["profit_projection"],
             profitProjectionDate=fund_meta["profit_projection_date"],
             subscriptionBankAccounts=self.translate_subscription_bank_account(fund_meta),
-            subscribable=business_logics.fund_is_subscribable(fund_code=fund_meta["fund_code"])
+            subscribable=business_logics.fund_is_subscribable(fund_original_id=fund.original_id)
         )
 
         return result
