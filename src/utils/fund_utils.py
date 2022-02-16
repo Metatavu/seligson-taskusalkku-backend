@@ -1,7 +1,7 @@
 import re
 from typing import Dict
 
-from utils.colors import RgbColor, HlsColor
+from .colors import RgbColor, HlsColor
 
 FUND_GROUP_BASE_COLORS: Dict[str, RgbColor] = {
     "PASSIVE": RgbColor(red=200, green=40, blue=40),
@@ -14,19 +14,19 @@ FUND_GROUP_BASE_COLORS: Dict[str, RgbColor] = {
 class FundUtils:
 
     @staticmethod
-    def get_fund_color(fund_group: str, risk: int) -> RgbColor:
+    def get_fund_color(fund_group: str, risk_level: int) -> RgbColor:
         """
         Creates fund based on fund group and risk level
         Args:
             fund_group: fund group
-            risk: risk level
+            risk_level: risk level
 
         Returns:
             Fund color
         """
         base_color = FundUtils.get_fund_group_base_color(fund_group=fund_group)
         color = base_color.to_hls()
-        lightness_add = ((7 - min(max(1, risk), 7)) * 0.07)
+        lightness_add = ((7 - min(max(1, risk_level), 7)) * 0.07)
         return HlsColor(hue=color.hue, lightness=color.lightness + lightness_add, saturation=color.saturation).to_rgb()
 
     @staticmethod
