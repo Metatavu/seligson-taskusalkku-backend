@@ -21,10 +21,8 @@ class Fund(BaseModel):
     Fund - a model defined in OpenAPI
 
         id: The id of this Fund [Optional].
-        name: The name of this Fund.
         longName: The longName of this Fund [Optional].
         shortName: The shortName of this Fund [Optional].
-        bankReceiverName: The bankReceiverName of this Fund [Optional].
         group: The group of this Fund [Optional].
         priceDate: The priceDate of this Fund [Optional].
         aShareValue: The aShareValue of this Fund [Optional].
@@ -39,10 +37,8 @@ class Fund(BaseModel):
         subscribable: The subscribable of this Fund [Optional].
     """
     id: Optional[str] = None
-    name: LocalizedValue
     longName: Optional[LocalizedValue] = None
     shortName: Optional[LocalizedValue] = None
-    bankReceiverName: Optional[str] = None
     group: Optional[FundGroup] = None
     priceDate: Optional[date] = None
     aShareValue: Optional[str] = None
