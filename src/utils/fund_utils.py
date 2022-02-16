@@ -16,7 +16,7 @@ class FundUtils:
     @staticmethod
     def get_fund_color(fund_group: str, risk_level: int) -> RgbColor:
         """
-        Creates fund based on fund group and risk level
+        Creates fund color based on fund group and risk level
         Args:
             fund_group: fund group
             risk_level: risk level
