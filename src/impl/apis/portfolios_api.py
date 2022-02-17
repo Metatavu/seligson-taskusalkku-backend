@@ -224,6 +224,8 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             else:
                 currency_rates[security_id] = eur_rates
 
+        holdings.calculate_amounts(start_date=start_date, end_date=end_date)
+
         """Calculate daily sums for all holdings"""
         for i in range((end_date - start_date).days + 1):
             holding_date = start_date + timedelta(days=i)

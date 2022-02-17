@@ -17,6 +17,7 @@ class Holdings:
     def __init__(self):
         """Constructor"""
         self.data: Dict[UUID, Dict[date, Decimal]] = {}
+        self.day_amounts: Dict[UUID, Dict[date, Decimal]] = {}
 
     def add_holding(self, security_id: UUID, holding_date: date, amount: Decimal):
         """
@@ -38,6 +39,31 @@ class Holdings:
 
         self.data[security_id][holding_date] += amount
 
+    def calculate_amounts(self, start_date: date, end_date: date):
+        """
+        Calculates daily amounts for holdings. This method needs to be called before using get_day_sum method
+
+        Args:
+            start_date: start date for the date range
+            end_date: end date for the date range
+        """
+        for security_id in self.get_security_ids():
+            self.day_amounts[security_id] = {}
+            security_min_date = self.get_security_min_date(security_id)
+
+            if start_date > security_min_date:
+                start_date = security_min_date
+
+            total = Decimal(0)
+            for i in range((end_date - start_date).days + 1):
+                holding_date = start_date + timedelta(days=i)
+
+                change = self.data[security_id].get(holding_date, None)
+                if change is not None:
+                    total += change
+
+                self.day_amounts[security_id][holding_date] = total
+
     def get_day_amount(self, security_id: UUID, holding_date: date) -> Optional[Decimal]:
         """
         Returns day's holding amount for a security
@@ -48,19 +74,13 @@ class Holdings:
         Returns: day's holding amount for a security
 
         """
-        current_date = self.get_security_min_date(security_id)
-        if current_date is None:
+        if security_id not in self.day_amounts:
             return None
 
-        result = Decimal(0)
-        while current_date <= holding_date:
-            change = self.data[security_id].get(current_date, None)
-            if change is not None:
-                result += change
+        if holding_date not in self.day_amounts[security_id]:
+            return None
 
-            current_date = current_date + timedelta(days=1)
-
-        return result
+        return self.day_amounts[security_id][holding_date]
 
     def get_day_sum(self, holding_date: date, currency_rates: Dict[UUID, Dict[date, Decimal]],
                     security_rates: Dict[UUID, Dict[date, Decimal]]):
