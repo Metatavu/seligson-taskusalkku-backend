@@ -131,27 +131,16 @@ class Holdings:
         return result
 
     def get_security_min_date(self, security_id: UUID) -> Optional[date]:
-        result = None
-
         if security_id not in self.data:
             return None
 
         security_holdings = self.data[security_id]
-        for holding_date in security_holdings.keys():
-            if result is None or holding_date < result:
-                result = holding_date
-
-        return result
+        return min(security_holdings.keys())
 
     def get_security_max_date(self, security_id: UUID) -> Optional[date]:
-        result = None
-
         if security_id not in self.data:
             return None
 
         security_holdings = self.data[security_id]
-        for holding_date in security_holdings.keys():
-            if result is None or holding_date > result:
-                result = holding_date
+        return max(security_holdings.keys())
 
-        return result
