@@ -58,7 +58,7 @@ class Holdings:
             for i in range((end_date - start_date).days + 1):
                 holding_date = start_date + timedelta(days=i)
 
-                change = self.data[security_id].get(holding_date, None)
+                change = self.data[security_id].get(holding_date, 0)
                 if change is not None:
                     total += change
 
