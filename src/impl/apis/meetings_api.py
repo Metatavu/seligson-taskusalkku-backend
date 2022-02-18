@@ -107,6 +107,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
             result.append(self.construct_meeting_time(first_available_date, 12, 13))
             result.append(self.construct_meeting_time(first_available_date, 13, 14))
             result.append(self.construct_meeting_time(first_available_date, 14, 15))
+            result.append(self.construct_meeting_time(first_available_date, 15, 16))
             result.append(self.construct_meeting_time(first_available_date, 16, 17))
             result.append(self.construct_meeting_time_from_time(first_available_date, time(hour=16, minute=30), time(hour=17, minute=30)))
 
