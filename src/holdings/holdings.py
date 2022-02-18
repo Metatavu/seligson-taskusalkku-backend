@@ -58,9 +58,8 @@ class Holdings:
             for i in range((end_date - start_date).days + 1):
                 holding_date = start_date + timedelta(days=i)
 
-                change = self.data[security_id].get(holding_date, None)
-                if change is not None:
-                    total += change
+                change = self.data[security_id].get(holding_date, 0)
+                total += change
 
                 self.day_amounts[security_id][holding_date] = total
 
@@ -131,27 +130,16 @@ class Holdings:
         return result
 
     def get_security_min_date(self, security_id: UUID) -> Optional[date]:
-        result = None
-
         if security_id not in self.data:
             return None
 
         security_holdings = self.data[security_id]
-        for holding_date in security_holdings.keys():
-            if result is None or holding_date < result:
-                result = holding_date
-
-        return result
+        return min(security_holdings.keys())
 
     def get_security_max_date(self, security_id: UUID) -> Optional[date]:
-        result = None
-
         if security_id not in self.data:
             return None
 
         security_holdings = self.data[security_id]
-        for holding_date in security_holdings.keys():
-            if result is None or holding_date > result:
-                result = holding_date
+        return max(security_holdings.keys())
 
-        return result
