@@ -158,6 +158,19 @@ class AbstractMigrationTask(ABC):
         """
         return backend_session.query(destination_models.Security).all()
 
+    @staticmethod
+    def round_datetime_to_seconds(value: datetime) -> datetime:
+        """
+        Rounds datetime to seconds
+        Args:
+            value: datetime
+
+        Returns: datetime rounded to seconds
+        """
+        if value.microsecond >= 500_000:
+            value += timedelta(seconds=1)
+        return value.replace(microsecond=0)
+
 
 class AbstractFundsTask(AbstractMigrationTask, ABC):
     """
@@ -304,19 +317,6 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         new_security.updated = updated
         backend_session.add(new_security)
         return new_security
-
-    @staticmethod
-    def round_datetime_to_seconds(value: datetime) -> datetime:
-        """
-        Rounds datetime to seconds
-        Args:
-            value: datetime
-
-        Returns: datetime rounded to seconds
-        """
-        if value.microsecond >= 500_000:
-            value += timedelta(seconds=1)
-        return value.replace(microsecond=0)
 
 
 class MigrateSecurityRatesTask(AbstractFundsTask):
@@ -604,26 +604,38 @@ class MigrateCompaniesTask(AbstractFundsTask):
     Migration task for companies
     """
 
+    def __init__(self):
+        """
+        Constructor
+        """
+        self.source_updated = None
+        self.backend_updated = None
+
     def get_name(self):
         return "companies"
 
-    def up_to_date(self, backend_session: Session) -> bool:
-        with Session(self.get_funds_database_engine()) as funds_session:
-            backend_count = self.count_backend_companies(backend_session=backend_session)
-            funds_count = self.count_fund_companies(funds_session=funds_session)
-            return funds_count == backend_count
-
-    @staticmethod
-    def count_backend_companies(backend_session: Session):
+    def prepare(self, backend_session: Session):
         """
-        Counts backend database companies
+        Resolves last update dates for both databases
+
         Args:
             backend_session: backend database session
-
-        Returns: backend database company count
-
         """
-        return backend_session.query(func.count(destination_models.Company.id)).scalar()
+        with Session(self.get_funds_database_engine()) as funds_session:
+            self.source_updated = self.get_source_last_update_date(funds_session=funds_session)
+            self.backend_updated = self.get_backend_last_update_date(backend_session=backend_session)
+
+            if self.source_updated is None:
+                self.source_updated = datetime(1970, 1, 1, 0, 0)
+
+            if self.backend_updated is None:
+                self.backend_updated = datetime(1970, 1, 1, 0, 0)
+
+            self.source_updated = self.round_datetime_to_seconds(self.source_updated)
+            self.backend_updated = self.round_datetime_to_seconds(self.backend_updated)
+
+    def up_to_date(self, backend_session: Session) -> bool:
+        return self.backend_updated == self.source_updated
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
@@ -631,16 +643,8 @@ class MigrateCompaniesTask(AbstractFundsTask):
         offset = 0
 
         with Session(self.get_funds_database_engine()) as funds_session:
-            backend_count = self.count_backend_companies(backend_session=backend_session)
-
-            if force_recheck:
-                self.print_message(f"Forced recheck, purging extra companies")
-                valid_com_codes = self.list_company_com_codes(funds_session=funds_session)
-                backend_session.query(destination_models.Company) \
-                    .filter(destination_models.Company.original_id.not_in(valid_com_codes)) \
-                    .delete(synchronize_session=False)
-            else:
-                offset = backend_count
+            self.print_message(f"Updating companies, source updated: {self.source_updated}, "
+                               f"backend_updated: {self.backend_updated}")
 
             while not self.should_timeout(timeout=timeout):
                 self.print_message(f"Migrating companies from offset {offset}")
@@ -657,18 +661,27 @@ class MigrateCompaniesTask(AbstractFundsTask):
                 for company_row in company_rows:
                     com_code = company_row[0]
                     so_sec_nr = company_row[1]
+                    created = company_row[2]
+                    updated = company_row[3]
+
+                    if not updated or created > updated:
+                        updated = created
+
+                    if not updated:
+                        updated = datetime(1970, 1, 1, 0, 0)
 
                     existing_company = self.get_company_by_original_id(backend_session=backend_session,
                                                                        original_id=com_code)
 
-                    if not existing_company:
-                        self.insert_company(
-                            backend_session=backend_session,
-                            original_id=com_code,
-                            ssn=so_sec_nr
-                        )
+                    self.upsert_company(
+                        backend_session=backend_session,
+                        original_id=com_code,
+                        existing_company=existing_company,
+                        updated=updated,
+                        ssn=so_sec_nr
+                    )
 
-                        synchronized_count = synchronized_count + 1
+                    synchronized_count = synchronized_count + 1
 
                 offset += batch
 
@@ -677,32 +690,32 @@ class MigrateCompaniesTask(AbstractFundsTask):
 
             return synchronized_count
 
-    def count_fund_companies(self, funds_session: Session) -> int:
+    def get_source_last_update_date(self, funds_session: Session) -> datetime:
         """
-        Counts companies from funds database
+        get last update date of company table from funds database
         Args:
             funds_session: Funds database session
 
-        Returns: company count from funds database
+        Returns: date from funds database
         """
         excluded = self.get_excluded_com_codes_query()
-        return funds_session \
-            .execute(f"SELECT count(COM_CODE) FROM TABLE_COMPANY WHERE COM_TYPE = '3' "
-                     f"AND COM_CODE NOT IN ({excluded})") \
-            .scalar()
+        statement = "SELECT MAX(UD) FROM (" \
+                    f"SELECT MAX(CREA_DATE) AS UD FROM COMPANY WHERE COM_CODE NOT IN ({excluded})" \
+                    "UNION " \
+                    f"SELECT MAX(UPD_DATE) AS UD FROM COMPANY WHERE COM_CODE NOT IN ({excluded})" \
+                    ") as U"
+        return funds_session.execute(statement=statement).scalar()
 
-    def list_company_com_codes(self, funds_session: Session):
+    @staticmethod
+    def get_backend_last_update_date(backend_session: Session) -> Optional[datetime]:
         """
-        Lists company com codes from funds database
+        get last update date of company table from backend database
         Args:
-            funds_session: Funds database session
+            backend_session: Backend database session
 
-        Returns: company com codes from funds database
+        Returns: date from backend database
         """
-        excluded = self.get_excluded_com_codes_query()
-        rows = funds_session.execute(f"SELECT COM_CODE FROM TABLE_COMPANY "
-                                     f"WHERE COM_TYPE = '3' AND COM_CODE NOT IN ({excluded})")
-        return list(map(lambda i: i.COM_CODE, rows))
+        return backend_session.query(func.max(destination_models.Company.updated).label("last_update")).scalar()
 
     def list_companies(self, funds_session: Session, limit: int, offset: int):
         """
@@ -716,9 +729,11 @@ class MigrateCompaniesTask(AbstractFundsTask):
         """
         excluded = self.get_excluded_com_codes_query()
         return funds_session.execute(
-            f"SELECT COM_CODE, SO_SEC_NR FROM TABLE_COMPANY WHERE COM_TYPE = '3' AND COM_CODE NOT IN ({excluded}) "
-            "ORDER BY CREA_DATE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY",
+            f"SELECT COM_CODE, SO_SEC_NR, CREA_DATE, UPD_DATE FROM TABLE_COMPANY "
+            f"WHERE (UPD_DATE >= :update OR CREA_DATE >= :update) AND COM_TYPE = '3' AND COM_CODE NOT IN ({excluded}) "
+            "ORDER BY UPD_DATE, CREA_DATE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY",
             {
+                "update": self.backend_updated,
                 "limit": limit,
                 "offset": offset
             })
@@ -744,19 +759,26 @@ class MigrateCompaniesTask(AbstractFundsTask):
                "AND P.PORID = D.PORID AND D.PORCLASS in(1, 2))"
 
     @staticmethod
-    def insert_company(backend_session: Session, original_id: str, ssn: str) -> destination_models.Company:
+    def upsert_company(backend_session: Session,
+                       original_id: str,
+                       existing_company: Optional[destination_models.Company],
+                       updated: datetime,
+                       ssn: str) -> destination_models.Company:
         """
         Inserts new company
         Args:
             backend_session: backend database session
             original_id: original id
+            existing_company: existing company
+            updated: last update time
             ssn: ssn
 
         Returns: created company
         """
-        new_company = destination_models.Company()
+        new_company = existing_company if existing_company else destination_models.Company()
         new_company.original_id = original_id
         new_company.ssn = ssn
+        new_company.updated = updated
         backend_session.add(new_company)
         return new_company
 
