@@ -609,7 +609,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
         Constructor
         """
         self.source_updated = None
-        self.backend_updated = None
+        self.backend_updated = datetime(1970, 1, 1, 0, 0)
 
     def get_name(self):
         return "companies"
