@@ -17,6 +17,7 @@ depends_on = None
 
 def upgrade():
     op.add_column("company", sa.Column("updated", sa.DateTime, nullable=False))
+    op.execute("UPDATE company SET updated = DATE('1970-01-01')")
 
 
 def downgrade():

@@ -628,9 +628,6 @@ class MigrateCompaniesTask(AbstractFundsTask):
             if self.source_updated is None:
                 self.source_updated = datetime(1970, 1, 1, 0, 0)
 
-            if self.backend_updated is None:
-                self.backend_updated = datetime(1970, 1, 1, 0, 0)
-
             self.source_updated = self.round_datetime_to_seconds(self.source_updated)
             self.backend_updated = self.round_datetime_to_seconds(self.backend_updated)
 
