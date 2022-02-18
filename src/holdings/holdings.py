@@ -59,8 +59,7 @@ class Holdings:
                 holding_date = start_date + timedelta(days=i)
 
                 change = self.data[security_id].get(holding_date, 0)
-                if change is not None:
-                    total += change
+                total += change
 
                 self.day_amounts[security_id][holding_date] = total
 
