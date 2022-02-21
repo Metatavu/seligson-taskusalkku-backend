@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta, time
 from spec.models.extra_models import TokenModel
 from fastapi import HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from src.business_logics.business_logics import get_meeting_time_range
+from business_logics import business_logics
 
 
 @cbv(meetings_api_router)
@@ -103,7 +103,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
                 first_available_date += timedelta(days=1)
                 continue
 
-            for hour in get_meeting_time_range():
+            for hour in business_logics.get_meeting_time_range():
                 result.append(self.construct_meeting_time(first_available_date, hour, hour + 1))
 
             result.append(self.construct_meeting_time_from_time(first_available_date, time(hour=16, minute=30), time(hour=17, minute=30)))
