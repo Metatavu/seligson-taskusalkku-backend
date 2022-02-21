@@ -12,6 +12,11 @@ from fastapi import HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from business_logics import business_logics
 
+MAIL_USERNAME = os.environ["MAIL_USERNAME"]
+MAIL_PASSWORD = os.environ["MAIL_PASSWORD"]
+USE_CREDENTIALS = bool(MAIL_USERNAME) and bool(MAIL_PASSWORD)
+VALIDATE_CERTS = USE_CREDENTIALS
+
 
 @cbv(meetings_api_router)
 class MeetingsApiImpl(MeetingsApiSpec):
@@ -21,11 +26,6 @@ class MeetingsApiImpl(MeetingsApiSpec):
         meeting: Meeting,
         token_bearer: TokenModel
     ) -> Meeting:
-
-        MAIL_USERNAME = os.environ["MAIL_USERNAME"]
-        MAIL_PASSWORD = os.environ["MAIL_PASSWORD"]
-        USE_CREDENTIALS = bool(MAIL_USERNAME) and bool(MAIL_PASSWORD)
-        VALIDATE_CERTS = USE_CREDENTIALS
 
         email_conf = ConnectionConfig(
             MAIL_USERNAME=MAIL_USERNAME,
@@ -47,7 +47,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
         email_body += f"\nOsallistujia: {meeting.participantCount}"
 
         if meeting.contact.email or meeting.contact.phone:
-            email_body += "\n\nHUOM! Kirjautunut käyttäjä on ilmoittanut yhteystietonsa erikseen tällä lomakkeella!";
+            email_body += "\n\nHUOM! Kirjautunut käyttäjä on ilmoittanut yhteystietonsa erikseen tällä lomakkeella!"
 
         email_body += f"\n\nEtunimi: {meeting.contact.firstName}"
         email_body += f"\nSukunimi: {meeting.contact.lastName}"
@@ -106,19 +106,22 @@ class MeetingsApiImpl(MeetingsApiSpec):
             for hour in business_logics.get_meeting_time_range():
                 result.append(self.construct_meeting_time(first_available_date, hour, hour + 1))
 
-            result.append(self.construct_meeting_time_from_time(first_available_date, time(hour=16, minute=30), time(hour=17, minute=30)))
+            result.append(self.construct_meeting_time_from_time(first_available_date, time(hour=16, minute=30),
+                                                                time(hour=17, minute=30)))
 
             first_available_date += timedelta(days=1)
 
         return result
 
-    def construct_meeting_time(self, meeting_data: date, start_hour: int, end_hour: int) -> MeetingTime:
+    @staticmethod
+    def construct_meeting_time(meeting_data: date, start_hour: int, end_hour: int) -> MeetingTime:
         meeting_start_time = datetime.combine(meeting_data, time(hour=start_hour))
         meeting_end_time = datetime.combine(meeting_data, time(hour=end_hour))
 
         return MeetingTime(startTime=meeting_start_time, endTime=meeting_end_time)
 
-    def construct_meeting_time_from_time(self, meeting_data: date, start_time: time, end_time: time) -> MeetingTime:
+    @staticmethod
+    def construct_meeting_time_from_time(meeting_data: date, start_time: time, end_time: time) -> MeetingTime:
         meeting_start_time = datetime.combine(meeting_data, start_time)
         meeting_end_time = datetime.combine(meeting_data, end_time)
 
