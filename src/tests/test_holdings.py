@@ -76,6 +76,7 @@ class TestHoldings:
 
         holdings.add_holding(security_id=security_1_id, holding_date=date(2022, 1, 1), amount=Decimal(100))
         holdings.add_holding(security_id=security_2_id, holding_date=date(2022, 1, 1), amount=Decimal(1000))
+        holdings.calculate_amounts(start_date=date(1990, 1, 1), end_date=date(2022, 1, 1))
 
         assert Decimal(1100) == holdings.get_day_sum(holding_date=date(2022, 1, 1),
                                                      security_rates={
