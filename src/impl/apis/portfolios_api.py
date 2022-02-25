@@ -193,8 +193,8 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         """Resolve EUR rates (including FIM for transactions before 1999-01-01) """
         holdings_min_date = holdings.get_min_date()
         eur_rates: Dict[date, Decimal] = {}
-        last_fim_date = date(1999, 1, 1)
-        fim_convert_rate = Decimal(5.94573)
+        last_fim_date = self.settings.LAST_FIM_DATE
+        fim_convert_rate = self.settings.FIM_CONVERT_RATE
 
         for i in range((end_date - holdings_min_date).days + 1):
             eur_date = holdings_min_date + timedelta(days=i)

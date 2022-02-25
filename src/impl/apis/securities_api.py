@@ -2,7 +2,6 @@
 
 import logging
 from datetime import date
-from decimal import Decimal
 from uuid import UUID
 from database import operations
 
@@ -132,8 +131,7 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             currency=security.currency
         )
 
-    @staticmethod
-    def translate_historical_value(security_rate: SecurityRate) -> SecurityHistoryValue:
+    def translate_historical_value(self, security_rate: SecurityRate) -> SecurityHistoryValue:
         """Translates historical value
 
         Args:
@@ -143,11 +141,10 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             SecurityHistoryValue: REST resource
         """
         result = SecurityHistoryValue()
-        last_fim_date = date(1999, 1, 1)
-        fim_rate = Decimal(5.94573)
+        last_fim_date = self.settings.LAST_FIM_DATE
+        fim_convert_rate = self.settings.FIM_CONVERT_RATE
         result.date = security_rate.rate_date
-
         result.value = security_rate.rate_close if result.date > last_fim_date else round(
-            security_rate.rate_close / fim_rate, 6)
-
+            security_rate.rate_close / fim_convert_rate, 6)
+        # todo fix the calculation for non euro values
         return result
