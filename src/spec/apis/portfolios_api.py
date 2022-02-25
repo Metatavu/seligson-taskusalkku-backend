@@ -26,6 +26,7 @@ from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
 from fastapi_utils.session import FastAPISessionMaker
 from sqlalchemy.orm import Session
+from config.settings import Settings
 
 from spec.models.extra_models import TokenModel  # noqa: F401
 from spec.models.error import Error
@@ -60,10 +61,16 @@ def _get_fastapi_sessionmaker() -> FastAPISessionMaker:
     return FastAPISessionMaker(database_uri)
 
 
+@lru_cache()
+def get_settings():
+    return Settings()
+
+
 @cbv(router)
 class PortfoliosApiSpec(ABC):
 
     database: Session = Depends(get_database)
+    settings: Settings = Depends(get_settings)
 
     @abstractmethod
     async def find_portfolio(

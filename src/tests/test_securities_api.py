@@ -161,7 +161,7 @@ class TestSecurities:
         with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
                 sql_backend_security_rates(backend_mysql):
             security_id = security_ids["PASSIVETEST01"]
-            start_date = "2020-01-01"
+            start_date = "1998-01-23"
             end_date = "2020-01-05"
             response = client.get(f"/v1/securities/{security_id}/historyValues/"
                                   f"?startDate={start_date}&endDate={end_date}",
@@ -170,11 +170,14 @@ class TestSecurities:
             assert response.status_code == 200
 
             values = response.json()
-            assert 5 == len(values)
-            assert "2020-01-01" == values[0]["date"]
-            assert "2020-01-05" == values[4]["date"]
-            assert "0.564846" == values[0]["value"]
-            assert "1.665009" == values[4]["value"]
+
+            assert 6 == len(values)
+            assert "2020-01-01" == values[1]["date"]
+            assert "2020-01-05" == values[5]["date"]
+            assert "0.564846" == values[1]["value"]
+            assert "1.665009" == values[5]["value"]
+            assert "0.254836" == values[0]["value"]
+            assert "1998-01-23" == values[0]["date"]
 
     @pytest.mark.parametrize("auth", invalid_auths)
     def test_list_security_history_values_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
