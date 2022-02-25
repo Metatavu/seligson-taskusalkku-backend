@@ -2,6 +2,7 @@
 
 import logging
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 from database import operations
 
@@ -142,6 +143,11 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             SecurityHistoryValue: REST resource
         """
         result = SecurityHistoryValue()
-        result.value = security_rate.rate_close
+        last_fim_date = date(1999, 1, 1)
+        fim_rate = Decimal(5.94573)
         result.date = security_rate.rate_date
+
+        result.value = security_rate.rate_close if result.date > last_fim_date else round(
+            security_rate.rate_close / fim_rate, 6)
+
         return result
