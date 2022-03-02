@@ -138,11 +138,12 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
         results = []
         for security_rate_value in security_rate_values:
             security_history_value = SecurityHistoryValue()
-            currency_date = min(currency_rate_dates,
-                                key=lambda rate_date: abs(security_rate_value.rate_date - rate_date))
-            security_history_value.date = security_rate_value.rate_date
-            security_history_value.value = security_rates[security_rate_value.rate_date] / currency_security_rates[
-                currency_date]
+            security_rate_date = security_rate_value.rate_date
+            currency_rate_date = min(currency_rate_dates,
+                                key=lambda rate_date: abs(security_rate_date - rate_date))
+            security_history_value.date = security_rate_date
+            security_history_value.value = security_rates[security_rate_date] / currency_security_rates[
+                currency_rate_date]
             results.append(security_history_value)
 
         return results
