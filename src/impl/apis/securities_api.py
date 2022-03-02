@@ -125,8 +125,7 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             results = self.get_non_euro_security_history_values(security_values, currency_security_values)
         return results
 
-    @staticmethod
-    def get_non_euro_security_history_values(security_rate_values: List[SecurityRate],
+    def get_non_euro_security_history_values(self, security_rate_values: List[SecurityRate],
                                              currency_security_values: List[SecurityRate]) -> List[SecurityHistoryValue]:
         currency_security_rates: Dict[date, Decimal] = {
             currency_security_value.rate_date: currency_security_value.rate_close for currency_security_value in
@@ -135,18 +134,21 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
                                                security_rate_values}
         currency_rate_dates: List[date] = list(currency_security_rates.keys())
         currency_rate_dates.sort()
-        results = []
+        results: List[SecurityHistoryValue] = []
         for security_rate_value in security_rate_values:
             security_history_value = SecurityHistoryValue()
             security_rate_date = security_rate_value.rate_date
-            currency_rate_date = min(currency_rate_dates,
-                                key=lambda rate_date: abs(security_rate_date - rate_date))
+            currency_rate_date = self.get_closest_date(currency_rate_dates, security_rate_date)
             security_history_value.date = security_rate_date
             security_history_value.value = security_rates[security_rate_date] / currency_security_rates[
                 currency_rate_date]
             results.append(security_history_value)
 
         return results
+
+    @staticmethod
+    def get_closest_date(currency_rate_dates, security_rate_date):
+        return min(currency_rate_dates, key=lambda rate_date: abs(security_rate_date - rate_date))
 
     @staticmethod
     def translate_security(security: DbSecurity) -> Security:
