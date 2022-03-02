@@ -146,7 +146,6 @@ class TestSecurities:
     def test_list_securities_series_ids(self, client: TestClient, backend_mysql: MySqlContainer,
                                         user_1_auth: BearerAuth):
         with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
-
             series_id = 1
 
             response = client.get(f"/v1/securities?seriesId={series_id}", auth=user_1_auth)
@@ -181,7 +180,7 @@ class TestSecurities:
             assert "1998-01-23" == values[0]["date"]
 
     def test_list_security_history_values_non_euro(self, client: TestClient, backend_mysql: MySqlContainer,
-                                          user_1_auth: BearerAuth):
+                                                   user_1_auth: BearerAuth):
         with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
                 sql_backend_security_rates(backend_mysql):
             security_id = security_ids["SPILTAN TEST"]
