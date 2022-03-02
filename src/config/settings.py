@@ -11,3 +11,4 @@ class Settings(BaseSettings):
     MEETING_TIME_PERIOD = range(9, 17)
     SUBSCRIPTION_CODE = "11"
     REDEMPTION_CODE = "12"
+    EURO_CURRENCY_CODE = "EUR"

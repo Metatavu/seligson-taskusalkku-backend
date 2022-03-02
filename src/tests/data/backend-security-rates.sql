@@ -73,6 +73,7 @@ INSERT INTO security_rate (id, security_id, rate_date, rate_close) VALUES ((UNHE
 INSERT INTO security_rate (id, security_id, rate_date, rate_close) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), (SELECT id FROM security WHERE original_id = 'DIMETEST01'), DATE('2020-06-06'), 10.93010855613268);
 INSERT INTO security_rate (id, security_id, rate_date, rate_close) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), (SELECT id FROM security WHERE original_id = 'SPILTAN TEST'), DATE('2020-06-06'), 10.2893454827978);
 INSERT INTO security_rate (id, security_id, rate_date, rate_close) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), (SELECT id FROM security WHERE original_id = 'SEK'), DATE('2020-06-06'), 5.123123);
-
+INSERT INTO security_rate (id, security_id, rate_date, rate_close) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), (SELECT id FROM security WHERE original_id = 'SEK'), DATE('2020-01-03'), 10.5645);
+INSERT INTO security_rate (id, security_id, rate_date, rate_close) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), (SELECT id FROM security WHERE original_id = 'SEK'), DATE('2020-01-02'), 9.5645);
 INSERT INTO security_rate (id, security_id, rate_date, rate_close) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), (SELECT id FROM security WHERE original_id = 'SEK'), DATE('2020-01-01'), 0.12);
 
