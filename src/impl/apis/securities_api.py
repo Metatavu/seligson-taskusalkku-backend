@@ -125,7 +125,7 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             results = self.get_non_euro_security_history_values(security_values, currency_security_values)
         return results
 
-    def get_non_euro_security_history_values(self, security_rate_values: List[SecurityRate],
+    def get_non_euro_security_history_values(self, security_rate_values: c,
                                              currency_security_values: List[SecurityRate]) -> List[SecurityHistoryValue]:
         currency_security_rates: Dict[date, Decimal] = {
             currency_security_value.rate_date: currency_security_value.rate_close for currency_security_value in
@@ -147,7 +147,15 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
         return results
 
     @staticmethod
-    def get_closest_date(currency_rate_dates, security_rate_date):
+    def get_closest_date(currency_rate_dates: List[date], security_rate_date: date)-> date:
+        """get the closest date to a security_rate date, if there is no currency rate for the same date in security_rate
+        Args:
+            security_rate_date: date of security_rate
+            currency_rate_dates: dates of currency security_rate
+
+        Returns:
+            date: closest date to the security_rate_date
+        """
         return min(currency_rate_dates, key=lambda rate_date: abs(security_rate_date - rate_date))
 
     @staticmethod
