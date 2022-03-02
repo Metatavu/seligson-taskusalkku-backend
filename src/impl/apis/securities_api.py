@@ -2,10 +2,11 @@
 
 import logging
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 from database import operations
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 from fastapi import HTTPException
 from fastapi_utils.cbv import cbv
 from spec.apis.securities_api import SecuritiesApiSpec, router as securities_api_router
@@ -98,7 +99,7 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
                 detail=f"Security {security_id} not found"
             )
 
-        values = operations.query_security_rates(
+        security_values = operations.query_security_rates(
             database=self.database,
             security_id=security.id,
             rate_date_min=start_date,
@@ -106,8 +107,45 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             first_result=first_result,
             max_result=max_results
         )
+        if security.currency == self.settings.EURO_CURRENCY_CODE:
+            results = list(map(self.translate_historical_value, security_values))
+        else:
+            currency_security = operations.find_security_by_original_id(
+                database=self.database,
+                original_id=security.currency
+            )
+            currency_security_values = operations.query_security_rates(
+                database=self.database,
+                security_id=currency_security.id,
+                rate_date_min=start_date,
+                rate_date_max=end_date,
+                first_result=first_result,
+                max_result=max_results
+            )
+            results = self.get_non_euro_security_history_values(security_values, currency_security_values)
+        return results
 
-        return list(map(self.translate_historical_value, values))
+    @staticmethod
+    def get_non_euro_security_history_values(security_rate_values: List[SecurityRate],
+                                             currency_security_values: List[SecurityRate]) -> List[SecurityHistoryValue]:
+        currency_security_rates: Dict[date, Decimal] = {
+            currency_security_value.rate_date: currency_security_value.rate_close for currency_security_value in
+            currency_security_values}
+        security_rates: Dict[date, Decimal] = {security_value.rate_date: security_value.rate_close for security_value in
+                                               security_rate_values}
+        currency_rate_dates: List[date] = list(currency_security_rates.keys())
+        currency_rate_dates.sort()
+        results = []
+        for security_rate_value in security_rate_values:
+            security_history_value = SecurityHistoryValue()
+            currency_date = min(currency_rate_dates,
+                                key=lambda rate_date: abs(security_rate_value.rate_date - rate_date))
+            security_history_value.date = security_rate_value.rate_date
+            security_history_value.value = security_rates[security_rate_value.rate_date] / currency_security_rates[
+                currency_date]
+            results.append(security_history_value)
+
+        return results
 
     @staticmethod
     def translate_security(security: DbSecurity) -> Security:
@@ -144,7 +182,5 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
         last_fim_date = self.settings.LAST_FIM_DATE
         fim_convert_rate = self.settings.FIM_CONVERT_RATE
         result.date = security_rate.rate_date
-        result.value = security_rate.rate_close if result.date > last_fim_date else round(
-            security_rate.rate_close / fim_convert_rate, 6)
-        # todo fix the calculation for non euro values
+        result.value = security_rate.rate_close if result.date > last_fim_date else security_rate.rate_close / fim_convert_rate
         return result
