@@ -5,7 +5,7 @@ from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
-    LAST_FIM_DATE: date = date(1999, 1, 1)
+    LAST_FIM_DATE: date = date(1998, 12, 31)
     FIM_CONVERT_RATE: Decimal = Decimal(5.94573)
     ETF_FUND_CODES = [4444]
     MEETING_TIME_PERIOD = range(9, 17)
