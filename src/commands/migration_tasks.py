@@ -1201,6 +1201,23 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
 
             funds_updates = self.get_funds_updates(funds_session=funds_session)
             backend_updates = self.get_backend_updates(backend_session=backend_session)
+            own_date_after = date.today() - timedelta(days=1)
+            if force_recheck:
+                own_date_after = date(2021, 12, 1)
+
+            removed_trans_nrs = self.list_removed_trans_nrs(
+                funds_session=funds_session,
+                own_end_after=own_date_after
+            )
+
+            if len(removed_trans_nrs) > 0:
+                removed_count = backend_session.query(destination_models.PortfolioTransaction) \
+                    .filter(destination_models.PortfolioTransaction.transaction_number.in_(removed_trans_nrs)) \
+                    .delete(synchronize_session=False)
+
+                if removed_count > 0:
+                    self.print_message(f"Removed {removed_count} portfolio transactions.")
+                    synchronized_count += removed_count
 
             securities = self.list_securities(backend_session=backend_session)
             for security in securities:
@@ -1349,6 +1366,23 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                                      })
 
     @staticmethod
+    def list_removed_trans_nrs(funds_session: Session, own_end_after: date):
+        """
+        Lists TRANS_NRs that have been removed from the TABLE_PORTRANS table after given time
+        Args:
+            funds_session: Funds database session
+            own_end_after: Time after the own has ended
+
+        Returns:
+            List of removed TRANS_NRs
+        """
+        result = funds_session.execute("SELECT TRANS_NR FROM TABLE_PORTHIST WHERE OWN_END >= :own_end",
+                                       {
+                                           "own_end": own_end_after.isoformat()
+                                       }).all()
+        return [x for (x,) in result]
+
+    @staticmethod
     def upsert_portfolio_transaction(backend_session: Session,
                                      portfolio_transaction: destination_models.PortfolioTransaction,
                                      transaction_number: int,
@@ -1400,19 +1434,7 @@ class MigrateFundsTask(AbstractMigrationTask):
         return "funds"
 
     def up_to_date(self, backend_session: Session) -> bool:
-        null_group_count = backend_session.execute("SELECT COUNT(id) FROM fund WHERE fund_group is null") \
-            .scalar()
-
-        if null_group_count > 0:
-            return False
-
-        with Session(self.kiid_engine) as kiid_session:
-            backend_fund_count = backend_session.execute("SELECT COUNT(id) FROM fund") \
-                .scalar()
-            kiid_fund_count = kiid_session.execute("SELECT COUNT(ID) FROM FUND")\
-                .scalar()
-
-            return backend_fund_count >= kiid_fund_count
+        return False
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
@@ -1439,8 +1461,8 @@ class MigrateFundsTask(AbstractMigrationTask):
                 if fund_row.URL_SV:
                     fund.kiid_url_sv = fund_row.URL_SV
 
-                if fund_row.RISK_LEVEL:
-                    fund.risk_level = fund_row.RISK_LEVEL
+                if fund_row.VOLATILITY_CAT:
+                    fund.risk_level = fund_row.VOLATILITY_CAT
 
                 if fund_row.FUND_TYPE:
                     fund.group = self.get_fund_group(fund_type=fund_row.FUND_TYPE)
@@ -1459,8 +1481,7 @@ class MigrateFundsTask(AbstractMigrationTask):
 
         Returns: rows from the kiid funds table
         """
-        risk_query = "SELECT TOP 1 risk_level FROM TextContent WHERE fund_name = NAME_KIID ORDER BY modification_time"
-        statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, ({risk_query}) as RISK_LEVEL, FUND_TYPE FROM FUND"
+        statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, VOLATILITY_CAT, FUND_TYPE FROM FUND"
         return kiid_session.execute(statement=statement)
 
     @staticmethod
