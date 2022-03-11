@@ -1201,6 +1201,19 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
 
             funds_updates = self.get_funds_updates(funds_session=funds_session)
             backend_updates = self.get_backend_updates(backend_session=backend_session)
+            removed_trans_nrs = self.list_removed_trans_nrs(
+                funds_session=funds_session,
+                own_end_after=date.today() - timedelta(days=1)
+            )
+
+            if len(removed_trans_nrs) > 0:
+                removed_count = backend_session.query(destination_models.PortfolioTransaction) \
+                    .filter(destination_models.PortfolioTransaction.transaction_number.in_(removed_trans_nrs)) \
+                    .delete(synchronize_session=False)
+
+                if removed_count > 0:
+                    self.print_message(f"Removed {removed_count} portfolio transactions.")
+                    synchronized_count += removed_count
 
             securities = self.list_securities(backend_session=backend_session)
             for security in securities:
@@ -1347,6 +1360,23 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                                          "updated": updated.isoformat(),
                                          "secid": security.original_id
                                      })
+
+    @staticmethod
+    def list_removed_trans_nrs(funds_session: Session, own_end_after: date):
+        """
+        Lists TRANS_NRs that have been removed from the TABLE_PORTRANS table after given time
+        Args:
+            funds_session: Funds database session
+            own_end_after: Time after the own has ended
+
+        Returns:
+            List of removed TRANS_NRs
+        """
+        result = funds_session.execute("SELECT TRANS_NR FROM TABLE_PORTHIST WHERE OWN_END >= :own_end",
+                                       {
+                                           "own_end": own_end_after.isoformat()
+                                       }).all()
+        return [x for (x,) in result]
 
     @staticmethod
     def upsert_portfolio_transaction(backend_session: Session,
