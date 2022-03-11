@@ -1201,9 +1201,13 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
 
             funds_updates = self.get_funds_updates(funds_session=funds_session)
             backend_updates = self.get_backend_updates(backend_session=backend_session)
+            own_date_after = date.today() - timedelta(days=1)
+            if force_recheck:
+                own_date_after = date(2021, 12, 1)
+
             removed_trans_nrs = self.list_removed_trans_nrs(
                 funds_session=funds_session,
-                own_end_after=date.today() - timedelta(days=1)
+                own_end_after=own_date_after
             )
 
             if len(removed_trans_nrs) > 0:
