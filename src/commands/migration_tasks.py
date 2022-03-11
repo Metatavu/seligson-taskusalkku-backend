@@ -1434,19 +1434,7 @@ class MigrateFundsTask(AbstractMigrationTask):
         return "funds"
 
     def up_to_date(self, backend_session: Session) -> bool:
-        null_group_count = backend_session.execute("SELECT COUNT(id) FROM fund WHERE fund_group is null") \
-            .scalar()
-
-        if null_group_count > 0:
-            return False
-
-        with Session(self.kiid_engine) as kiid_session:
-            backend_fund_count = backend_session.execute("SELECT COUNT(id) FROM fund") \
-                .scalar()
-            kiid_fund_count = kiid_session.execute("SELECT COUNT(ID) FROM FUND")\
-                .scalar()
-
-            return backend_fund_count >= kiid_fund_count
+        return False
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
@@ -1473,8 +1461,8 @@ class MigrateFundsTask(AbstractMigrationTask):
                 if fund_row.URL_SV:
                     fund.kiid_url_sv = fund_row.URL_SV
 
-                if fund_row.RISK_LEVEL:
-                    fund.risk_level = fund_row.RISK_LEVEL
+                if fund_row.VOLATILITY_CAT:
+                    fund.risk_level = fund_row.VOLATILITY_CAT
 
                 if fund_row.FUND_TYPE:
                     fund.group = self.get_fund_group(fund_type=fund_row.FUND_TYPE)
@@ -1493,8 +1481,7 @@ class MigrateFundsTask(AbstractMigrationTask):
 
         Returns: rows from the kiid funds table
         """
-        risk_query = "SELECT TOP 1 risk_level FROM TextContent WHERE fund_name = NAME_KIID ORDER BY modification_time"
-        statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, ({risk_query}) as RISK_LEVEL, FUND_TYPE FROM FUND"
+        statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, VOLATILITY_CAT, FUND_TYPE FROM FUND"
         return kiid_session.execute(statement=statement)
 
     @staticmethod
