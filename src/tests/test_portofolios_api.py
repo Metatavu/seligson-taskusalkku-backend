@@ -631,7 +631,7 @@ class TestPortfolio:
             {
                 "id": "28a3b470-231d-4533-aa2a-59590b480151",
                 "securityId": security_ids["DIMETEST01"],
-                "targetSecurityId": security_ids["DIMETEST01"],
+                "targetSecurityId": security_ids["SPILTAN TEST"],
                 "transactionType": "SECURITY",
                 "valueDate": "2020-06-05",
                 "value": "0.00",
@@ -657,7 +657,7 @@ class TestPortfolio:
             {
                 "id": "4cfdc2bb-ec9d-4fa7-992e-70c3e9f42a3e",
                 "securityId": security_ids["BALANCEDTEST01"],
-                "targetSecurityId": security_ids["BALANCEDTEST01"],
+                "targetSecurityId": security_ids["FIXEDTEST01"],
                 "transactionType": "SECURITY",
                 "valueDate": "2020-06-03",
                 "value": "0.00",
@@ -670,7 +670,7 @@ class TestPortfolio:
             {
                 "id": "4d903bbe-4add-4eba-8cee-7de921429f77",
                 "securityId": security_ids["FIXEDTEST01"],
-                "targetSecurityId": security_ids["FIXEDTEST01"],
+                "targetSecurityId": security_ids["DIMETEST01"],
                 "transactionType": "SECURITY",
                 "valueDate": "2020-06-04",
                 "value": "0.00",
@@ -709,7 +709,7 @@ class TestPortfolio:
             {
                 "id": "96d17db6-4d2d-4524-8287-3a8a4e159998",
                 "securityId": security_ids["SPILTAN TEST"],
-                "targetSecurityId": security_ids["SPILTAN TEST"],
+                "targetSecurityId": security_ids["PASSIVETEST01"],
                 "transactionType": "SECURITY",
                 "valueDate": "2020-06-06",
                 "value": "0.00",
