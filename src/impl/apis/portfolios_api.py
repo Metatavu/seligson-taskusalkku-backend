@@ -428,7 +428,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
     def translate_portfolio_log(self, portfolio_log: DbPortfolioLog) -> PortfolioTransaction:
         target_security_id = None
         if portfolio_log.c_security_id is not None:
-            target_security_id = str(portfolio_log.security_id)
+            target_security_id = str(portfolio_log.c_security_id)
 
         transaction_type = self.get_transaction_type_for_transaction_code(portfolio_log.transaction_code)
 
