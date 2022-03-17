@@ -133,15 +133,20 @@ class FundsApiImpl(FundsApiSpec):
             en=FundUtils.get_fund_short_name_from_security_name(security_name=security.name_en)
         )
 
+        kiid_urls = None
+
+        if fund.kiid_url_fi:
+            kiid_urls = LocalizedValue(
+                fi=fund.kiid_url_fi,
+                sv=fund.kiid_url_sv,
+                en=fund.kiid_url_en
+            )
+
         result = Fund(
             id=str(fund.id),
             longName=long_name,
             shortName=short_name,
-            KIID=LocalizedValue(
-                fi=fund.kiid_url_fi,
-                sv=fund.kiid_url_sv,
-                en=fund.kiid_url_en
-            ),
+            KIID=kiid_urls,
             color=color.to_css(),
             risk=int(risk_level),
             group=group,
