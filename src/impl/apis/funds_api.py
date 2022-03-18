@@ -106,7 +106,7 @@ class FundsApiImpl(FundsApiSpec):
 
         color = "rgb(221, 221, 221)"
         if risk_level is not None:
-            color = FundUtils.get_fund_color(fund_group=group, risk_level=risk_level)
+            color = FundUtils.get_fund_color(fund_group=group, risk_level=risk_level).to_css()
 
         security = database.find_main_security_for_fund(
             database=self.database,
@@ -152,7 +152,7 @@ class FundsApiImpl(FundsApiSpec):
             longName=long_name,
             shortName=short_name,
             KIID=kiid_urls,
-            color=color.to_css(),
+            color=color,
             risk=risk_level,
             group=group,
             priceDate=fund_meta["price_date"],
