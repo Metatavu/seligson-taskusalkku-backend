@@ -206,11 +206,10 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         security_rates: Dict[UUID, Dict[date, Decimal]] = {}
 
         """Resolve rates for all securities"""
-        min_date = holdings.get_min_date()
         for security_id in holdings.get_security_ids():
             security_rates[security_id] = self.get_security_rate_map(
                 security_id=security_id,
-                min_date=min_date,
+                min_date=holdings.get_security_min_date(security_id=security_id),
                 max_date=end_date
             )
 
