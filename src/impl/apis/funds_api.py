@@ -108,11 +108,6 @@ class FundsApiImpl(FundsApiSpec):
         if risk_level is not None:
             color = FundUtils.get_fund_color(fund_group=group, risk_level=risk_level)
 
-        fund_meta = self.fundsMetaController.get_fund_meta(fund_id=str(fund.original_id))
-        if fund_meta is None:
-            logger.warning("Fund meta for fund id %s not found", fund.original_id)
-            return None
-
         security = database.find_main_security_for_fund(
             database=self.database,
             fund_id=fund.id
@@ -120,6 +115,15 @@ class FundsApiImpl(FundsApiSpec):
 
         if security is None:
             logger.warning("Fund security for fund id %s not found", fund.original_id)
+            return None
+
+        fund_meta = self.fundsMetaController.get_fund_meta(
+            fund_id=str(fund.original_id),
+            security_id=security.original_id
+        )
+
+        if fund_meta is None:
+            logger.warning("Fund meta for fund id %s not found", fund.original_id)
             return None
 
         long_name = LocalizedValue(
