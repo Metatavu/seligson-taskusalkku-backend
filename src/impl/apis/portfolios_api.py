@@ -66,7 +66,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         for result in summary:
             if business_logics.transaction_is_subscription(result.transaction_code):
                 subscriptions += result.c_total_value
-            else:
+            elif business_logics.transaction_is_redemption(result.transaction_code):
                 redemptions += result.c_total_value
 
         result = PortfolioSummary(subscriptions=subscriptions, redemptions=redemptions)

@@ -274,10 +274,13 @@ def get_portfolio_summary(database: Session, portfolio: Portfolio, start_date: d
              List[PortfolioLog]: rows of portfolio_log
         """
 
-    return database.query(PortfolioLog).filter(PortfolioLog.transaction_code.in_(transaction_codes)).filter(
-        PortfolioLog.transaction_date >= start_date.isoformat()).filter(
-        PortfolioLog.transaction_date <= end_date.isoformat()).filter(
-        PortfolioLog.portfolio == portfolio).all()
+    return database.query(PortfolioLog)\
+        .filter(PortfolioLog.transaction_code.in_(transaction_codes))\
+        .filter(PortfolioLog.status == '0')\
+        .filter(PortfolioLog.transaction_date >= start_date.isoformat())\
+        .filter(PortfolioLog.transaction_date <= end_date.isoformat())\
+        .filter(PortfolioLog.portfolio == portfolio)\
+        .all()
 
 
 def get_portfolio_security_values(database: Session, portfolio: Portfolio) -> List[PortfolioSecurityValues]:
