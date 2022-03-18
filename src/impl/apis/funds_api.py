@@ -100,12 +100,13 @@ class FundsApiImpl(FundsApiSpec):
             logger.warning("Fund group for fund id %s not found", fund.original_id)
             return None
 
-        risk_level = fund.risk_level
-        if risk_level is None:
-            logger.warning("Fund risk_level for fund id %s not found", fund.original_id)
-            return None
+        risk_level = None
+        if fund.risk_level is not None:
+            risk_level = int(fund.risk_level)
 
-        color = FundUtils.get_fund_color(fund_group=group, risk_level=int(risk_level))
+        color = "rgb(221, 221, 221)"
+        if risk_level is not None:
+            color = FundUtils.get_fund_color(fund_group=group, risk_level=risk_level)
 
         fund_meta = self.fundsMetaController.get_fund_meta(fund_id=str(fund.original_id))
         if fund_meta is None:
@@ -133,17 +134,22 @@ class FundsApiImpl(FundsApiSpec):
             en=FundUtils.get_fund_short_name_from_security_name(security_name=security.name_en)
         )
 
+        kiid_urls = None
+
+        if fund.kiid_url_fi:
+            kiid_urls = LocalizedValue(
+                fi=fund.kiid_url_fi,
+                sv=fund.kiid_url_sv,
+                en=fund.kiid_url_en
+            )
+
         result = Fund(
             id=str(fund.id),
             longName=long_name,
             shortName=short_name,
-            KIID=LocalizedValue(
-                fi=fund.kiid_url_fi,
-                sv=fund.kiid_url_sv,
-                en=fund.kiid_url_en
-            ),
+            KIID=kiid_urls,
             color=color.to_css(),
-            risk=int(risk_level),
+            risk=risk_level,
             group=group,
             priceDate=fund_meta["price_date"],
             aShareValue=fund_meta["a_share_value"],

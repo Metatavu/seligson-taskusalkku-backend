@@ -16,7 +16,7 @@ class Fund(Base):
     original_id = Column(Integer, index=True, unique=True)
     risk_level = Column(Integer, nullable=True)
     group = Column(name="fund_group", type_=String(191), nullable=True)
-    kiid_url_fi = Column(String(191), nullable=False)
+    kiid_url_fi = Column(String(191), nullable=True)
     kiid_url_sv = Column(String(191), nullable=True)
     kiid_url_en = Column(String(191), nullable=True)
     # a fund contains one or more securities
