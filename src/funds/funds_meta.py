@@ -40,24 +40,30 @@ class FundMeta(TypedDict, total=False):
 class FundsMetaController:
     """Funds meta controller"""
 
-    def get_fund_meta(self, fund_id: str) -> Optional[FundMeta]:
+    def get_fund_meta(self, fund_id: str, security_id: str) -> Optional[FundMeta]:
         """Translates single JSON file entry to FundMeta entry
 
         Args:
             fund_id (str): Fund id
+            security_id (str): Security id
 
         Returns:
             FundMeta: FundMeta entry
         """
         values_basic = self.get_fund_values_basic_for_fund_id(fund_id=fund_id)
         if not values_basic:
+            values_basic = self.get_fund_values_basic_for_fund_id(fund_id=security_id)
+
+        if not values_basic:
+            logger.warning("Fund values for fund id %s not found", fund_id)
             return None
 
         funds_banks = self.load_subscription_bank_accounts()
-        if not funds_banks:
-            return None
+        if funds_banks:
+            fund_bank_info = self.get_fund_bank_info(funds_banks=funds_banks, fund_id=fund_id)
+        else:
+            fund_bank_info = None
 
-        fund_bank_info = self.get_fund_bank_info(funds_banks=funds_banks, fund_id=fund_id)
         price_date = self.parse_csv_date(values_basic["price_date"])
         a_share_value = self.parse_csv_float(values_basic["a_share_value"])
         b_share_value = self.parse_csv_float(values_basic["b_share_value"])
