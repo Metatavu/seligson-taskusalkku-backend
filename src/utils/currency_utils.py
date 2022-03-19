@@ -29,4 +29,3 @@ class CurrencyUtils:
         currency_rate_map["EUR"] = Decimal(1)
 
         return currency_rate_map
-
