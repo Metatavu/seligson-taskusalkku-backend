@@ -22,70 +22,65 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-"""
-Portfolio values from the database
-
-6bb05ba3-2b4f-4031-960f-0f20d5244440
-+-------------+---------------+-------------------------+
-| totalamount | purchaseTotal | marketValueTotal        |
-+-------------+---------------+-------------------------+
-|  490.812000 |      20000.00 |  43214.1805956000000000 |
-| 1503.145300 |      20000.00 |  21218.8499983900000000 |
-|  230.527500 |      15000.00 |   2829.6559042500000000 |
-|  614.740000 |      40000.00 | 807405.6634000000000000 |
-+-------------+---------------+-------------------------+
-
-84da0adf-db11-4be9-8c51-fcebc05a1d4f
-+-------------+---------------+-------------------------+
-| totalamount | purchaseTotal | marketValueTotal        |
-+-------------+---------------+-------------------------+
-|    1.709800 |         79.00 |    150.5415637400000000 |
-|  153.685000 |      10000.00 | 201851.4158500000000000 |
-+-------------+---------------+-------------------------+
-ba4869f3-dff4-409f-9208-69503f88f228
-No results
-
-10b9cf58-669a-492a-9fb4-91e18129916d
-+-------------+---------------+-----------------------+
-| totalamount | purchaseTotal | marketValueTotal      |
-+-------------+---------------+-----------------------+
-|   76.842500 |       5000.00 | 6765.6978077500000000 |
-|   76.842500 |       5000.00 | 1084.7317827500000000 |
-+-------------+---------------+-----------------------+
-
-c510d0a5-78bf-454d-af64-75587e9cc315
-+-------------+---------------+-----------------------+
-| totalamount | purchaseTotal | marketValueTotal      |
-+-------------+---------------+-----------------------+
-|  153.685000 |      10000.00 | 2169.4635655000000000 |
-+-------------+---------------+-----------------------+
-"""
 portfolio_values = {
     "6bb05ba3-2b4f-4031-960f-0f20d5244440": {
-        "total_amounts": [Decimal("1503.145300"), Decimal("230.527500"), Decimal("614.740000"), Decimal("490.812000")],
-        "purchase_total": [Decimal("20000.00"), Decimal("15000.00"), Decimal("40000.00"), Decimal("20000.00")],
-        "market_value_total": [Decimal("21218.8499983900000000"), Decimal("2829.6559042500000000"),
-                               Decimal("807405.6634000000000000"), Decimal("43214.1805956000000000")]
+        "total_amounts": {
+            security_ids["DIMETEST01"]: Decimal("614.740000"),
+            security_ids["BALANCEDTEST01"]: Decimal("230.527500"),
+            security_ids["PASSIVETEST01"]: Decimal("490.812000"),
+            security_ids["SPILTAN TEST"]: Decimal("233.527500"),
+            security_ids["ACTIVETEST01"]: Decimal("1503.145300")
+        },
+        "purchase_total": {
+            security_ids["DIMETEST01"]: Decimal("40000.00"),
+            security_ids["BALANCEDTEST01"]: Decimal("15000.00"),
+            security_ids["PASSIVETEST01"]: Decimal("20000.00"),
+            security_ids["SPILTAN TEST"]: Decimal("15000.00"),
+            security_ids["ACTIVETEST01"]: Decimal("20000.00")
+        },
+        "market_value_total": {
+            security_ids["DIMETEST01"]: Decimal("807405.663400000000"),
+            security_ids["BALANCEDTEST01"]: Decimal("2829.655904250000"),
+            security_ids["PASSIVETEST01"]: Decimal("43214.180595600000"),
+            security_ids["SPILTAN TEST"]: Decimal("26.51419078530165486687225818"),
+            security_ids["ACTIVETEST01"]: Decimal("21218.849998390000")
+        }
     },
     "84da0adf-db11-4be9-8c51-fcebc05a1d4f": {
-        "total_amounts": [Decimal("1.709800"), Decimal("153.685000")],
-        "purchase_total": [Decimal("79.00"), Decimal("10000.00")],
-        "market_value_total": [Decimal("150.5415637400000000"), Decimal("201851.4158500000000000")]
+        "total_amounts": {
+            security_ids["DIMETEST01"]: Decimal("153.685000"),
+            security_ids["PASSIVETEST01"]: Decimal("1.709800")
+        },
+        "purchase_total": {
+            security_ids["DIMETEST01"]: Decimal("10000.00"),
+            security_ids["PASSIVETEST01"]: Decimal("79.00")
+        },
+        "market_value_total": {
+            security_ids["DIMETEST01"]: Decimal("201851.415850000000"),
+            security_ids["PASSIVETEST01"]: Decimal("150.541563740000")
+        }
     },
     "ba4869f3-dff4-409f-9208-69503f88f228": {
-        "total_amounts": [],
-        "purchase_total": [],
-        "market_value_total": []
+        "total_amounts": {
+        },
+        "purchase_total": {
+        },
+        "market_value_total": {
+        }
     },
     "10b9cf58-669a-492a-9fb4-91e18129916d": {
-        "total_amounts": [Decimal("76.842500"), Decimal("76.842500")],
-        "purchase_total": [Decimal("5000.00"), Decimal("5000.00")],
-        "market_value_total": [Decimal("6765.6978077500000000"), Decimal("1084.7317827500000000")]
-    },
-    "c510d0a5-78bf-454d-af64-75587e9cc315": {
-        "total_amounts": [Decimal("153.685000")],
-        "purchase_total": [Decimal("10000.00")],
-        "market_value_total": [Decimal("2169.4635655000000000")]
+        "total_amounts": {
+            security_ids["PASSIVETEST01"]: Decimal("76.842500"),
+            security_ids["ACTIVETEST01"]: Decimal("76.842500")
+        },
+        "purchase_total": {
+            security_ids["PASSIVETEST01"]: Decimal("5000.00"),
+            security_ids["ACTIVETEST01"]: Decimal("5000.00")
+        },
+        "market_value_total": {
+            security_ids["PASSIVETEST01"]: Decimal("6765.697807750000"),
+            security_ids["ACTIVETEST01"]: Decimal("1084.731782750000")
+        }
     }
 }
 
@@ -98,15 +93,15 @@ class TestPortfolio:
         """
 
         main_portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
-        main_expected_sum_total_amounts = sum(portfolio_values[main_portfolio_id]["total_amounts"])
-        main_expected_sum_market_value_total = sum(portfolio_values[main_portfolio_id]["market_value_total"])
-        main_expected_sum_purchase_total = sum(portfolio_values[main_portfolio_id]["purchase_total"])
+        main_expected_sum_total_amounts = sum(portfolio_values[main_portfolio_id]["total_amounts"].values())
+        main_expected_sum_market_value_total = sum(portfolio_values[main_portfolio_id]["market_value_total"].values())
+        main_expected_sum_purchase_total = sum(portfolio_values[main_portfolio_id]["purchase_total"].values())
         main_portfolio_expected_reference_a = "1012300014"
         main_portfolio_expected_reference_b = "2012300013"
         sub_portfolio_id = "84da0adf-db11-4be9-8c51-fcebc05a1d4f"
-        sub_expected_sum_total_amounts = sum(portfolio_values[sub_portfolio_id]["total_amounts"])
-        sub_expected_sum_market_value_total = sum(portfolio_values[sub_portfolio_id]["market_value_total"])
-        sub_expected_sum_purchase_total = sum(portfolio_values[sub_portfolio_id]["purchase_total"])
+        sub_expected_sum_total_amounts = sum(portfolio_values[sub_portfolio_id]["total_amounts"].values())
+        sub_expected_sum_market_value_total = sum(portfolio_values[sub_portfolio_id]["market_value_total"].values())
+        sub_expected_sum_purchase_total = sum(portfolio_values[sub_portfolio_id]["purchase_total"].values())
         sub_portfolio_expected_reference_a = "1012302012"
         sub_portfolio_expected_reference_b = "2012302011"
 
@@ -117,23 +112,23 @@ class TestPortfolio:
 
             main_portfolio = self.get_portfolio(client=client, portfolio_id=main_portfolio_id, auth=user_1_auth)
 
-            assert main_portfolio_id == main_portfolio["id"]
-            assert "Main portfolio for 123" == main_portfolio["name"]
-            assert main_expected_sum_total_amounts == Decimal(main_portfolio["totalAmount"])
-            assert main_expected_sum_market_value_total == Decimal(main_portfolio["marketValueTotal"])
-            assert main_expected_sum_purchase_total == Decimal(main_portfolio["purchaseTotal"])
-            assert main_portfolio_expected_reference_a == main_portfolio["aReference"]
-            assert main_portfolio_expected_reference_b == main_portfolio["bReference"]
+            assert main_portfolio_id == main_portfolio.id
+            assert "Main portfolio for 123" == main_portfolio.name
+            assert main_expected_sum_total_amounts == Decimal(main_portfolio.totalAmount)
+            assert main_expected_sum_market_value_total == Decimal(main_portfolio.marketValueTotal)
+            assert main_expected_sum_purchase_total == Decimal(main_portfolio.purchaseTotal)
+            assert main_portfolio_expected_reference_a == main_portfolio.aReference
+            assert main_portfolio_expected_reference_b == main_portfolio.bReference
 
             sub_portfolio = self.get_portfolio(client=client, portfolio_id=sub_portfolio_id, auth=user_1_auth)
 
-            assert sub_portfolio_id == sub_portfolio["id"]
-            assert "Sub-Portfolio for 123" == sub_portfolio["name"]
-            assert sub_expected_sum_total_amounts == Decimal(sub_portfolio["totalAmount"])
-            assert sub_expected_sum_market_value_total == Decimal(sub_portfolio["marketValueTotal"])
-            assert sub_expected_sum_purchase_total == Decimal(sub_portfolio["purchaseTotal"])
-            assert sub_portfolio_expected_reference_a == sub_portfolio["aReference"]
-            assert sub_portfolio_expected_reference_b == sub_portfolio["bReference"]
+            assert sub_portfolio_id == sub_portfolio.id
+            assert "Sub-Portfolio for 123" == sub_portfolio.name
+            assert sub_expected_sum_total_amounts == Decimal(sub_portfolio.totalAmount)
+            assert sub_expected_sum_market_value_total == Decimal(sub_portfolio.marketValueTotal)
+            assert sub_expected_sum_purchase_total == Decimal(sub_portfolio.purchaseTotal)
+            assert sub_portfolio_expected_reference_a == sub_portfolio.aReference
+            assert sub_portfolio_expected_reference_b == sub_portfolio.bReference
 
     def test_find_portfolio_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,
                                        user_1_auth: BearerAuth):
@@ -403,9 +398,9 @@ class TestPortfolio:
             for result in results:
                 portfolio_id = result["id"]
                 assert portfolio_id in portfolio_table_ids
-                expected_sum_total_amounts = sum(portfolio_values[portfolio_id]["total_amounts"])
-                expected_sum_market_value_total = sum(portfolio_values[portfolio_id]["market_value_total"])
-                expected_sum_purchase_total = sum(portfolio_values[portfolio_id]["purchase_total"])
+                expected_sum_total_amounts = sum(portfolio_values[portfolio_id]["total_amounts"].values())
+                expected_sum_market_value_total = sum(portfolio_values[portfolio_id]["market_value_total"].values())
+                expected_sum_purchase_total = sum(portfolio_values[portfolio_id]["purchase_total"].values())
 
                 assert expected_sum_total_amounts == Decimal(result["totalAmount"])
                 assert expected_sum_market_value_total == Decimal(result["marketValueTotal"])
@@ -458,17 +453,6 @@ class TestPortfolio:
 
     def test_list_portfolio_securities(self, client: TestClient, user_1_auth: BearerAuth,
                                        backend_mysql: MySqlContainer):
-        """
-        +-------------------------------------------------------------+-------------+
-        | security          | totalAmount | purchaseTotal | marketValueTotal        |
-        +-------------------------------------------------------------+-------------+
-        | PASSIVETEST01     |  490.812000 |      20000.00 |  43214.1805956000000000 |
-        | ACTIVETEST01      | 1503.145300 |      20000.00 |  21218.8499983900000000 |
-        | BALANCEDTEST01    |  230.527500 |      15000.00 |   2829.6559042500000000 |
-        | DIMETEST01        |  614.740000 |      40000.00 | 807405.6634000000000000 |
-        | SPILTAN TEST      |  233.527500 |      15000.00 |      0.7417133780667051 |
-        +-------------------------------------------------------------+-------------+
-        """
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
                 sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
                 sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
@@ -477,47 +461,20 @@ class TestPortfolio:
             portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
 
             response = client.get(f"/v1/portfolios/{portfolio_id}/securities", auth=user_1_auth)
-
-            expected_values_map = {
-                security_ids["PASSIVETEST01"]: {
-                    "amount": Decimal("490.812000"),
-                    "purchaseValue": Decimal("20000.00"),
-                    "totalValue": Decimal("43214.1805956000000000")
-                },
-                security_ids["ACTIVETEST01"]: {
-                    "amount": Decimal("1503.145300"),
-                    "purchaseValue": Decimal("20000.00"),
-                    "totalValue": Decimal("21218.8499983900000000")
-                },
-                security_ids["BALANCEDTEST01"]: {
-                    "amount": Decimal("230.527500"),
-                    "purchaseValue": Decimal("15000.00"),
-                    "totalValue": Decimal("2829.6559042500000000")
-                },
-                security_ids["DIMETEST01"]: {
-                    "amount": Decimal("614.740000"),
-                    "purchaseValue": Decimal("40000.00"),
-                    "totalValue": Decimal("807405.6634000000000000")
-                },
-                security_ids["SPILTAN TEST"]: {
-                    "amount": Decimal("233.527500"),
-                    "purchaseValue": Decimal("15000.00"),
-                    "totalValue": Decimal("0.7417133780667051")
-                }
-            }
-
             assert response.status_code == 200
             responses = response.json()
             assert 5 == len(responses)
             for response in responses:
-                expected_values = expected_values_map[response["id"]]
+                security_id = response["id"]
+                total_amounts = portfolio_values[portfolio_id]["total_amounts"][security_id]
+                purchase_total = portfolio_values[portfolio_id]["purchase_total"][security_id]
+                market_value_total = portfolio_values[portfolio_id]["market_value_total"][security_id]
 
-                assert expected_values is not None
-                assert expected_values["amount"] == Decimal(response["amount"]), \
+                assert total_amounts == Decimal(response["amount"]), \
                     f"amount does not match on {response['id']} fund"
-                assert expected_values["totalValue"] == Decimal(response["totalValue"]), \
+                assert market_value_total == Decimal(response["totalValue"]), \
                     f"totalValue does not match on {response['id']} fund"
-                assert expected_values["purchaseValue"] == Decimal(response["purchaseValue"]), \
+                assert purchase_total == Decimal(response["purchaseValue"]), \
                     f"purchaseValue does not match on {response['id']} fund"
 
     def test_list_portfolio_securities_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,
