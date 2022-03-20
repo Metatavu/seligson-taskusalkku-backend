@@ -16,8 +16,6 @@ from .utils.database import sql_backend_company, sql_backend_security, sql_backe
     sql_backend_portfolio_transaction, sql_backend_last_rate, sql_backend_portfolio, sql_backend_funds, \
     sql_backend_security_rates
 
-from spec.models.portfolio import Portfolio
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -112,23 +110,23 @@ class TestPortfolio:
 
             main_portfolio = self.get_portfolio(client=client, portfolio_id=main_portfolio_id, auth=user_1_auth)
 
-            assert main_portfolio_id == main_portfolio.id
-            assert "Main portfolio for 123" == main_portfolio.name
-            assert main_expected_sum_total_amounts == Decimal(main_portfolio.totalAmount)
-            assert main_expected_sum_market_value_total == Decimal(main_portfolio.marketValueTotal)
-            assert main_expected_sum_purchase_total == Decimal(main_portfolio.purchaseTotal)
-            assert main_portfolio_expected_reference_a == main_portfolio.aReference
-            assert main_portfolio_expected_reference_b == main_portfolio.bReference
+            assert main_portfolio_id == main_portfolio["id"]
+            assert "Main portfolio for 123" == main_portfolio["name"]
+            assert main_expected_sum_total_amounts == Decimal(main_portfolio["totalAmount"])
+            assert main_expected_sum_market_value_total == Decimal(main_portfolio["marketValueTotal"])
+            assert main_expected_sum_purchase_total == Decimal(main_portfolio["purchaseTotal"])
+            assert main_portfolio_expected_reference_a == main_portfolio["aReference"]
+            assert main_portfolio_expected_reference_b == main_portfolio["bReference"]
 
             sub_portfolio = self.get_portfolio(client=client, portfolio_id=sub_portfolio_id, auth=user_1_auth)
 
-            assert sub_portfolio_id == sub_portfolio.id
-            assert "Sub-Portfolio for 123" == sub_portfolio.name
-            assert sub_expected_sum_total_amounts == Decimal(sub_portfolio.totalAmount)
-            assert sub_expected_sum_market_value_total == Decimal(sub_portfolio.marketValueTotal)
-            assert sub_expected_sum_purchase_total == Decimal(sub_portfolio.purchaseTotal)
-            assert sub_portfolio_expected_reference_a == sub_portfolio.aReference
-            assert sub_portfolio_expected_reference_b == sub_portfolio.bReference
+            assert sub_portfolio_id == sub_portfolio["id"]
+            assert "Sub-Portfolio for 123" == sub_portfolio["name"]
+            assert sub_expected_sum_total_amounts == Decimal(sub_portfolio["totalAmount"])
+            assert sub_expected_sum_market_value_total == Decimal(sub_portfolio["marketValueTotal"])
+            assert sub_expected_sum_purchase_total == Decimal(sub_portfolio["purchaseTotal"])
+            assert sub_portfolio_expected_reference_a == sub_portfolio["aReference"]
+            assert sub_portfolio_expected_reference_b == sub_portfolio["bReference"]
 
     def test_find_portfolio_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,
                                        user_1_auth: BearerAuth):
@@ -878,7 +876,7 @@ class TestPortfolio:
         assert expected_status == response.status_code
 
     @staticmethod
-    def get_portfolio(client: TestClient, portfolio_id: str, auth: BearerAuth) -> Portfolio:
+    def get_portfolio(client: TestClient, portfolio_id: str, auth: BearerAuth) -> Dict[str, any]:
         """Finds single portfolio from the API
 
         Args:
