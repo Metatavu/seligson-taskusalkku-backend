@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from .sqlalchemy_uuid import SqlAlchemyUuid
-from sqlalchemy import Index, Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime, SmallInteger
+from sqlalchemy import Index, Column, DECIMAL, Integer, String, ForeignKey, Date, CHAR, DateTime, SmallInteger, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -19,6 +19,7 @@ class Fund(Base):
     kiid_url_fi = Column(String(191), nullable=True)
     kiid_url_sv = Column(String(191), nullable=True)
     kiid_url_en = Column(String(191), nullable=True)
+    deprecated = Column(Boolean, nullable=False)
     # a fund contains one or more securities
     securities = relationship("Security", back_populates="fund", lazy=True)
 
