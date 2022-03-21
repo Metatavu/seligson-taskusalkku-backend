@@ -80,7 +80,8 @@ class FundsApiImpl(FundsApiSpec):
         funds = database.list_funds(
             database=self.database,
             first_result=first_result,
-            max_result=max_results
+            max_result=max_results,
+            deprecated=False
         )
 
         return list(filter(lambda x: x is not None, map(self.translate_fund, funds)))
