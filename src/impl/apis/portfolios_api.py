@@ -20,7 +20,7 @@ from spec.models.portfolio_security import PortfolioSecurity
 from spec.models.portfolio_transaction import PortfolioTransaction
 from spec.models.transaction_type import TransactionType
 from holdings.holdings import Holdings
-from utils.portfolio_utils import PortfolioUtils
+from utils.portfolio_utils import PortfolioUtils, PortfolioSecurityValues
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         for result in summary:
             if business_logics.transaction_is_subscription(result.transaction_code):
                 subscriptions += result.c_total_value
-            else:
+            elif business_logics.transaction_is_redemption(result.transaction_code):
                 redemptions += result.c_total_value
 
         result = PortfolioSummary(subscriptions=subscriptions, redemptions=redemptions)
@@ -339,7 +339,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
     ) -> List[PortfolioSecurity]:
         portfolio = self.get_portfolio(token_bearer=token_bearer, portfolio_id=portfolio_id)
 
-        portfolio_securities = operations.get_portfolio_security_values(
+        portfolio_securities = PortfolioUtils.get_portfolio_security_values(
             database=self.database,
             portfolio=portfolio
         )
@@ -397,14 +397,17 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         """
         Translates portfolio into REST resource
         """
-        portfolio_values = operations.find_portfolio_values(
+        portfolio_values = PortfolioUtils.get_portfolio_values(
             database=self.database,
             portfolio=portfolio
         )
 
-        total_amount = portfolio_values.total_amount if portfolio_values.total_amount is not None else "0"
-        market_value_total = "0" if portfolio_values.market_value_total is None else portfolio_values.market_value_total
-        purchase_total = portfolio_values.purchase_total if portfolio_values.purchase_total is not None else "0"
+        total_amount = str(portfolio_values.total_amount) \
+            if portfolio_values.total_amount is not None else "0"
+        market_value_total = str(portfolio_values.market_value_total) \
+            if portfolio_values.market_value_total is not None else "0"
+        purchase_total = str(portfolio_values.purchase_total) \
+            if portfolio_values.purchase_total is not None else "0"
 
         company_code = portfolio.company.original_id
 
@@ -476,8 +479,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         )
 
     @staticmethod
-    def translate_portfolio_security(
-            portfolio_security_values: operations.PortfolioSecurityValues) -> PortfolioSecurity:
+    def translate_portfolio_security(portfolio_security_values: PortfolioSecurityValues) -> PortfolioSecurity:
         """
         Translates portfolio security into REST resource
         """
