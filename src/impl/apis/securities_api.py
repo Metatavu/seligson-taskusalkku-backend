@@ -107,23 +107,8 @@ class SecuritiesApiImpl(SecuritiesApiSpec):
             first_result=first_result,
             max_result=max_results
         )
-        if security.currency == self.settings.EURO_CURRENCY_CODE:
-            results = list(map(self.translate_historical_value, security_values))
-        else:
-            currency_security = operations.find_security_by_original_id(
-                database=self.database,
-                original_id=security.currency
-            )
-            currency_security_values = operations.query_security_rates(
-                database=self.database,
-                security_id=currency_security.id,
-                rate_date_min=start_date,
-                rate_date_max=end_date,
-                first_result=first_result,
-                max_result=max_results
-            )
-            results = self.get_non_euro_security_history_values(security_values, currency_security_values)
-        return results
+
+        return list(map(self.translate_historical_value, security_values))
 
     def get_non_euro_security_history_values(self, security_rate_values: List[SecurityRate],
                                              currency_security_values: List[SecurityRate]) -> List[SecurityHistoryValue]:

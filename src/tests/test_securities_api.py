@@ -179,29 +179,6 @@ class TestSecurities:
             assert round(Decimal("0.254836"), 6) == round(Decimal(values[0]["value"]), 6)
             assert "1998-01-23" == values[0]["date"]
 
-    def test_list_security_history_values_non_euro(self, client: TestClient, backend_mysql: MySqlContainer,
-                                                   user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
-                sql_backend_security_rates(backend_mysql):
-            security_id = security_ids["SPILTAN TEST"]
-            start_date = "1998-01-22"
-            end_date = "2020-01-05"
-            response = client.get(f"/v1/securities/{security_id}/historyValues/"
-                                  f"?startDate={start_date}&endDate={end_date}",
-                                  auth=user_1_auth)
-
-            assert response.status_code == 200
-
-            values = response.json()
-
-            assert 6 == len(values)
-            assert "2020-01-01" == values[1]["date"]
-            assert "2020-01-05" == values[5]["date"]
-            assert "1998-01-23" == values[0]["date"]
-            assert "86.80335" == values[1]["value"]
-            assert round(Decimal("1.139237"), 6) == round(Decimal(values[5]["value"]), 6)
-            assert round(Decimal("122.858625"), 6) == round(Decimal(values[0]["value"]), 6)
-
     @pytest.mark.parametrize("auth", invalid_auths)
     def test_list_security_history_values_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
                                                        keycloak: KeycloakContainer, auth: BearerAuth):
