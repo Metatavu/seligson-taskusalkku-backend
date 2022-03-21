@@ -115,6 +115,8 @@ python-keycloak==0.25
     # via -r requirements.in
 python-multipart==0.0.5
     # via fastapi-mail
+pytz==2022.1
+    # via -r requirements.in
 redis==4.0.2
     # via fakeredis
 requests==2.25.1
