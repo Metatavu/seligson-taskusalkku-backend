@@ -1,8 +1,8 @@
 """Add deprecated column to fund table
 
-Revision ID: 0017
-Revises: 0016
-Create Date: 2022-03-17 11:00:00.000000
+Revision ID: 0019
+Revises: 0018
+Create Date: 2022-03-21 11:00:00.000000
 
 """
 from alembic import op
