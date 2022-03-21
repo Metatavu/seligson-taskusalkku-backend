@@ -1,5 +1,7 @@
 # coding: utf-8
 import os
+import pytz
+
 from fastapi_utils.cbv import cbv
 from spec.apis.meetings_api import MeetingsApiSpec, router as meetings_api_router
 from spec.models.meeting_time import MeetingTime
@@ -113,15 +115,21 @@ class MeetingsApiImpl(MeetingsApiSpec):
         return result
 
     @staticmethod
-    def construct_meeting_time(meeting_data: date, start_hour: int, end_hour: int) -> MeetingTime:
-        meeting_start_time = datetime.combine(meeting_data, time(hour=start_hour))
-        meeting_end_time = datetime.combine(meeting_data, time(hour=end_hour))
+    def construct_meeting_time(meeting_date: date, start_hour: int, end_hour: int) -> MeetingTime:
+        meeting_start_time = datetime.combine(meeting_date, time(hour=start_hour))
+        meeting_end_time = datetime.combine(meeting_date, time(hour=end_hour))
 
-        return MeetingTime(startTime=meeting_start_time, endTime=meeting_end_time)
+        return MeetingTime(
+            startTime=pytz.timezone('Europe/Helsinki').localize(meeting_start_time),
+            endTime=pytz.timezone('Europe/Helsinki').localize(meeting_end_time)
+        )
 
     @staticmethod
-    def construct_meeting_time_from_time(meeting_data: date, start_time: time, end_time: time) -> MeetingTime:
-        meeting_start_time = datetime.combine(meeting_data, start_time)
-        meeting_end_time = datetime.combine(meeting_data, end_time)
+    def construct_meeting_time_from_time(meeting_date: date, start_time: time, end_time: time) -> MeetingTime:
+        meeting_start_time = datetime.combine(meeting_date, start_time)
+        meeting_end_time = datetime.combine(meeting_date, end_time)
 
-        return MeetingTime(startTime=meeting_start_time, endTime=meeting_end_time)
+        return MeetingTime(
+            startTime=pytz.timezone('Europe/Helsinki').localize(meeting_start_time),
+            endTime=pytz.timezone('Europe/Helsinki').localize(meeting_end_time)
+        )
