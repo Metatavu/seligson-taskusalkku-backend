@@ -25,6 +25,7 @@ def find_fund(database: Session, fund_id: UUID) -> Optional[Fund]:
 
 
 def list_funds(database: Session,
+               deprecated: bool,
                first_result: int,
                max_result: int
                ) -> List[Fund]:
@@ -32,6 +33,7 @@ def list_funds(database: Session,
 
     Args:
         database (Session): database session
+        deprecated: filter by deprecated
         first_result (int, optional): first result. Defaults to 0.
         max_result (int, optional): max results. Defaults to 100.
 
@@ -39,6 +41,7 @@ def list_funds(database: Session,
         List[Fund]: list of all Fund table rows
     """
     return database.query(Fund) \
+        .filter(Fund.deprecated == deprecated)\
         .order_by(Fund.original_id) \
         .offset(first_result) \
         .limit(max_result) \

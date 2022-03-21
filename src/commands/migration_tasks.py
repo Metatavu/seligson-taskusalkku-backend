@@ -1467,6 +1467,8 @@ class MigrateFundsTask(AbstractMigrationTask):
                 if fund_row.FUND_TYPE:
                     fund.group = self.get_fund_group(fund_type=fund_row.FUND_TYPE)
 
+                fund.deprecated = fund_row.DEPRECATED == 1
+
                 backend_session.add(fund)
                 synchronized_count = synchronized_count + 1
 
@@ -1481,7 +1483,7 @@ class MigrateFundsTask(AbstractMigrationTask):
 
         Returns: rows from the kiid funds table
         """
-        statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, VOLATILITY_CAT, FUND_TYPE FROM FUND"
+        statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, VOLATILITY_CAT, FUND_TYPE, DEPRECATED FROM FUND"
         return kiid_session.execute(statement=statement)
 
     @staticmethod
