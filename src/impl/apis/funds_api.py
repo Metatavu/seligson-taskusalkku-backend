@@ -105,7 +105,7 @@ class FundsApiImpl(FundsApiSpec):
         if fund.risk_level is not None:
             risk_level = int(fund.risk_level)
 
-        color = "rgb(221, 221, 221)"
+        color = "rgb(200, 40, 40)"
         if risk_level is not None:
             color = FundUtils.get_fund_color(fund_group=group, risk_level=risk_level).to_css()
 
