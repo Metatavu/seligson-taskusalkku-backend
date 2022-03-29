@@ -13,6 +13,8 @@ from spec.models.extra_models import TokenModel
 from fastapi import HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 
+LOCAL_TIMEZONE = 'Europe/Helsinki'
+
 
 @cbv(meetings_api_router)
 class MeetingsApiImpl(MeetingsApiSpec):
@@ -40,7 +42,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
             VALIDATE_CERTS=validate_certs
         )
 
-        local_time = pytz.timezone('Europe/Helsinki').localize(meeting.time)
+        local_time = pytz.timezone(LOCAL_TIMEZONE).localize(meeting.time)
 
         email_body = ""
         email_body += f"Päivämäärä ja aika: {str(local_time.date())} klo {str(local_time.time())}"
@@ -122,8 +124,8 @@ class MeetingsApiImpl(MeetingsApiSpec):
         meeting_end_time = datetime.combine(meeting_date, time(hour=end_hour))
 
         return MeetingTime(
-            startTime=pytz.timezone('Europe/Helsinki').localize(meeting_start_time),
-            endTime=pytz.timezone('Europe/Helsinki').localize(meeting_end_time)
+            startTime=pytz.timezone(LOCAL_TIMEZONE).localize(meeting_start_time),
+            endTime=pytz.timezone(LOCAL_TIMEZONE).localize(meeting_end_time)
         )
 
     @staticmethod
@@ -132,6 +134,6 @@ class MeetingsApiImpl(MeetingsApiSpec):
         meeting_end_time = datetime.combine(meeting_date, end_time)
 
         return MeetingTime(
-            startTime=pytz.timezone('Europe/Helsinki').localize(meeting_start_time),
-            endTime=pytz.timezone('Europe/Helsinki').localize(meeting_end_time)
+            startTime=pytz.timezone(LOCAL_TIMEZONE).localize(meeting_start_time),
+            endTime=pytz.timezone(LOCAL_TIMEZONE).localize(meeting_end_time)
         )
