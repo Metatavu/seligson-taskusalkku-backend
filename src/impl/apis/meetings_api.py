@@ -40,8 +40,10 @@ class MeetingsApiImpl(MeetingsApiSpec):
             VALIDATE_CERTS=validate_certs
         )
 
+        local_time = pytz.timezone('Europe/Helsinki').localize(meeting.time)
+
         email_body = ""
-        email_body += f"Päivämäärä ja aika: {str(meeting.time.date())} klo {str(meeting.time.time())}"
+        email_body += f"Päivämäärä ja aika: {str(local_time.date())} klo {str(local_time.time())}"
         email_body += f"\nKielivalinta: {meeting.language}"
         email_body += f"\nKielivalinta: {meeting.language}"
         email_body += f"\nTyyppi: {'Puhelinkeskustelu' if meeting.type == 'PHONE' else 'Tapaaminen'}"
