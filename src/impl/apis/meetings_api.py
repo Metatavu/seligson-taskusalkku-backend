@@ -47,7 +47,6 @@ class MeetingsApiImpl(MeetingsApiSpec):
         email_body = ""
         email_body += f"Päivämäärä ja aika: {str(local_time.date())} klo {str(local_time.time())}"
         email_body += f"\nKielivalinta: {meeting.language}"
-        email_body += f"\nKielivalinta: {meeting.language}"
         email_body += f"\nTyyppi: {'Puhelinkeskustelu' if meeting.type == 'PHONE' else 'Tapaaminen'}"
         email_body += f"\nOsallistujia: {meeting.participantCount}"
 
