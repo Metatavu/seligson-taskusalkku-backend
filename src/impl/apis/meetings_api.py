@@ -42,7 +42,7 @@ class MeetingsApiImpl(MeetingsApiSpec):
             VALIDATE_CERTS=validate_certs
         )
 
-        local_time = pytz.timezone(LOCAL_TIMEZONE).localize(meeting.time)
+        local_time = meeting.time.replace(tzinfo=pytz.utc).astimezone(pytz.timezone(LOCAL_TIMEZONE))
 
         email_body = ""
         email_body += f"Päivämäärä ja aika: {str(local_time.date())} klo {str(local_time.time())}"
