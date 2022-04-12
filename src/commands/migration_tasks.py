@@ -494,10 +494,10 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
         Returns: whether rate exists for given security and date
         """
-        return backend_session.query(destination_models.SecurityRate.id)\
-                              .filter(and_(destination_models.SecurityRate.security_id == security.id,
-                                           destination_models.SecurityRate.rate_date == rate_date)) \
-                              .scalar() is not None
+        return backend_session.query(destination_models.SecurityRate.id) \
+                   .filter(and_(destination_models.SecurityRate.security_id == security.id,
+                                destination_models.SecurityRate.rate_date == rate_date)) \
+                   .scalar() is not None
 
     @staticmethod
     def insert_security_rate(backend_session: Session, security: destination_models.Security, rate_date: date,
@@ -646,10 +646,15 @@ class MigrateCompaniesTask(AbstractFundsTask):
             while not self.should_timeout(timeout=timeout):
                 self.print_message(f"Migrating companies from offset {offset}")
 
+                updated_after = self.backend_updated
+                if force_recheck:
+                    updated_after = datetime(1970, 1, 1, 0, 0)
+
                 company_rows = self.list_companies(
                     funds_session=funds_session,
                     offset=offset,
-                    limit=batch
+                    limit=batch,
+                    updated_after=updated_after
                 )
 
                 if company_rows.rowcount == 0:
@@ -714,13 +719,14 @@ class MigrateCompaniesTask(AbstractFundsTask):
         """
         return backend_session.query(func.max(destination_models.Company.updated).label("last_update")).scalar()
 
-    def list_companies(self, funds_session: Session, limit: int, offset: int):
+    def list_companies(self, funds_session: Session, limit: int, offset: int, updated_after: datetime):
         """
         Lists companies from funds database
         Args:
             funds_session: Funds database session
             limit: max results
             offset: offset
+            updated_after: list only companies updated after specified time
 
         Returns: companies from funds database
         """
@@ -730,7 +736,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
             f"WHERE (UPD_DATE >= :update OR CREA_DATE >= :update) AND COM_TYPE = '3' AND COM_CODE NOT IN ({excluded}) "
             "ORDER BY UPD_DATE, CREA_DATE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY",
             {
-                "update": self.backend_updated,
+                "update": updated_after,
                 "limit": limit,
                 "offset": offset
             })
