@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy.sql.functions import coalesce
 
-from .models import Fund, SecurityRate, Company, PortfolioTransaction, LastRate, Security, Portfolio, PortfolioLog
+from .models import Fund, SecurityRate, Company, CompanyAccess, PortfolioTransaction, LastRate, Security, Portfolio, \
+    PortfolioLog
 from datetime import date
 
 
@@ -177,10 +178,23 @@ def get_companies(database: Session, ssn: str) -> List[Company]:
         database (Session): database session
         ssn (str): ssn of user/ or company id
     Returns:
-        List[Company]: list of matching Company table rows
+        List[Company]: list of matching company table rows
     """
 
     return database.query(Company).filter(Company.ssn == ssn).all()
+
+
+def get_company_access(database: Session, ssn: str) -> List[CompanyAccess]:
+    """Queries the company access table
+
+    Args:
+        database (Session): database session
+        ssn (str): ssn of user/ or company id
+    Returns:
+        List[Company]: list of matching company access table rows
+    """
+
+    return database.query(CompanyAccess).filter(CompanyAccess.ssn == ssn).all()
 
 
 def find_portfolio(database: Session, portfolio_id: UUID) -> Optional[Portfolio]:

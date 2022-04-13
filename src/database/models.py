@@ -67,6 +67,7 @@ class Company(Base):
     ssn = Column(String(11))
     updated = Column(DateTime, nullable=False)
     portfolios = relationship("Portfolio", back_populates="company", lazy=True)
+    company_access = relationship("CompanyAccess", back_populates="company", lazy=True)
 
 
 class CompanyAccess(Base):
@@ -74,6 +75,7 @@ class CompanyAccess(Base):
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     ssn = Column(String(11), nullable=False)
     company_id = Column("company_id", SqlAlchemyUuid, ForeignKey('company.id'), index=True, nullable=False)
+    company = relationship("Company", back_populates="company_access", lazy=True)
 
 
 class LastRate(Base):
