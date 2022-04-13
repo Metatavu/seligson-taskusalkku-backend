@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from commands.migration_exception import MigrationException
 from commands.migration_tasks import AbstractMigrationTask, MigrateFundsTask, MigrateSecuritiesTask, \
     MigrateSecurityRatesTask, MigrateLastRatesTask, MigrateCompaniesTask, MigratePortfoliosTask, \
-    MigratePortfolioLogsTask, MigratePortfolioTransactionsTask
+    MigrateCompanyAccessTask, MigratePortfolioLogsTask, MigratePortfolioTransactionsTask
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 class MigrateHandler:
 
     tasks = [MigrateFundsTask(), MigrateSecuritiesTask(), MigrateSecurityRatesTask(), MigrateLastRatesTask(),
-             MigrateCompaniesTask(), MigratePortfoliosTask(), MigratePortfolioTransactionsTask(),
-             MigratePortfolioLogsTask()]
+             MigrateCompaniesTask(), MigrateCompanyAccessTask(), MigratePortfoliosTask(),
+             MigratePortfolioTransactionsTask(), MigratePortfolioLogsTask()]
 
     """
     Migration handler database

@@ -204,6 +204,26 @@ class AbstractFundsTask(AbstractMigrationTask, ABC):
                "AND P.PORID = D.PORID AND D.PORCLASS IN (3, 4, 5)"
 
 
+class AbstractSalkkuTask(AbstractMigrationTask, ABC):
+    """
+    Abstract base class for salkku migrations
+    """
+
+    @staticmethod
+    def get_salkku_database_engine() -> MockConnection:
+        """
+        Initializes salkku database engine
+        Returns:
+            engine
+        """
+        salkku_database_url = os.environ.get("SALKKU_DATABASE_URL", "")
+
+        if not salkku_database_url:
+            raise MigrationException("SALKKU_DATABASE_URL environment variable is not set")
+        else:
+            return create_engine(salkku_database_url)
+
+
 class MigrateSecuritiesTask(AbstractFundsTask):
     """
     Migration task for securities
@@ -494,7 +514,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
         Returns: whether rate exists for given security and date
         """
-        return backend_session.query(destination_models.SecurityRate.id)\
+        return backend_session.query(destination_models.SecurityRate.id) \
                               .filter(and_(destination_models.SecurityRate.security_id == security.id,
                                            destination_models.SecurityRate.rate_date == rate_date)) \
                               .scalar() is not None
@@ -1512,3 +1532,116 @@ class MigrateFundsTask(AbstractMigrationTask):
             raise MigrationException("KIID_DATABASE_URL environment variable is not set")
         else:
             return create_engine(kiid_database_url)
+
+
+class MigrateCompanyAccessTask(AbstractSalkkuTask):
+    """
+    Migration task for company access
+    """
+
+    def get_name(self):
+        return "company_access"
+
+    def up_to_date(self, backend_session: Session) -> bool:
+        return False
+
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+        synchronized_count = 0
+
+        companies = list(backend_session.query(destination_models.Company.id,
+                                               destination_models.Company.original_id
+                                               ).all()
+                         )
+
+        company_original_id_map = {x.original_id: x for x in companies}
+        company_id_map = {x.id: x for x in companies}
+
+        existing_rows = backend_session.query(destination_models.CompanyAccess.id,
+                                              destination_models.CompanyAccess.ssn,
+                                              destination_models.CompanyAccess.company_id
+                                              ).all()
+        existing_map = {}
+
+        for existing_row in existing_rows:
+            company = company_id_map[existing_row.company_id]
+            key = f"{existing_row.ssn}-{company.original_id}"
+            existing_map[key] = existing_row
+
+        with Session(self.get_salkku_database_engine()) as salkku_session:
+            self.print_message(f"Migrating company access")
+            authorization_rows = self.list_authorizations(salkku_session=salkku_session)
+            deleted_keys = list(existing_map.keys())
+            added_authorizations = []
+
+            for authorization_row in authorization_rows:
+                key = f"{authorization_row.authorizedSSN}-{authorization_row.comCode}"
+                if key not in existing_map:
+                    added_authorizations.append(authorization_row)
+                else:
+                    deleted_keys.remove(key)
+
+            for deleted_key in deleted_keys:
+                deleted_row = existing_map[deleted_key]
+
+                backend_session.query(destination_models.CompanyAccess) \
+                    .filter(destination_models.CompanyAccess.company_id == deleted_row.company_id) \
+                    .filter(destination_models.CompanyAccess.ssn == deleted_row.ssn) \
+                    .delete(synchronize_session=False)
+
+                synchronized_count = synchronized_count + 1
+
+            for added_authorization in added_authorizations:
+                ssn = added_authorization.authorizedSSN
+                com_code = added_authorization.comCode
+                company = company_original_id_map.get(str(com_code), None)
+                if not company:
+                    raise MigrationException(f"Could not find company {com_code}")
+
+                self.insert_company_access(
+                    backend_session=backend_session,
+                    company=company,
+                    ssn=ssn
+                )
+
+                synchronized_count = synchronized_count + 1
+
+            return synchronized_count
+
+    @staticmethod
+    def list_authorizations(salkku_session: Session):
+        """
+        Lists authorizations from salkku database
+
+        Args:
+            salkku_session: salkku database
+
+        Returns:
+            List of authorizations from salkku database
+        """
+        return salkku_session.execute('SELECT '
+                                      '  authorizedSSN, comCode '
+                                      'FROM  '
+                                      '  Authorization '
+                                      'WHERE '
+                                      '  os_deny = 0 AND '
+                                      '  validity = 1 AND '
+                                      '  (expires IS NULL OR expires >= CURDATE()) '
+                                      'GROUP BY '
+                                      '  authorizedSSN, comCode')
+
+    @staticmethod
+    def insert_company_access(backend_session: Session,
+                              company: destination_models.Company,
+                              ssn: str) -> destination_models.SecurityRate:
+        """
+        Inserts new row into company access table
+        Args:
+            backend_session: backend database session
+            company: company
+            ssn: authorized ssn
+        """
+        company_access = destination_models.CompanyAccess()
+        company_access.company_id = company.id
+        company_access.ssn = ssn
+        backend_session.add(company_access)
+        return company_access
