@@ -487,6 +487,9 @@
     "totp" : false,
     "emailVerified" : false,
     "email" : "user3@example.com",
+    "attributes" : {
+      "SSN" : [ "290296-7808" ]
+    },
     "credentials" : [ {
       "id" : "133ce1f9-4d1c-40cb-a71a-def781a9168d",
       "type" : "password",
