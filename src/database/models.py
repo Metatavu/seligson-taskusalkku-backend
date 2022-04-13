@@ -69,6 +69,13 @@ class Company(Base):
     portfolios = relationship("Portfolio", back_populates="company", lazy=True)
 
 
+class CompanyAccess(Base):
+    __tablename__ = 'company_access'
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    ssn = Column(String(11), nullable=False)
+    company_id = Column("company_id", SqlAlchemyUuid, ForeignKey('company.id'), index=True, nullable=False)
+
+
 class LastRate(Base):
     __tablename__ = 'last_rate'
 
