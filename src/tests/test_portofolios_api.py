@@ -14,7 +14,7 @@ from .constants import security_ids, invalid_auths, invalid_uuids
 
 from .utils.database import sql_backend_company, sql_backend_security, sql_backend_portfolio_log, \
     sql_backend_portfolio_transaction, sql_backend_last_rate, sql_backend_portfolio, sql_backend_funds, \
-    sql_backend_security_rates
+    sql_backend_security_rates, sql_backend_company_access
 
 import logging
 
@@ -185,6 +185,21 @@ class TestPortfolio:
                 portfolio_id="6bb05ba3-2b4f-4031-960f-0f20d5244440",
                 auth=user_3_auth
             )
+
+    def test_find_portfolio_access(self, client: TestClient, backend_mysql: MySqlContainer,
+                                   keycloak: KeycloakContainer, user_2_auth: BearerAuth, user_3_auth: BearerAuth):
+
+        with sql_backend_funds(backend_mysql), sql_backend_company(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_portfolio(backend_mysql):
+
+            assert self.get_portfolio(client=client, portfolio_id="ff718890-ee47-4414-8582-d9c541a9b1b3",
+                                      auth=user_2_auth) is not None
+
+            assert self.get_portfolio(client=client, portfolio_id="ccade0c1-2fea-41b4-b1e7-22b0722b07e5",
+                                      auth=user_2_auth) is not None
+
+            assert self.get_portfolio(client=client, portfolio_id="ccade0c1-2fea-41b4-b1e7-22b0722b07e5",
+                                      auth=user_3_auth) is not None
 
     def test_get_portfolio_summary(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
         """
@@ -374,6 +389,31 @@ class TestPortfolio:
                 portfolio_id="6bb05ba3-2b4f-4031-960f-0f20d5244440",
                 auth=user_3_auth
             )
+
+    def test_list_portfolio_access(self, client: TestClient, backend_mysql: MySqlContainer,
+                                   keycloak: KeycloakContainer, user_2_auth: BearerAuth, user_3_auth: BearerAuth):
+
+        with sql_backend_funds(backend_mysql), sql_backend_company(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_portfolio(backend_mysql), \
+                sql_backend_company_access(backend_mysql):
+
+            user_2_portfolios_response = client.get("/v1/portfolios/", auth=user_2_auth)
+            assert user_2_portfolios_response.status_code == 200
+            user_2_portfolios = user_2_portfolios_response.json()
+
+            user_3_portfolios_response = client.get("/v1/portfolios/", auth=user_3_auth)
+            assert user_3_portfolios_response.status_code == 200
+            user_3_portfolios = user_3_portfolios_response.json()
+
+            assert 2 == len(user_2_portfolios)
+            assert 1 == len(user_3_portfolios)
+
+            user_2_portfolio_ids = list(map(lambda i: i["id"], user_2_portfolios))
+            user_3_portfolio_ids = list(map(lambda i: i["id"], user_3_portfolios))
+
+            assert "ff718890-ee47-4414-8582-d9c541a9b1b3" in user_2_portfolio_ids
+            assert "ccade0c1-2fea-41b4-b1e7-22b0722b07e5" in user_2_portfolio_ids
+            assert "ccade0c1-2fea-41b4-b1e7-22b0722b07e5" in user_3_portfolio_ids
 
     def test_list_portfolios(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
         """
