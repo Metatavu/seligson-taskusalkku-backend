@@ -385,18 +385,25 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                 detail=f"Portfolio {portfolio_id} not found"
             )
 
-        ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
-        if not ssn:
+        user_ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
+        if not user_ssn:
             raise HTTPException(
                 status_code=403,
                 detail=f"Cannot resolve logged user SSN"
             )
 
-        if portfolio.company.ssn != ssn:
-            raise HTTPException(
-                status_code=403,
-                detail=f"No permission to find this portfolio"
+        if user_ssn != portfolio.company.ssn:
+            company_access = operations.find_company_access_by_ssn_and_company_id(
+                database=self.database,
+                ssn=user_ssn,
+                company_id=portfolio.company.id
             )
+
+            if not company_access:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"No permission to find this portfolio"
+                )
 
         return portfolio
 

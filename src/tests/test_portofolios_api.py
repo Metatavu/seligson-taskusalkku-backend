@@ -186,20 +186,36 @@ class TestPortfolio:
                 auth=user_3_auth
             )
 
-    def test_find_portfolio_access(self, client: TestClient, backend_mysql: MySqlContainer,
-                                   keycloak: KeycloakContainer, user_2_auth: BearerAuth, user_3_auth: BearerAuth):
+    def test_find_portfolio_access(self, client: TestClient, backend_mysql: MySqlContainer, keycloak: KeycloakContainer,
+                                   user_1_auth: BearerAuth, user_2_auth: BearerAuth, user_3_auth: BearerAuth):
 
         with sql_backend_funds(backend_mysql), sql_backend_company(backend_mysql), \
-                sql_backend_security(backend_mysql), sql_backend_portfolio(backend_mysql):
+                sql_backend_security(backend_mysql), sql_backend_portfolio(backend_mysql), \
+                sql_backend_company_access(backend_mysql):
 
-            assert self.get_portfolio(client=client, portfolio_id="ff718890-ee47-4414-8582-d9c541a9b1b3",
-                                      auth=user_2_auth) is not None
+            assert self.get_portfolio(
+                client=client,
+                portfolio_id="ff718890-ee47-4414-8582-d9c541a9b1b3",
+                auth=user_2_auth
+            ) is not None
 
-            assert self.get_portfolio(client=client, portfolio_id="ccade0c1-2fea-41b4-b1e7-22b0722b07e5",
-                                      auth=user_2_auth) is not None
+            assert self.get_portfolio(
+                client=client,
+                portfolio_id="ccade0c1-2fea-41b4-b1e7-22b0722b07e5",
+                auth=user_2_auth
+            ) is not None
 
-            assert self.get_portfolio(client=client, portfolio_id="ccade0c1-2fea-41b4-b1e7-22b0722b07e5",
-                                      auth=user_3_auth) is not None
+            assert self.get_portfolio(
+                client=client,
+                portfolio_id="ccade0c1-2fea-41b4-b1e7-22b0722b07e5",
+                auth=user_3_auth
+            ) is not None
+
+            self.assert_find_portfolio_fail(
+                client=client,
+                portfolio_id="ccade0c1-2fea-41b4-b1e7-22b0722b07e5",
+                auth=user_1_auth
+            )
 
     def test_get_portfolio_summary(self, client: TestClient, user_1_auth: BearerAuth, backend_mysql: MySqlContainer):
         """
