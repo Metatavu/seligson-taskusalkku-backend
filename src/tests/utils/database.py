@@ -78,6 +78,14 @@ def sql_backend_company(mysql: MySqlContainer):
 
 
 @contextlib.contextmanager
+def sql_backend_company_access(mysql: MySqlContainer):
+    try:
+        yield mysql_exec_sql(mysql=mysql, sql_file="backend-company-access.sql")
+    finally:
+        mysql_exec_sql(mysql=mysql, sql_file="backend-company-access-teardown.sql")
+
+
+@contextlib.contextmanager
 def sql_backend_security(mysql: MySqlContainer):
     try:
         yield mysql_exec_sql(mysql=mysql, sql_file="backend-security.sql")
