@@ -32,4 +32,4 @@ class Mailer:
         )
 
         fast_mail = FastMail(email_conf)
-        return fast_mail.send(message)
+        return fast_mail.send_message(message)
