@@ -11,9 +11,11 @@ from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict
 
-from .migration_exception import MigrationException
 from database import models as destination_models
 from datetime import datetime, date, timedelta
+
+from .migration_exceptions import MigrationException, MissingSecurityException, \
+    MissingCompanyException, MissingPortfolioException
 
 FUND_GROUPS = ["PASSIVE", "ACTIVE", "BALANCED", "FIXED_INCOME", "DIMENSION", "SPILTAN"]
 
@@ -582,7 +584,9 @@ class MigrateLastRatesTask(AbstractFundsTask):
                 security = self.get_security_by_original_id(backend_session=backend_session,
                                                             original_id=funds_row.SECID)
                 if not security:
-                    raise MigrationException(f"Could not find security {funds_row.SECID}")
+                    raise MissingSecurityException(
+                        original_id=funds_row.SECID
+                    )
 
                 self.upsert_last_rate(backend_session=backend_session,
                                       last_rate=existing_last_rate,
@@ -892,7 +896,9 @@ class MigratePortfoliosTask(AbstractFundsTask):
         if not existing_portfolio:
             company = self.get_company_by_original_id(backend_session=backend_session, original_id=com_code)
             if not company:
-                raise MigrationException(f"Could not find company {com_code}")
+                raise MissingCompanyException(
+                    original_id=com_code
+                )
 
             self.insert_portfolio(
                 backend_session=backend_session,
@@ -1048,7 +1054,9 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             c_security = self.get_security_by_original_id(backend_session=backend_session,
                                                                           original_id=c_security_original_id)
                             if not c_security:
-                                raise MigrationException(f"Could not find security {c_security_original_id}")
+                                raise MissingSecurityException(
+                                    original_id=c_security_original_id
+                                )
 
                             c_security_id = c_security.id
                         else:
@@ -1058,7 +1066,9 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                         if portfolio_original_id:
                             portfolio_id = portfolio_id_map.get(portfolio_original_id, None)
                             if not portfolio_id:
-                                raise MigrationException(f"Could not find portfolio {portfolio_original_id}")
+                                raise MissingPortfolioException(
+                                    original_id=portfolio_original_id
+                                )
 
                         else:
                             # without the portfolio key we cant do anything, we try to grab the right portfolio from
@@ -1067,7 +1077,9 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             company = self.get_company_by_original_id(backend_session=backend_session,
                                                                       original_id=portfolio_log_row.COM_CODE)
                             if not company:
-                                raise MigrationException(f"Could not find company {portfolio_log_row.COM_CODE}")
+                                raise MissingCompanyException(
+                                    original_id=portfolio_log_row.COM_CODE
+                                )
 
                             portfolios = self.list_portfolios_by_company(backend_session=backend_session,
                                                                          company_id=company.id)
@@ -1300,7 +1312,9 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                         portfolio_original_id = portfolio_transaction_row.PORID
                         portfolio_id = portfolio_id_map.get(portfolio_original_id, None)
                         if not portfolio_id:
-                            raise MigrationException(f"Could not find portfolio {portfolio_original_id}")
+                            raise MissingPortfolioException(
+                                original_id=portfolio_original_id
+                            )
 
                         existing_transaction = existing_transaction_map.get(portfolio_transaction_row.TRANS_NR, None)
 
@@ -1601,7 +1615,9 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
                 com_code = added_authorization.comCode
                 company = company_original_id_map.get(str(com_code), None)
                 if not company:
-                    raise MigrationException(f"Could not find company {com_code}")
+                    raise MissingCompanyException(
+                        original_id=com_code
+                    )
 
                 self.insert_company_access(
                     backend_session=backend_session,
