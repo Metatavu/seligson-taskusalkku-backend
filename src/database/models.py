@@ -144,3 +144,17 @@ class PortfolioTransaction(Base):
     security = relationship("Security", back_populates="portfolio_transactions", lazy=True)
     updated = Column(DateTime, nullable=False)
     __table_args__ = (Index("ix_portfolio_transaction_security_id_updated", "security_id", "updated"),)
+
+
+class SynchronizationFailure(Base):
+    __tablename__ = 'synchronization_failure'
+
+    id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
+    original_id = Column(String(191), nullable=False)
+    message = Column(String(191), nullable=False)
+    origin_task = Column(String(191), nullable=False)
+    target_task = Column(String(191), nullable=False)
+    action = Column(Integer, nullable=False)
+    handled = Column(Boolean, nullable=False)
+    created = Column(DateTime, nullable=False)
+    updated = Column(DateTime, nullable=False)
