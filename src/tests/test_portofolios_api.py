@@ -117,6 +117,7 @@ class TestPortfolio:
             assert main_expected_sum_purchase_total == Decimal(main_portfolio["purchaseTotal"])
             assert main_portfolio_expected_reference_a == main_portfolio["aReference"]
             assert main_portfolio_expected_reference_b == main_portfolio["bReference"]
+            assert "OWNED" == main_portfolio["accessLevel"]
 
             sub_portfolio = self.get_portfolio(client=client, portfolio_id=sub_portfolio_id, auth=user_1_auth)
 
@@ -127,6 +128,7 @@ class TestPortfolio:
             assert sub_expected_sum_purchase_total == Decimal(sub_portfolio["purchaseTotal"])
             assert sub_portfolio_expected_reference_a == sub_portfolio["aReference"]
             assert sub_portfolio_expected_reference_b == sub_portfolio["bReference"]
+            assert "OWNED" == sub_portfolio["accessLevel"]
 
     def test_find_portfolio_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,
                                        user_1_auth: BearerAuth):
@@ -193,17 +195,23 @@ class TestPortfolio:
                 sql_backend_security(backend_mysql), sql_backend_portfolio(backend_mysql), \
                 sql_backend_company_access(backend_mysql):
 
-            assert self.get_portfolio(
+            owned_portfolio = self.get_portfolio(
                 client=client,
                 portfolio_id="ff718890-ee47-4414-8582-d9c541a9b1b3",
                 auth=user_2_auth
-            ) is not None
+            )
 
-            assert self.get_portfolio(
+            assert owned_portfolio is not None
+            assert "OWNED" in owned_portfolio["accessLevel"]
+
+            shared_portfolio = self.get_portfolio(
                 client=client,
                 portfolio_id="ccade0c1-2fea-41b4-b1e7-22b0722b07e5",
                 auth=user_2_auth
-            ) is not None
+            )
+
+            assert shared_portfolio is not None
+            assert "SHARED" in shared_portfolio["accessLevel"]
 
             self.assert_find_portfolio_fail(
                 client=client,
@@ -414,10 +422,13 @@ class TestPortfolio:
 
             assert 2 == len(user_2_portfolios)
 
-            user_2_portfolio_ids = list(map(lambda i: i["id"], user_2_portfolios))
+            owned_portfolio = next(i for i in user_2_portfolios if i["id"] == "ff718890-ee47-4414-8582-d9c541a9b1b3")
+            assert owned_portfolio is not None
+            assert "OWNED" in owned_portfolio["accessLevel"]
 
-            assert "ff718890-ee47-4414-8582-d9c541a9b1b3" in user_2_portfolio_ids
-            assert "ccade0c1-2fea-41b4-b1e7-22b0722b07e5" in user_2_portfolio_ids
+            shared_portfolio = next(i for i in user_2_portfolios if i["id"] == "ccade0c1-2fea-41b4-b1e7-22b0722b07e5")
+            assert shared_portfolio is not None
+            assert "SHARED" in shared_portfolio["accessLevel"]
 
     def test_list_portfolios(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
         """
