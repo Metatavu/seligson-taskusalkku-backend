@@ -89,7 +89,6 @@ class TestPortfolio:
         """
         test to find portfolio from portfolio id
         """
-
         main_portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
         main_expected_sum_total_amounts = sum(portfolio_values[main_portfolio_id]["total_amounts"].values())
         main_expected_sum_market_value_total = sum(portfolio_values[main_portfolio_id]["market_value_total"].values())
@@ -118,6 +117,7 @@ class TestPortfolio:
             assert main_portfolio_expected_reference_a == main_portfolio["aReference"]
             assert main_portfolio_expected_reference_b == main_portfolio["bReference"]
             assert "OWNED" == main_portfolio["accessLevel"]
+            assert "f0e88a2d-d773-46bd-b353-117a448abefd" == main_portfolio["companyId"]
 
             sub_portfolio = self.get_portfolio(client=client, portfolio_id=sub_portfolio_id, auth=user_1_auth)
 
@@ -129,6 +129,7 @@ class TestPortfolio:
             assert sub_portfolio_expected_reference_a == sub_portfolio["aReference"]
             assert sub_portfolio_expected_reference_b == sub_portfolio["bReference"]
             assert "OWNED" == sub_portfolio["accessLevel"]
+            assert "f0e88a2d-d773-46bd-b353-117a448abefd" == sub_portfolio["companyId"]
 
     def test_find_portfolio_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,
                                        user_1_auth: BearerAuth):
@@ -202,7 +203,8 @@ class TestPortfolio:
             )
 
             assert owned_portfolio is not None
-            assert "OWNED" in owned_portfolio["accessLevel"]
+            assert "OWNED" == owned_portfolio["accessLevel"]
+            assert "10dac398-4fec-4d02-9ca6-abf705a83cf4" == owned_portfolio["companyId"]
 
             shared_portfolio = self.get_portfolio(
                 client=client,
@@ -211,7 +213,8 @@ class TestPortfolio:
             )
 
             assert shared_portfolio is not None
-            assert "SHARED" in shared_portfolio["accessLevel"]
+            assert "SHARED" == shared_portfolio["accessLevel"]
+            assert "feebf58a-d382-4645-9855-d7e3f7534103" == owned_portfolio["companyId"]
 
             self.assert_find_portfolio_fail(
                 client=client,
