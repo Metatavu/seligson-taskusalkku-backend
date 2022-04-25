@@ -268,7 +268,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                 if fund_updated is None:
                     fund_updated = datetime(1970, 1, 1, 0, 0)
 
-                backend_updated = existing_security.updated
+                backend_updated = existing_security.updated if existing_security else None
                 if backend_updated is None:
                     backend_updated = datetime(1970, 1, 1, 0, 0)
 
@@ -575,11 +575,14 @@ class MigrateLastRatesTask(AbstractFundsTask):
         for security_original_id, funds_row in self.funds_entities.items():
             existing_last_rate = self.backend_entities.get(security_original_id, None)
             funds_rate_date = funds_row.RDATE.date()
+            rate_date = existing_last_rate.rate_date if existing_last_rate else None
 
-            if not existing_last_rate or not existing_last_rate.rate_date or \
-                    existing_last_rate.rate_date < funds_rate_date:
+            if rate_date is None:
+                rate_date = date(1970, 1, 1)
+
+            if rate_date < funds_rate_date:
                 self.print_message(f"Updating security {security_original_id} last rate "
-                                   f"({existing_last_rate.rate_date} < {funds_rate_date})")
+                                   f"({rate_date} < {funds_rate_date})")
 
                 security = self.get_security_by_original_id(backend_session=backend_session,
                                                             original_id=funds_row.SECID)
