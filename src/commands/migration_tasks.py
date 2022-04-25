@@ -575,11 +575,11 @@ class MigrateLastRatesTask(AbstractFundsTask):
         for security_original_id, funds_row in self.funds_entities.items():
             existing_last_rate = self.backend_entities.get(security_original_id, None)
             funds_rate_date = funds_row.RDATE.date()
+            rate_date = existing_last_rate.rate_date if existing_last_rate else datetime(1970, 1, 1, 0, 0)
 
-            if not existing_last_rate or not existing_last_rate.rate_date or \
-                    existing_last_rate.rate_date < funds_rate_date:
+            if rate_date < funds_rate_date:
                 self.print_message(f"Updating security {security_original_id} last rate "
-                                   f"({existing_last_rate.rate_date} < {funds_rate_date})")
+                                   f"({rate_date} < {funds_rate_date})")
 
                 security = self.get_security_by_original_id(backend_session=backend_session,
                                                             original_id=funds_row.SECID)
