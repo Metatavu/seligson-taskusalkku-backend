@@ -51,30 +51,40 @@ class MigrateHandler:
         self.force_failed_tasks = []
         self.forced_failed_tasks = []
 
-    async def handle(self, task_name: Optional[str]):
+    async def handle(self,
+                     task_name: Optional[str],
+                     skip_tasks: Optional[List[str]] = None
+                     ):
         """
         Runs migrations
         Args:
             task_name: name of the task to run. Runs everything is not specified
-
+            skip_tasks: list of tasks to skip
         """
         timeout = datetime.now() + timedelta(minutes=15)
         result = True
+        task_names = []
+
+        if task_name:
+            task_names = [task_name]
+        else:
+            task_names = map(lambda x: x.get_name(), self.tasks)
+
+        if skip_tasks is not None:
+            task_names = list(filter(lambda x: x not in skip_tasks, task_names))
 
         with Session(self.backend_engine) as backend_session:
             self.force_failed_tasks = self.list_force_failed_tasks(backend_session)
 
-        if task_name:
-            if task_name in self.force_failed_tasks:
-                self.force_failed_tasks = [task_name]
-            else:
-                self.force_failed_tasks = []
+        self.print_message(f"\nRunning tasks: {task_names}")
+
+        self.force_failed_tasks = list(filter(lambda x: x in task_names, self.force_failed_tasks))
 
         if len(self.force_failed_tasks) > 0:
             self.print_message(f"\nForcing failed tasks: {self.force_failed_tasks}")
 
         for task in self.tasks:
-            if result and timeout > datetime.now() and (not task_name or task_name == task.get_name()):
+            if result and (timeout > datetime.now()) and (task.get_name() in task_names):
                 result = await self.run_task(task, timeout)
 
         if len(self.forced_failed_tasks) > 0:
@@ -336,11 +346,15 @@ class MigrateHandler:
 @click.command()
 @click.option("--debug", default=False, help="Debug, readonly for testing purposes")
 @click.option("--task", default="", help="Only run specified task")
+@click.option("--skip-tasks", default="", help="Run without specified tasks")
 @click.option("--force-recheck", default=False, help="Forces task to recheck all entities")
-def main(debug, task, force_recheck):
+def main(debug, task, skip_tasks, force_recheck):
     """Migration method"""
     handler = MigrateHandler(debug=debug, force_recheck=force_recheck)
-    asyncio.run(handler.handle(task))
+    asyncio.run(handler.handle(
+        task_name=task,
+        skip_tasks=skip_tasks
+    ))
 
 
 if __name__ == '__main__':
