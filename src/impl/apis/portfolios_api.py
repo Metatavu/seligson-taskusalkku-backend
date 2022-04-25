@@ -15,7 +15,8 @@ from spec.models.portfolio_summary import PortfolioSummary
 from spec.models.portfolio_history_value import PortfolioHistoryValue
 from database import operations
 from business_logics import business_logics
-from database.models import Portfolio as DbPortfolio, PortfolioLog as DbPortfolioLog, Security as DbSecurity
+from database.models import Portfolio as DbPortfolio, PortfolioLog as DbPortfolioLog, Security as DbSecurity, \
+    Company as DbCompany
 from spec.models.portfolio_security import PortfolioSecurity
 from spec.models.portfolio_transaction import PortfolioTransaction
 from spec.models.transaction_type import TransactionType
@@ -34,9 +35,21 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             token_bearer: TokenModel
     ) -> Portfolio:
         portfolio = self.get_portfolio(token_bearer=token_bearer, portfolio_id=portfolio_id)
+        ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        own_companies = operations.get_companies(
+            database=self.database,
+            ssn=ssn
+        )
 
         return self.translate_portfolio(
-            portfolio=portfolio
+            portfolio=portfolio,
+            own_companies=own_companies
         )
 
     async def get_portfolio_summary(
@@ -281,7 +294,10 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         for company in companies:
             portfolios = portfolios + company.portfolios
 
-        return list(map(self.translate_portfolio, portfolios))
+        return list(map(lambda portfolio: self.translate_portfolio(
+            portfolio=portfolio,
+            own_companies=own_companies
+        ), portfolios))
 
     async def list_portfolio_transactions(
             self,
@@ -407,14 +423,27 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
         return portfolio
 
-    def translate_portfolio(self, portfolio: DbPortfolio) -> Portfolio:
+    def translate_portfolio(self,
+                            portfolio: DbPortfolio,
+                            own_companies: List[DbCompany],
+                            ) -> Portfolio:
         """
         Translates portfolio into REST resource
+
+        Args:
+            portfolio: portfolio to translate
+            own_companies: list of companies that user owns
+
+        Returns:
+            REST resource
         """
         portfolio_values = PortfolioUtils.get_portfolio_values(
             database=self.database,
             portfolio=portfolio
         )
+
+        own_company_ids = [company.id for company in own_companies]
+        access_level = "OWNED" if portfolio.company_id in own_company_ids else "SHARED"
 
         total_amount = str(portfolio_values.total_amount) \
             if portfolio_values.total_amount is not None else "0"
@@ -430,9 +459,12 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         portfolio_key = PortfolioUtils.get_portfolio_key(portfolio.original_id)
         reference_a = PortfolioUtils.make_reference(share_a, company_code, portfolio_key)
         reference_b = PortfolioUtils.make_reference(share_b, company_code, portfolio_key)
+        company_id = str(portfolio.company_id)
 
         return Portfolio(
             id=str(portfolio.id),
+            companyId=company_id,
+            accessLevel=access_level,
             name=portfolio.name,
             totalAmount=total_amount,
             marketValueTotal=market_value_total,
