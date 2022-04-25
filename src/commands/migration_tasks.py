@@ -689,9 +689,10 @@ class MigrateCompaniesTask(AbstractFundsTask):
 
                 for company_row in company_rows:
                     com_code = company_row[0]
-                    so_sec_nr = company_row[1]
-                    created = company_row[2]
-                    updated = company_row[3]
+                    name = company_row[1]
+                    so_sec_nr = company_row[2]
+                    created = company_row[3]
+                    updated = company_row[4]
 
                     if not updated or created > updated:
                         updated = created
@@ -705,6 +706,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
                     self.upsert_company(
                         backend_session=backend_session,
                         original_id=com_code,
+                        name=name,
                         existing_company=existing_company,
                         updated=updated,
                         ssn=so_sec_nr
@@ -759,7 +761,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
         """
         excluded = self.get_excluded_com_codes_query()
         return funds_session.execute(
-            f"SELECT COM_CODE, SO_SEC_NR, CREA_DATE, UPD_DATE FROM TABLE_COMPANY "
+            f"SELECT COM_CODE, NAME1, SO_SEC_NR, CREA_DATE, UPD_DATE FROM TABLE_COMPANY "
             f"WHERE (UPD_DATE >= :update OR CREA_DATE >= :update) AND COM_TYPE = '3' AND COM_CODE NOT IN ({excluded}) "
             "ORDER BY UPD_DATE, CREA_DATE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY",
             {
@@ -791,6 +793,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
     @staticmethod
     def upsert_company(backend_session: Session,
                        original_id: str,
+                       name: str,
                        existing_company: Optional[destination_models.Company],
                        updated: datetime,
                        ssn: str) -> destination_models.Company:
@@ -798,6 +801,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
         Inserts new company
         Args:
             backend_session: backend database session
+            name: name of company
             original_id: original id
             existing_company: existing company
             updated: last update time
@@ -807,6 +811,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
         """
         new_company = existing_company if existing_company else destination_models.Company()
         new_company.original_id = original_id
+        new_company.name = name
         new_company.ssn = ssn
         new_company.updated = updated
         backend_session.add(new_company)
