@@ -65,6 +65,7 @@ class Company(Base):
     id = Column(SqlAlchemyUuid, primary_key=True, default=uuid4)
     original_id = Column(String(20), index=True, unique=True)
     ssn = Column(String(11))
+    name = Column(String(192), nullable=False)
     updated = Column(DateTime, nullable=False)
     portfolios = relationship("Portfolio", back_populates="company", lazy=True)
     company_access = relationship("CompanyAccess", back_populates="company", lazy=True)

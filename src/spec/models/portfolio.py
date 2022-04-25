@@ -7,6 +7,7 @@ import re  # noqa: F401
 from typing import Any, Dict, List, Optional  # noqa: F401
 
 from pydantic import AnyUrl, BaseModel, EmailStr, validator  # noqa: F401
+from spec.models.company_access_level import CompanyAccessLevel
 
 
 class Portfolio(BaseModel):
@@ -17,7 +18,9 @@ class Portfolio(BaseModel):
     Portfolio - a model defined in OpenAPI
 
         id: The id of this Portfolio [Optional].
+        companyId: The companyId of this Portfolio [Optional].
         name: The name of this Portfolio.
+        accessLevel: The accessLevel of this Portfolio.
         totalAmount: The totalAmount of this Portfolio [Optional].
         marketValueTotal: The marketValueTotal of this Portfolio [Optional].
         purchaseTotal: The purchaseTotal of this Portfolio [Optional].
@@ -25,7 +28,9 @@ class Portfolio(BaseModel):
         bReference: The bReference of this Portfolio [Optional].
     """
     id: Optional[str] = None
+    companyId: Optional[str] = None
     name: str
+    accessLevel: CompanyAccessLevel
     totalAmount: Optional[str] = None
     marketValueTotal: Optional[str] = None
     purchaseTotal: Optional[str] = None
