@@ -1,4 +1,4 @@
-"""add namen column to company table
+"""add name column to company table
 
 Revision ID: 0022
 Revises: 0021
