@@ -214,7 +214,7 @@ class TestPortfolio:
 
             assert shared_portfolio is not None
             assert "SHARED" == shared_portfolio["accessLevel"]
-            assert "feebf58a-d382-4645-9855-d7e3f7534103" == owned_portfolio["companyId"]
+            assert "feebf58a-d382-4645-9855-d7e3f7534103" == shared_portfolio["companyId"]
 
             self.assert_find_portfolio_fail(
                 client=client,
