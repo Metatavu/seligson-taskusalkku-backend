@@ -268,7 +268,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                 if fund_updated is None:
                     fund_updated = datetime(1970, 1, 1, 0, 0)
 
-                backend_updated = existing_security.updated
+                backend_updated = existing_security.updated if existing_security else None
                 if backend_updated is None:
                     backend_updated = datetime(1970, 1, 1, 0, 0)
 
