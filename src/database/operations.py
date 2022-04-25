@@ -171,6 +171,19 @@ def find_most_recent_security_rate(database: Session,
         .one_or_none()
 
 
+def find_company(database: Session, company_id: UUID) -> Optional[Company]:
+    """Queries the company table
+
+    Args:
+        database (Session): database session
+        company_id (UUID): company id
+    Returns:
+        List[Company]: list of matching company table rows
+    """
+
+    return database.query(Company).filter(Company.id == company_id).one_or_none()
+
+
 def get_companies(database: Session, ssn: str) -> List[Company]:
     """Queries the company table
 
