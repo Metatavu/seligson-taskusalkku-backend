@@ -75,6 +75,19 @@ class AbstractMigrationTask(ABC):
         """
         ...
 
+    @abstractmethod
+    def verify(self, backend_session: Session) -> bool:
+        """
+        Verifies data correctness
+
+        Args:
+            backend_session: backend database session
+
+        Returns:
+            whether data is correct or not
+        """
+        ...
+
     @staticmethod
     def print_message(message: str):
         """
@@ -290,6 +303,44 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
             return synchronized_count
 
+    def verify(self, backend_session: Session) -> bool:
+        """
+        TODO: verify original_id, currency, name_fi, name_sv, name_en, series_id
+        """
+
+        with Session(self.get_funds_database_engine()) as funds_session:
+            fund_row_count = self.count_rows_funds(funds_session=funds_session)
+            backend_row_count = self.count_rows_backend(backend_session=backend_session)
+
+            if fund_row_count != backend_row_count:
+                self.print_message(f"Warning: {fund_row_count} != {backend_row_count} in security table")
+                return False
+
+            return True
+
+    @staticmethod
+    def count_rows_funds(funds_session: Session):
+        """
+        Counts securities from funds database
+        Args:
+            funds_session: Funds database session
+
+        Returns: count from funds database
+        """
+        statement = "SELECT COUNT(SECID) FROM TABLE_SECURITY"
+        return funds_session.execute(statement=statement).scalar()
+
+    @staticmethod
+    def count_rows_backend(backend_session: Session):
+        """
+        Counts securities from backend database
+        Args:
+            backend_session: Backend database session
+
+        Returns: count from backend database
+        """
+        return backend_session.execute(statement="SELECT COUNT(id) FROM security").scalar()
+
     @staticmethod
     def list_security_rows(funds_session: Session):
         """
@@ -386,6 +437,10 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                 self.print_message(TIMED_OUT)
 
             return synchronized_count
+
+    def verify(self, backend_session: Session) -> bool:
+        # TODO: Use row count and sum(rate_close) to verify the data
+        return False
 
     def migrate_security_rates(self, security: destination_models.Security,
                                funds_session: Session,
@@ -569,6 +624,10 @@ class MigrateLastRatesTask(AbstractFundsTask):
 
         return True
 
+    def verify(self, backend_session: Session) -> bool:
+        # TODO: use row count and sum(rate_close) to verify
+        return False
+
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
 
@@ -720,6 +779,10 @@ class MigrateCompaniesTask(AbstractFundsTask):
                 self.print_message(TIMED_OUT)
 
             return synchronized_count
+
+    def verify(self, backend_session: Session) -> bool:
+        # TODO: Verify this row by row
+        return False
 
     def get_source_last_update_date(self, funds_session: Session) -> datetime:
         """
@@ -885,6 +948,10 @@ class MigratePortfoliosTask(AbstractFundsTask):
                 self.print_message(TIMED_OUT)
 
             return synchronized_count
+
+    def verify(self, backend_session: Session) -> bool:
+        # TODO: verify row by row
+        return False
 
     def migrate_portfolio(self, backend_session, portfolio_row):
         """
@@ -1137,6 +1204,23 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
             return synchronized_count
 
+    def verify(self, backend_session: Session) -> bool:
+        # TODO: verify row count
+        # TODO: sum(transaction_number)
+        # TODO: transaction_code with SELECT SUM(CAST(TRANS_CODE as INT)) FROM TABLE_PORTLOG WHERE PORID NOT IN (porid_exclude_query)
+        # TODO: verify transaction_date
+        # TODO: verify c_total_value = Column(DECIMAL(15, 2))
+        # TODO: verify portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True, nullable=False)
+        # TODO: verify security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=False)
+        # TODO: verify c_security_id = Column("c_security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=True)
+        # TODO: verify amount = Column(DECIMAL(19, 6), nullable=False)
+        # TODO: verify c_price = Column(DECIMAL(19, 6), nullable=False)
+        # TODO: verify payment_date = Column(Date, index=True, nullable=True)
+        # TODO: verify c_value = Column(DECIMAL(15, 2), nullable=False)
+        # TODO: verify provision = Column(DECIMAL(15, 2), nullable=False)
+        # TODO: verify status = Column(CHAR(1), nullable=False)
+        return False
+
     @staticmethod
     def get_backend_updates(backend_session: Session) -> Dict[UUID, datetime]:
         """
@@ -1349,6 +1433,12 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
 
             return synchronized_count
 
+    def verify(self, backend_session: Session) -> bool:
+        # TODO: select count(id), sum(amount), sum(transaction_number), sum(purchase_c_value) from portfolio_transaction;
+        # TODO: portfolio_id
+        # TODO: security_id
+        return False
+
     @staticmethod
     def get_backend_updates(backend_session: Session) -> Dict[UUID, datetime]:
         """
@@ -1522,6 +1612,16 @@ class MigrateFundsTask(AbstractMigrationTask):
 
             return synchronized_count
 
+    def verify(self, backend_session: Session) -> bool:
+        # TODO original_id
+        # TODO risk_level
+        # TODO group
+        # TODO kiid_url_fi
+        # TODO kiid_url_sv
+        # TODO kiid_url_en
+        # TODO deprecated
+        return False
+
     @staticmethod
     def list_fund_rows(kiid_session: Session):
         """
@@ -1636,6 +1736,11 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
                 synchronized_count = synchronized_count + 1
 
             return synchronized_count
+
+    def verify(self, backend_session: Session) -> bool:
+        # TODO: ssn
+        # TODO: company_id
+        return False
 
     @staticmethod
     def list_authorizations(salkku_session: Session):

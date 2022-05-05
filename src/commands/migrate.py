@@ -87,6 +87,9 @@ class MigrateHandler:
             if result and (timeout > datetime.now()) and (task.get_name() in task_names):
                 result = await self.run_task(task, timeout)
 
+            if result and (timeout > datetime.now()) and (task.get_name() in task_names):
+                await self.run_verify(task=task)
+
         if len(self.forced_failed_tasks) > 0:
             with Session(self.backend_engine) as backend_session:
                 self.mark_forced_tasks_as_done(backend_session=backend_session)
@@ -164,6 +167,15 @@ class MigrateHandler:
 
             self.print_message(f"Success: {result}, End time: {end_time}, total time: {total_time}")
             return result
+
+    async def run_verify(self, task: AbstractMigrationTask):
+        name = task.get_name()
+
+        with Session(self.backend_engine) as backend_session:
+            if task.verify(backend_session=backend_session):
+                self.print_message(f"\n{name} verification passed.")
+            else:
+                self.print_message(f"\n{name} verification failed.")
 
     async def handle_synchronization_failure(self,
                                              backend_session: Session,
