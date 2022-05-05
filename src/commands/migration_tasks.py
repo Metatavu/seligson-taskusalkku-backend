@@ -1576,11 +1576,14 @@ class MigrateFundsTask(AbstractMigrationTask):
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
-        with Session(self.kiid_engine) as kiid_session:
 
+        with Session(self.kiid_engine) as kiid_session:
             fund_rows = self.list_fund_rows(kiid_session=kiid_session)
+            kiid_ids = []
+
             for fund_row in fund_rows:
                 fund_id = fund_row.ID
+                kiid_ids.append(fund_id)
 
                 fund: destination_models.Fund = backend_session.query(destination_models.Fund) \
                     .filter(destination_models.Fund.original_id == fund_id) \
@@ -1610,6 +1613,19 @@ class MigrateFundsTask(AbstractMigrationTask):
                 backend_session.add(fund)
                 synchronized_count = synchronized_count + 1
 
+            backend_original_ids = self.list_original_ids_backend(backend_session=backend_session)
+            removed_original_ids = []
+            for original_id in backend_original_ids:
+                if original_id not in kiid_ids:
+                    removed_original_ids.append(original_id)
+
+            if len(removed_original_ids) > 0:
+                self.print_message(f"Deleting funds with original_ids {removed_original_ids}")
+
+                synchronized_count = synchronized_count + backend_session.query(destination_models.Fund) \
+                    .filter(destination_models.Fund.original_id.in_(removed_original_ids)) \
+                    .delete(synchronize_session=False)
+
             return synchronized_count
 
     def verify(self, backend_session: Session) -> bool:
@@ -1620,7 +1636,50 @@ class MigrateFundsTask(AbstractMigrationTask):
         # TODO kiid_url_sv
         # TODO kiid_url_en
         # TODO deprecated
-        return False
+
+        with Session(self.kiid_engine) as kiid_session:
+            kiid_row_count = self.count_rows_kiid(kiid_session=kiid_session)
+            backend_row_count = self.count_rows_backend(backend_session=backend_session)
+
+            if kiid_row_count != backend_row_count:
+                self.print_message(f"Warning: {kiid_row_count} != {backend_row_count} in fund table")
+                return False
+
+            return True
+
+    @staticmethod
+    def list_original_ids_backend(backend_session: Session) -> List[str]:
+        """
+        Lists original ids from backend database
+        Args:
+            backend_session: Backend database session
+
+        Returns: original ids
+        """
+        return [ value for value, in backend_session.query(destination_models.Fund.original_id).all() ]
+
+    @staticmethod
+    def count_rows_kiid(kiid_session: Session):
+        """
+        Counts funds from KIID database
+        Args:
+            kiid_session: KIID database session
+
+        Returns: count from funds database
+        """
+        statement = "SELECT COUNT(ID) FROM FUND"
+        return kiid_session.execute(statement=statement).scalar()
+
+    @staticmethod
+    def count_rows_backend(backend_session: Session):
+        """
+        Counts funds from backend database
+        Args:
+            backend_session: Backend database session
+
+        Returns: count from backend database
+        """
+        return backend_session.execute(statement="SELECT COUNT(id) FROM fund").scalar()
 
     @staticmethod
     def list_fund_rows(kiid_session: Session):
