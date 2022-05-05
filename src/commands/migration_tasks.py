@@ -249,8 +249,14 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
+            fund_count = self.count_fund_security_rows(funds_session=funds_session)
+            security_count = self.count_backend_security_rows(backend_session=backend_session)
+
+            if fund_count != security_count:
+                return False
+
             max_date_backend = self.get_backend_last_update_date(backend_session=backend_session)
-            max_date_source = self.get_source_last_update_date(funds_session=funds_session)
+            max_date_source = self.get_fund_last_update_date(funds_session=funds_session)
             if max_date_source is None or max_date_backend is None:
                 return False
 
@@ -263,10 +269,13 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         synchronized_count = 0
         with Session(self.get_funds_database_engine()) as funds_session:
 
-            security_rows = self.list_security_rows(funds_session=funds_session)
-            for security_row in security_rows:
-                original_security_id = security_row.SECID
-                original_fund_id = security_row.SORTNAME
+            fund_security_rows = self.list_fund_security_rows(funds_session=funds_session)
+            fund_security_ids = []
+
+            for fund_security_row in fund_security_rows:
+                original_security_id = fund_security_row.SECID
+                fund_security_ids.append(original_security_id)
+                original_fund_id = fund_security_row.SORTNAME
                 fund_id = None
 
                 if original_fund_id is not None and original_fund_id.isnumeric():
@@ -277,7 +286,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                 existing_security: destination_models.Security = self.get_security_by_original_id(
                     backend_session=backend_session, original_id=original_security_id)
 
-                fund_updated = security_row.UPD_DATE
+                fund_updated = fund_security_row.UPD_DATE
                 if fund_updated is None:
                     fund_updated = datetime(1970, 1, 1, 0, 0)
 
@@ -292,14 +301,28 @@ class MigrateSecuritiesTask(AbstractFundsTask):
                                          security=existing_security,
                                          original_id=original_security_id,
                                          fund_id=fund_id,
-                                         currency=security_row.CURRENCY,
-                                         name_fi=security_row.NAME1,
-                                         name_sv=security_row.NAME2,
-                                         name_en=security_row.NAME3,
-                                         series_id=security_row.SERIES_ID,
+                                         currency=fund_security_row.CURRENCY,
+                                         name_fi=fund_security_row.NAME1,
+                                         name_sv=fund_security_row.NAME2,
+                                         name_en=fund_security_row.NAME3,
+                                         series_id=fund_security_row.SERIES_ID,
                                          updated=fund_updated)
 
                     synchronized_count = synchronized_count + 1
+
+            backend_original_ids = self.list_backend_security_original_ids(backend_session=backend_session)
+
+            removed_original_ids = []
+            for original_id in backend_original_ids:
+                if original_id not in fund_security_ids:
+                    removed_original_ids.append(original_id)
+
+            if len(removed_original_ids) > 0:
+                self.print_message(f"Deleting securities with original_ids {removed_original_ids}")
+
+                synchronized_count = synchronized_count + backend_session.query(destination_models.Security) \
+                    .filter(destination_models.Security.original_id.in_(removed_original_ids)) \
+                    .delete(synchronize_session=False)
 
             return synchronized_count
 
@@ -309,8 +332,8 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         """
 
         with Session(self.get_funds_database_engine()) as funds_session:
-            fund_row_count = self.count_rows_funds(funds_session=funds_session)
-            backend_row_count = self.count_rows_backend(backend_session=backend_session)
+            fund_row_count = self.count_fund_security_rows(funds_session=funds_session)
+            backend_row_count = self.count_backend_security_rows(backend_session=backend_session)
 
             if fund_row_count != backend_row_count:
                 self.print_message(f"Warning: {fund_row_count} != {backend_row_count} in security table")
@@ -319,7 +342,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
             return True
 
     @staticmethod
-    def count_rows_funds(funds_session: Session):
+    def count_fund_security_rows(funds_session: Session):
         """
         Counts securities from funds database
         Args:
@@ -331,7 +354,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         return funds_session.execute(statement=statement).scalar()
 
     @staticmethod
-    def count_rows_backend(backend_session: Session):
+    def count_backend_security_rows(backend_session: Session):
         """
         Counts securities from backend database
         Args:
@@ -342,7 +365,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         return backend_session.execute(statement="SELECT COUNT(id) FROM security").scalar()
 
     @staticmethod
-    def list_security_rows(funds_session: Session):
+    def list_fund_security_rows(funds_session: Session):
         """
         Lists securities from funds database
         Args:
@@ -354,7 +377,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         return funds_session.execute(statement=statement)
 
     @staticmethod
-    def get_source_last_update_date(funds_session: Session):
+    def get_fund_last_update_date(funds_session: Session):
         """
         get last update date of security table from funds database
         Args:
@@ -375,6 +398,17 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         Returns: date from backend database
         """
         return backend_session.query(func.max(destination_models.Security.updated).label("last_update")).one_or_none()
+
+    @staticmethod
+    def list_backend_security_original_ids(backend_session: Session) -> List[str]:
+        """
+        Lists original ids from backend database
+        Args:
+            backend_session: Backend database session
+
+        Returns: original ids
+        """
+        return [ value for value, in backend_session.query(destination_models.Security.original_id).all() ]
 
     @staticmethod
     def upsert_security(backend_session: Session, security, original_id, updated, fund_id=None, currency="", name_fi="",
