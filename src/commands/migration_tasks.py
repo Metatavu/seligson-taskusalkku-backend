@@ -867,7 +867,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
                 if force_recheck:
                     updated_after = datetime(1970, 1, 1, 0, 0)
 
-                company_rows = self.list_companies(
+                company_rows = self.list_funds_companies(
                     funds_session=funds_session,
                     offset=offset,
                     limit=batch,
@@ -912,8 +912,54 @@ class MigrateCompaniesTask(AbstractFundsTask):
             return synchronized_count
 
     def verify(self, backend_session: Session) -> bool:
-        # TODO: Verify this row by row
-        return False
+        batch = 10000
+        offset = 0
+        updated_after = datetime(1970, 1, 1, 0, 0)
+
+        with Session(self.get_funds_database_engine()) as funds_session:
+            funds_company_count = self.count_funds_companies(funds_session=funds_session)
+            backend_companies = list(self.list_backend_companies(backend_session=backend_session))
+
+            if len(backend_companies) != funds_company_count:
+                self.print_message(f"Warning: Companies count: {funds_company_count} != {len(backend_companies)} ")
+                return False
+
+            backend_company_map = {x.original_id: x for x in backend_companies}
+
+            while offset < funds_company_count:
+                funds_companies = self.list_funds_companies(
+                    funds_session=funds_session,
+                    offset=offset,
+                    limit=batch,
+                    updated_after=updated_after
+                )
+
+                if funds_companies.rowcount == 0:
+                    break
+
+                for funds_company in funds_companies:
+                    com_code = funds_company.COM_CODE
+                    name = funds_company.NAME1
+                    so_sec_nr = funds_company.SO_SEC_NR
+
+                    if com_code not in backend_company_map:
+                        self.print_message(f"Warning: Company {com_code} not found in backend")
+                        return False
+
+                    if backend_company_map[com_code].name != name:
+                        self.print_message(f"Warning: Company {com_code} name mismatch")
+                        return False
+
+                    if backend_company_map[com_code].ssn != so_sec_nr:
+                        self.print_message(f"Warning: Company {com_code} ssn mismatch")
+                        return False
+
+                self.print_message(f"Verified {offset}/{funds_company_count} companies")
+                offset += batch
+
+            self.print_message(f"Verified all companies")
+
+        return True
 
     def get_source_last_update_date(self, funds_session: Session) -> datetime:
         """
@@ -942,7 +988,12 @@ class MigrateCompaniesTask(AbstractFundsTask):
         """
         return backend_session.query(func.max(destination_models.Company.updated).label("last_update")).scalar()
 
-    def list_companies(self, funds_session: Session, limit: int, offset: int, updated_after: datetime):
+    def list_funds_companies(self,
+                             funds_session: Session,
+                             limit: int,
+                             offset: int,
+                             updated_after: datetime
+                             ):
         """
         Lists companies from funds database
         Args:
@@ -963,6 +1014,29 @@ class MigrateCompaniesTask(AbstractFundsTask):
                 "limit": limit,
                 "offset": offset
             })
+
+    def count_funds_companies(self, funds_session: Session):
+        """
+        Count companies from funds database
+        Args:
+            funds_session: Funds database session
+
+        Returns: count of companies from funds database
+        """
+        excluded = self.get_excluded_com_codes_query()
+        return funds_session.execute(f"SELECT COUNT(COM_CODE) FROM TABLE_COMPANY "
+                                     f"WHERE COM_TYPE = '3' AND COM_CODE NOT IN ({excluded})").scalar()
+
+    @staticmethod
+    def list_backend_companies(backend_session: Session):
+        """
+        Lists companies from backend database
+        Args:
+            backend_session: Backend database session
+
+        Returns: companies from backend database
+        """
+        return backend_session.query(destination_models.Company).all()
 
     @staticmethod
     def get_excluded_com_codes_query() -> str:
