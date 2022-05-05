@@ -444,28 +444,32 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
         synchronized_count = 0
 
         with Session(self.get_funds_database_engine()) as funds_session:
-            last_funds_dates = self.get_last_funds_dates(funds_session=funds_session)
-            last_backend_dates = self.get_last_backend_dates(backend_session=backend_session)
+            last_funds_dates = None if force_recheck else self.get_last_funds_dates(funds_session=funds_session)
+            last_backend_dates = None if force_recheck else self.get_last_backend_dates(backend_session=backend_session)
 
             securities = self.list_securities(backend_session=backend_session)
             for security in securities:
                 if self.should_timeout(timeout=timeout):
                     break
 
-                last_fund_date = last_funds_dates.get(security.original_id, None)
-                if not last_fund_date:
-                    continue
+                if not force_recheck:
+                    last_fund_date = last_funds_dates.get(security.original_id, None)
+                    if not last_fund_date:
+                        continue
 
-                last_backend_date = last_backend_dates.get(security.id, date(1970, 1, 1))
-
-                if last_fund_date <= last_backend_date:
-                    continue
+                    last_backend_date = last_backend_dates.get(security.id, date(1970, 1, 1))
+                    if last_fund_date <= last_backend_date:
+                        continue
+                else:
+                    last_backend_date = date(1970, 1, 1)
 
                 synchronized_count += self.migrate_security_rates(security=security,
                                                                   backend_session=backend_session,
                                                                   funds_session=funds_session,
                                                                   last_backend_date=last_backend_date,
-                                                                  timeout=timeout)
+                                                                  timeout=timeout,
+                                                                  force_recheck=force_recheck
+                                                                  )
 
             if self.should_timeout(timeout=timeout):
                 self.print_message(TIMED_OUT)
@@ -520,7 +524,9 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                                funds_session: Session,
                                backend_session: Session,
                                last_backend_date: date,
-                               timeout: datetime) -> int:
+                               timeout: datetime,
+                               force_recheck: bool
+                               ) -> int:
         """
         Migrates security rates
         Args:
@@ -529,6 +535,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
             backend_session: backend database session
             last_backend_date: last backend update date
             timeout: timeout
+            force_recheck: whether this is a force recheck run
 
         Returns: synchronized count
         """
@@ -554,15 +561,16 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                 rate_date = rate_row[0]
                 rate_close = rate_row[1]
 
-                has_rate = offset == 0 and self.has_security_rate(
+                existing_security_rate = (offset == 0 or force_recheck) and self.get_security_rate(
                     backend_session=backend_session,
                     security=security,
                     rate_date=rate_date
                 )
 
-                if not has_rate:
-                    self.insert_security_rate(
+                if force_recheck or not existing_security_rate:
+                    self.upsert_security_rate(
                         backend_session=backend_session,
+                        existing_security_rate=existing_security_rate,
                         security=security,
                         rate_date=rate_date,
                         rate_close=rate_close
@@ -635,7 +643,10 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                                      })
 
     @staticmethod
-    def has_security_rate(backend_session: Session, security: destination_models.Security, rate_date: date) -> bool:
+    def get_security_rate(backend_session: Session,
+                          security: destination_models.Security,
+                          rate_date: date
+                          ) -> Optional[destination_models.SecurityRate]:
         """
         Returns whether rate exists for given security and date
         Args:
@@ -645,23 +656,28 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
         Returns: whether rate exists for given security and date
         """
-        return backend_session.query(destination_models.SecurityRate.id) \
+        return backend_session.query(destination_models.SecurityRate) \
                               .filter(and_(destination_models.SecurityRate.security_id == security.id,
                                            destination_models.SecurityRate.rate_date == rate_date)) \
-                              .scalar() is not None
+                              .one_or_none()
 
     @staticmethod
-    def insert_security_rate(backend_session: Session, security: destination_models.Security, rate_date: date,
-                             rate_close: Decimal) -> destination_models.SecurityRate:
+    def upsert_security_rate(backend_session: Session,
+                             security: destination_models.Security,
+                             existing_security_rate: Optional[destination_models.SecurityRate],
+                             rate_date: date,
+                             rate_close: Decimal
+                             ) -> destination_models.SecurityRate:
         """
         Inserts new row into security rate table
         Args:
             backend_session: backend database session
+            existing_security_rate: existing security rate
             security: security
             rate_date: date
             rate_close: close
         """
-        security_rate = destination_models.SecurityRate()
+        security_rate = existing_security_rate if existing_security_rate else destination_models.SecurityRate()
         security_rate.security = security
         security_rate.rate_date = rate_date
         security_rate.rate_close = rate_close
