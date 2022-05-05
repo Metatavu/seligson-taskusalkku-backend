@@ -715,8 +715,49 @@ class MigrateLastRatesTask(AbstractFundsTask):
         return True
 
     def verify(self, backend_session: Session) -> bool:
-        # TODO: use row count and sum(rate_close) to verify
-        return False
+        with Session(self.get_funds_database_engine()) as funds_session:
+            funds_verification_values = self.get_funds_verification_values(funds_session=funds_session)
+            backend_verification_values = self.get_backend_verification_values(backend_session=backend_session)
+
+            if funds_verification_values.count != backend_verification_values.count:
+                self.print_message(f"Warning: Count mismatch {funds_verification_values.count} != "
+                                   f"{backend_verification_values.count} in last_rate table")
+                return False
+
+            if funds_verification_values.rate_close_sum != backend_verification_values.rate_close_sum:
+                self.print_message(f"Warning: Rate close sum mismatch {funds_verification_values.rate_close_sum} != "
+                                   f"{backend_verification_values.rate_close_sum} in last_rate table")
+                return False
+
+            return True
+
+    @staticmethod
+    def get_funds_verification_values(funds_session: Session):
+        """
+        Returns verification values for funds database.
+
+        Args:
+            funds_session: Session to funds database.
+
+        Returns:
+            Verification values.
+        """
+        return funds_session.execute("SELECT COUNT(*) as count, SUM(RCLOSE) as rate_close_sum FROM TABLE_RATELAST")\
+            .one()
+
+    @staticmethod
+    def get_backend_verification_values(backend_session: Session):
+        """
+        Returns verification values for backend database.
+
+        Args:
+            backend_session: Session to backend database.
+
+        Returns:
+            Verification values.
+        """
+        return backend_session.execute("SELECT COUNT(id) as count, SUM(rate_close) as rate_close_sum "
+                                       "FROM last_rate").one()
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
