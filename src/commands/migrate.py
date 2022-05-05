@@ -38,7 +38,7 @@ class MigrateHandler:
     Migration handler database
     """
 
-    def __init__(self, debug: bool, force_recheck: bool):
+    def __init__(self, debug: bool, force_recheck: bool, timeout: int):
         """
         Constructor
         Args:
@@ -48,6 +48,7 @@ class MigrateHandler:
         self.backend_engine = self.get_backend_engine()
         self.debug = debug
         self.force_recheck = force_recheck
+        self.timeout = timeout
         self.force_failed_tasks = []
         self.forced_failed_tasks = []
 
@@ -61,7 +62,7 @@ class MigrateHandler:
             task_name: name of the task to run. Runs everything is not specified
             skip_tasks: list of tasks to skip
         """
-        timeout = datetime.now() + timedelta(minutes=15)
+        timeout = datetime.now() + timedelta(minutes=self.timeout)
         result = True
         task_names = []
 
@@ -360,9 +361,10 @@ class MigrateHandler:
 @click.option("--task", default="", help="Only run specified task")
 @click.option("--skip-tasks", default="", help="Run without specified tasks")
 @click.option("--force-recheck", default=False, help="Forces task to recheck all entities")
-def main(debug, task, skip_tasks, force_recheck):
+@click.option("--timeout", default="15", help="Timeout in minutes")
+def main(debug, task, skip_tasks, force_recheck, timeout):
     """Migration method"""
-    handler = MigrateHandler(debug=debug, force_recheck=force_recheck)
+    handler = MigrateHandler(debug=debug, force_recheck=force_recheck, timeout=int(timeout))
     asyncio.run(handler.handle(
         task_name=task,
         skip_tasks=skip_tasks
