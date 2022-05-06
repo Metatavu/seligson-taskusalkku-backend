@@ -218,6 +218,17 @@ class AbstractFundsTask(AbstractMigrationTask, ABC):
                "INNER JOIN TABLE_PORCLASSDEF D ON P.COM_CODE = D.COM_CODE " \
                "AND P.PORID = D.PORID AND D.PORCLASS IN (3, 4, 5)"
 
+    @staticmethod
+    def list_backend_companies(backend_session: Session):
+        """
+        Lists companies from backend database
+        Args:
+            backend_session: Backend database session
+
+        Returns: companies from backend database
+        """
+        return backend_session.query(destination_models.Company).all()
+
 
 class AbstractSalkkuTask(AbstractMigrationTask, ABC):
     """
@@ -964,11 +975,13 @@ class MigrateCompaniesTask(AbstractFundsTask):
                         return False
 
                     if backend_company_map[com_code].name != name:
-                        self.print_message(f"Warning: Company {com_code} name mismatch")
+                        self.print_message(f"Warning: Company {com_code} name mismatch "
+                                           f"{backend_company_map[com_code].name} != {name}")
                         return False
 
                     if backend_company_map[com_code].ssn != so_sec_nr:
-                        self.print_message(f"Warning: Company {com_code} ssn mismatch")
+                        self.print_message(f"Warning: Company {com_code} ssn mismatch "
+                                           f"{backend_company_map[com_code].ssn} != {so_sec_nr}")
                         return False
 
                 self.print_message(f"Verified {offset}/{funds_company_count} companies")
@@ -1028,17 +1041,6 @@ class MigrateCompaniesTask(AbstractFundsTask):
                 "limit": limit,
                 "offset": offset
             })
-
-    @staticmethod
-    def list_backend_companies(backend_session: Session):
-        """
-        Lists companies from backend database
-        Args:
-            backend_session: Backend database session
-
-        Returns: companies from backend database
-        """
-        return backend_session.query(destination_models.Company).all()
 
     def count_funds_companies(self, funds_session: Session):
         """
@@ -1122,7 +1124,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             backend_count = self.count_backend_portfolios(backend_session=backend_session)
-            funds_count = self.count_fund_portfolios(funds_session=funds_session)
+            funds_count = self.count_funds_portfolios(funds_session=funds_session)
             return backend_count == funds_count
 
     @staticmethod
@@ -1139,40 +1141,66 @@ class MigratePortfoliosTask(AbstractFundsTask):
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
-        batch = 1000
+        batch = 10000
+        offset = 0
 
         with Session(self.get_funds_database_engine()) as funds_session:
-            backend_count = self.count_backend_portfolios(backend_session=backend_session)
-            offset = 0
-
-            if force_recheck:
-                self.print_message(f"Forced recheck, purging extra portfolios")
-                valid_por_ids = self.list_portfolio_por_ids(funds_session=funds_session)
-                backend_session.query(destination_models.Portfolio) \
-                    .filter(destination_models.Portfolio.original_id.not_in(valid_por_ids)) \
-                    .delete(synchronize_session=False)
-            else:
-                offset = backend_count
+            funds_por_ids = []
+            backend_portfolios = list(self.list_backend_portfolios(backend_session=backend_session))
+            backend_portfolio_map = {x.original_id: x for x in backend_portfolios}
+            backend_companies = list(self.list_backend_companies(backend_session=backend_session))
+            backend_company_map = {x.original_id: x for x in backend_companies}
 
             while not self.should_timeout(timeout=timeout):
                 self.print_message(f"Migrating portfolios from offset {offset}")
 
-                portfolio_rows = self.list_portfolios(
+                funds_portfolio_rows = self.list_funds_portfolios(
                     funds_session=funds_session,
                     offset=offset,
                     limit=batch
                 )
 
-                if portfolio_rows.rowcount == 0:
+                if funds_portfolio_rows.rowcount == 0:
                     break
 
-                for portfolio_row in portfolio_rows:
-                    synchronized_count += self.migrate_portfolio(backend_session, portfolio_row)
+                for funds_portfolio_row in funds_portfolio_rows:
+                    por_id = funds_portfolio_row.PORID
+                    name = funds_portfolio_row.NAME1
+                    com_code = funds_portfolio_row.COM_CODE
+                    funds_por_ids.append(por_id)
 
-                if portfolio_rows.rowcount != -1 and portfolio_rows.rowcount < batch:
-                    break
+                    company = backend_company_map.get(com_code, None)
+                    if not company:
+                        raise MissingCompanyException(
+                            original_id=com_code
+                        )
+
+                    existing_portfolio = backend_portfolio_map.get(por_id, None)
+
+                    self.upsert_portfolio(
+                        backend_session=backend_session,
+                        existing_portfolio=existing_portfolio,
+                        original_id=por_id,
+                        name=name,
+                        company_id=company.id
+                    )
+
+                    synchronized_count = synchronized_count + 1
 
                 offset += batch
+
+            backend_original_ids = backend_portfolio_map.keys()
+            removed_por_ids = []
+
+            for original_id in backend_original_ids:
+                if original_id not in funds_por_ids:
+                    removed_por_ids.append(original_id)
+
+            if len(removed_por_ids) > 0:
+                self.print_message(f"Deleting portfolios with original_ids {removed_por_ids}")
+                synchronized_count = synchronized_count + backend_session.query(destination_models.Portfolio) \
+                    .filter(destination_models.Portfolio.original_id.in_(removed_por_ids)) \
+                    .delete(synchronize_session=False)
 
             if self.should_timeout(timeout=timeout):
                 self.print_message(TIMED_OUT)
@@ -1180,43 +1208,64 @@ class MigratePortfoliosTask(AbstractFundsTask):
             return synchronized_count
 
     def verify(self, backend_session: Session) -> bool:
-        # TODO: verify row by row
-        return False
+        batch = 10000
+        offset = 0
 
-    def migrate_portfolio(self, backend_session, portfolio_row):
-        """
-        Migrates single portfolio
-        Args:
-            backend_session: backend database session
-            portfolio_row: portfolio row
+        with Session(self.get_funds_database_engine()) as funds_session:
+            funds_portfolio_count = self.count_funds_portfolios(funds_session=funds_session)
+            backend_portfolios = list(self.list_backend_portfolios(backend_session=backend_session))
+            backend_companies = list(self.list_backend_companies(backend_session=backend_session))
+            backend_company_map = {x.id: x for x in backend_companies}
 
-        Returns: synchronized count
-        """
-        synchronized_count = 0
-        por_id = portfolio_row[0]
-        name = portfolio_row[1]
-        com_code = portfolio_row[2]
-        existing_portfolio = self.get_portfolio_id_by_original_id(backend_session=backend_session,
-                                                                  original_id=por_id)
-        if not existing_portfolio:
-            company = self.get_company_by_original_id(backend_session=backend_session, original_id=com_code)
-            if not company:
-                raise MissingCompanyException(
-                    original_id=com_code
+            if len(backend_portfolios) != funds_portfolio_count:
+                self.print_message(f"Warning: Portfolios count: {funds_portfolio_count} != {len(backend_portfolios)} ")
+                return False
+
+            backend_portfolio_map = {x.original_id: x for x in backend_portfolios}
+
+            while offset < funds_portfolio_count:
+                funds_portfolios = self.list_funds_portfolios(
+                    funds_session=funds_session,
+                    offset=offset,
+                    limit=batch
                 )
 
-            self.insert_portfolio(
-                backend_session=backend_session,
-                original_id=por_id,
-                company_id=company.id,
-                name=name
-            )
+                if funds_portfolios.rowcount == 0:
+                    break
 
-            synchronized_count = synchronized_count + 1
+                for funds_portfolio in funds_portfolios:
+                    por_id = funds_portfolio.PORID
+                    name = funds_portfolio.NAME1
+                    com_code = funds_portfolio.COM_CODE
 
-        return synchronized_count
+                    if por_id not in backend_portfolio_map:
+                        self.print_message(f"Warning: Portfolio {por_id} not found in backend")
+                        return False
 
-    def count_fund_portfolios(self, funds_session: Session):
+                    if backend_portfolio_map[por_id].name != name:
+                        self.print_message(f"Warning: Portfolio {por_id} name mismatch "
+                                           f"{backend_portfolio_map[por_id].name} != {name}")
+                        return False
+
+                    backend_portfolio_id = backend_portfolio_map[por_id].company_id
+                    backend_company = backend_company_map.get(backend_portfolio_id, None)
+                    if backend_company is None:
+                        self.print_message(f"Warning: Portfolio {por_id} company not found in backend")
+                        return False
+
+                    if backend_company.original_id != com_code:
+                        self.print_message(f"Warning: Portfolio {por_id} company_id mismatch "
+                                           f"{backend_company.original_id} != {com_code}")
+                        return False
+
+                self.print_message(f"Verified {offset}/{funds_portfolio_count} portfolios")
+                offset += batch
+
+            self.print_message(f"Verified all portfolios")
+
+        return True
+
+    def count_funds_portfolios(self, funds_session: Session):
         """
         Counts portfolios from funds database
         Args:
@@ -1229,20 +1278,18 @@ class MigratePortfoliosTask(AbstractFundsTask):
                                      f'WHERE PORID NOT IN ({exclude_query})') \
             .scalar()
 
-    def list_portfolio_por_ids(self, funds_session: Session):
+    @staticmethod
+    def list_backend_portfolios(backend_session: Session):
         """
-        Lists portfolio por ids from funds database
+        Lists portfolios from backend database
         Args:
-            funds_session: Funds database session
+            backend_session: Backend database session
 
-        Returns: portfolio por ids from funds database
+        Returns: portfolios from backend database
         """
-        exclude_query = self.get_excluded_portfolio_ids_query()
-        rows = funds_session.execute(f"SELECT PORID FROM TABLE_PORTFOL "
-                                     f'WHERE PORID NOT IN ({exclude_query})')
-        return list(map(lambda i: i.PORID, rows))
+        return backend_session.query(destination_models.Portfolio).all()
 
-    def list_portfolios(self, funds_session: Session, limit: int, offset: int):
+    def list_funds_portfolios(self, funds_session: Session, limit: int, offset: int):
         """
         Lists portfolios from funds database
         Args:
@@ -1255,26 +1302,31 @@ class MigratePortfoliosTask(AbstractFundsTask):
         exclude_query = self.get_excluded_portfolio_ids_query()
         return funds_session.execute('SELECT PORID, NAME1, COM_CODE FROM TABLE_PORTFOL '
                                      f'WHERE PORID NOT IN ({exclude_query})'
-                                     'ORDER BY CREA_DATE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
+                                     'ORDER BY PORID OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY',
                                      {
                                          "limit": limit,
                                          "offset": offset
                                      })
 
     @staticmethod
-    def insert_portfolio(backend_session: Session, original_id: str, company_id: UUID, name: str) -> \
-            destination_models.Portfolio:
+    def upsert_portfolio(backend_session: Session,
+                         existing_portfolio: Optional[destination_models.Portfolio],
+                         original_id: str,
+                         name: str,
+                         company_id: UUID
+                         ) -> destination_models.Portfolio:
         """
         Creates new portfolio
         Args:
             backend_session: backend database session
+            existing_portfolio: existing portfolio
             original_id: original id
             company_id: company id
             name: name
 
         Returns: created portfolio
         """
-        new_portfolio = destination_models.Portfolio()
+        new_portfolio = existing_portfolio if existing_portfolio else destination_models.Portfolio()
         new_portfolio.original_id = original_id
         new_portfolio.company_id = company_id
         new_portfolio.name = name
