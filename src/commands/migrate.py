@@ -38,7 +38,7 @@ class MigrateHandler:
     Migration handler database
     """
 
-    def __init__(self, debug: bool, force_recheck: bool, timeout: int):
+    def __init__(self, debug: bool, force_recheck: bool, timeout: int, security: str, verify_only: bool):
         """
         Constructor
         Args:
@@ -51,6 +51,8 @@ class MigrateHandler:
         self.timeout = timeout
         self.force_failed_tasks = []
         self.forced_failed_tasks = []
+        self.security = security
+        self.verify_only = verify_only
 
     async def handle(self,
                      task_name: Optional[str],
@@ -85,7 +87,11 @@ class MigrateHandler:
             self.print_message(f"\nForcing failed tasks: {self.force_failed_tasks}")
 
         for task in self.tasks:
-            if result and (timeout > datetime.now()) and (task.get_name() in task_names):
+            task.options = {
+                "security": self.security
+            }
+
+            if not self.verify_only and result and (timeout > datetime.now()) and (task.get_name() in task_names):
                 result = await self.run_task(task, timeout)
 
             if result and (timeout > datetime.now()) and (task.get_name() in task_names):
@@ -362,9 +368,18 @@ class MigrateHandler:
 @click.option("--skip-tasks", default="", help="Run without specified tasks")
 @click.option("--force-recheck", default=False, help="Forces task to recheck all entities")
 @click.option("--timeout", default="15", help="Timeout in minutes")
-def main(debug, task, skip_tasks, force_recheck, timeout):
+@click.option("--security", default=None, help="Specify security for the task")
+@click.option("--verify-only", default=False, help="Runs only verifications")
+def main(debug, task, skip_tasks, force_recheck, timeout, security, verify_only):
     """Migration method"""
-    handler = MigrateHandler(debug=debug, force_recheck=force_recheck, timeout=int(timeout))
+    handler = MigrateHandler(
+        debug=debug,
+        force_recheck=force_recheck,
+        timeout=int(timeout),
+        security=security,
+        verify_only=verify_only
+    )
+
     asyncio.run(handler.handle(
         task_name=task,
         skip_tasks=skip_tasks
