@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from sqlalchemy import create_engine, and_, func
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, TypedDict
 
 from database import models as destination_models
 from datetime import datetime, date, timedelta
@@ -24,10 +24,15 @@ TIMED_OUT = "Timed out."
 logger = logging.getLogger(__name__)
 
 
+class TaskOptions(TypedDict):
+    security: Optional[str]
+
+
 class AbstractMigrationTask(ABC):
     """
     Abstract migration task
     """
+    options: TaskOptions
 
     @abstractmethod
     def get_name(self) -> str:
@@ -1349,6 +1354,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         synchronized_count = 0
         batch = 1000
         unix_time = datetime(1970, 1, 1, 0, 0)
+        selected_security = self.options.get('security', None)
 
         with Session(self.get_funds_database_engine()) as funds_session:
 
@@ -1357,24 +1363,30 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
             securities = self.list_securities(backend_session=backend_session)
             for security in securities:
+                if selected_security is not None and security.original_id != selected_security:
+                    continue
+
                 if self.should_timeout(timeout=timeout):
                     break
 
                 offset = 0
 
-                funds_updated = funds_updates.get(security.original_id, None)
-                if not funds_updated:
-                    continue
-
-                backend_update = backend_updates.get(security.id, None)
-                if not backend_update:
+                if force_recheck:
                     backend_update = datetime(1970, 1, 1)
+                else:
+                    funds_updated = funds_updates.get(security.original_id, None)
+                    if not funds_updated:
+                        continue
 
-                if funds_updated <= backend_update:
-                    continue
+                    backend_update = backend_updates.get(security.id, None)
+                    if not backend_update:
+                        backend_update = datetime(1970, 1, 1)
 
-                self.print_message(f"Security {security.original_id} portfolio logs are not upd-to-date funds "
-                                   f"{funds_updated}, backend {backend_update}")
+                    if funds_updated <= backend_update:
+                        continue
+
+                    self.print_message(f"Security {security.original_id} portfolio logs are not upd-to-date funds "
+                                       f"{funds_updated}, backend {backend_update}")
 
                 while not self.should_timeout(timeout=timeout):
                     self.print_message(f"Migrating security {security.original_id} portfolio logs from offset {offset}")
@@ -1486,22 +1498,283 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
             return synchronized_count
 
+    def get_funds_verification_values(self, funds_session: Session, secid: str):
+        """
+        Returns verification values for funds database.
+
+        Args:
+            funds_session: Session to funds database.
+            secid: Security id.
+
+        Returns:
+            Verification values.
+        """
+        porid_exclude_query = self.get_excluded_portfolio_ids_query()
+
+        selects = ",".join([
+            "SUM(CAST(TRANS_CODE as BIGINT)) as trans_code_sum",
+            "SUM(CAST(TRANS_NR as BIGINT)) as trans_nr_sum",
+            "SUM(CAST(CTOT_VALUE as decimal(15,2))) as ctot_value_sum",
+            "SUM(CAST(AMOUNT as decimal(19,6))) as amount_sum",
+            "SUM(CAST(CVALUE as decimal(15,2))) as cvalue_sum",
+            "SUM(CAST(CPRICE as decimal(19,6))) as cprice_sum",
+            "SUM(CAST(PROVISION as decimal(15,2))) as provision_sum",
+        ])
+
+        return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTLOG "
+                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid",
+                                     {
+                                         "secid": secid
+                                     }).one()
+
+    @staticmethod
+    def get_backend_verification_values(backend_session: Session, security_id: UUID):
+        """
+        Returns verification values for backend database.
+
+        Args:
+            backend_session: Session to backend database.
+            security_id: Security id.
+
+        Returns:
+            Verification values.
+        """
+
+        return backend_session.query(
+            func.sum(destination_models.PortfolioLog.transaction_code).label("trans_code_sum"),
+            func.sum(destination_models.PortfolioLog.transaction_number).label("trans_nr_sum"),
+            func.sum(destination_models.PortfolioLog.c_total_value).label("ctot_value_sum"),
+            func.sum(destination_models.PortfolioLog.amount).label("amount_sum"),
+            func.sum(destination_models.PortfolioLog.c_value).label("cvalue_sum"),
+            func.sum(destination_models.PortfolioLog.c_price).label("cprice_sum"),
+            func.sum(destination_models.PortfolioLog.provision).label("provision_sum")
+        ).filter(destination_models.PortfolioLog.security_id == security_id).one()
+
     def verify(self, backend_session: Session) -> bool:
-        # TODO: verify row count
-        # TODO: sum(transaction_number)
-        # TODO: transaction_code with SELECT SUM(CAST(TRANS_CODE as INT)) FROM TABLE_PORTLOG WHERE PORID NOT IN (porid_exclude_query)
         # TODO: verify transaction_date
-        # TODO: verify c_total_value = Column(DECIMAL(15, 2))
         # TODO: verify portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True, nullable=False)
         # TODO: verify security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=False)
         # TODO: verify c_security_id = Column("c_security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=True)
-        # TODO: verify amount = Column(DECIMAL(19, 6), nullable=False)
-        # TODO: verify c_price = Column(DECIMAL(19, 6), nullable=False)
         # TODO: verify payment_date = Column(Date, index=True, nullable=True)
-        # TODO: verify c_value = Column(DECIMAL(15, 2), nullable=False)
-        # TODO: verify provision = Column(DECIMAL(15, 2), nullable=False)
         # TODO: verify status = Column(CHAR(1), nullable=False)
-        return False
+
+        selected_security = self.options.get('security', None)
+        result = True
+
+        with Session(self.get_funds_database_engine()) as funds_session:
+            securities = self.list_securities(backend_session=backend_session)
+            for security in securities:
+                if selected_security is not None and security.original_id != selected_security:
+                    continue
+
+                self.print_message(f"Verifying security {security.original_id} portfolio logs")
+
+                funds_row_count = self.count_funds_portfolio_logs(
+                    funds_session=funds_session,
+                    secid=security.original_id
+                )
+
+                backend_row_count = self.count_backend_portfolio_logs(
+                    backend_session=backend_session,
+                    security_id=security.id
+                )
+
+                if funds_row_count != backend_row_count:
+                    funds_nrs = self.list_funds_portfolio_log_trans_nrs(
+                        funds_session=funds_session,
+                        secid=security.original_id
+                    )
+
+                    backend_transaction_numbers = self.list_backend_portfolio_transaction_numbers(
+                        backend_session=backend_session,
+                        security_id=security.id
+                    )
+
+                    missing_transaction_numbers = set(funds_nrs).difference(set(backend_transaction_numbers))
+                    self.print_message(f"Warning: Row count mismatch {backend_row_count} != {funds_row_count} "
+                                       f"in portfolio logs table, security {security.original_id}. "
+                                       f"Missing transaction numbers: {missing_transaction_numbers}")
+
+                    for missing_transaction_number in missing_transaction_numbers:
+                        self.print_suggested_fix(
+                            trans_nr=missing_transaction_number,
+                            backend_session=backend_session,
+                            funds_session=funds_session
+                        )
+
+                    result = False
+                elif funds_row_count > 0:
+                    backend_verification_values = self.get_backend_verification_values(
+                        backend_session=backend_session,
+                        security_id=security.id
+                    )
+
+                    funds_verification_values = self.get_funds_verification_values(
+                        funds_session=funds_session,
+                        secid=security.original_id
+                    )
+
+                    if funds_verification_values.trans_code_sum != backend_verification_values.trans_code_sum:
+                        self.print_message(f"Warning: Transaction code sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.trans_code_sum} != "
+                                           f"{funds_verification_values.trans_code_sum}")
+                        result = False
+
+                    if funds_verification_values.trans_nr_sum != backend_verification_values.trans_nr_sum:
+                        self.print_message(f"Warning: Transaction number sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.trans_nr_sum} != "
+                                           f"{funds_verification_values.trans_nr_sum}")
+                        result = False
+
+                    if funds_verification_values.ctot_value_sum != backend_verification_values.ctot_value_sum:
+                        self.print_message(f"Warning: Total value sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.ctot_value_sum} != "
+                                           f"{funds_verification_values.ctot_value_sum}")
+                        result = False
+
+                    if funds_verification_values.amount_sum != backend_verification_values.amount_sum:
+                        self.print_message(f"Warning: Amount sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.amount_sum} != "
+                                           f"{funds_verification_values.amount_sum}")
+                        result = False
+
+                    if funds_verification_values.cvalue_sum != backend_verification_values.cvalue_sum:
+                        self.print_message(f"Warning: C value sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.cvalue_sum} != "
+                                           f"{funds_verification_values.cvalue_sum}")
+                        result = False
+
+                    if funds_verification_values.cprice_sum != backend_verification_values.cprice_sum:
+                        self.print_message(f"Warning: C pricew sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.cprice_sum} != "
+                                           f"{funds_verification_values.cprice_sum}")
+                        result = False
+
+            return result
+
+    def print_suggested_fix(self, trans_nr: str, funds_session: Session, backend_session: Session):
+        fund_portlog = self.find_fund_portfolio_log(funds_session=funds_session, trans_nr=trans_nr)
+        if not fund_portlog:
+            self.print_message(f"Warning: could not find missing portfolio log with transaction number {trans_nr}")
+        else:
+            por_id = fund_portlog.PORID.strip() if fund_portlog.PORID else None
+            com_code = fund_portlog.COM_CODE.strip() if fund_portlog.COM_CODE else None
+
+            if por_id:
+                portfolio_select = f"(SELECT id FROM portfolio WHERE original_id = '{por_id}')"
+            else:
+                company = self.get_company_by_original_id(backend_session=backend_session, original_id=com_code)
+                if not company:
+                    self.print_message(f"Warning: could not find company by com code {com_code} "
+                                       f"for missing transaction {trans_nr}")
+
+                portfolios = self.list_portfolios_by_company(backend_session=backend_session,
+                                                             company_id=company.id)
+                if len(portfolios) != 1:
+                    self.print_message(f"Warning: could not resolve portfolio for company by com code {com_code} "
+                                       f"for missing transaction {trans_nr}")
+
+                else:
+                    portfolio_select = f"(SELECT id FROM portfolio WHERE original_id = '{portfolios[0].original_id}')"
+
+            values = ",".join([
+                "(UNHEX(REPLACE(UUID(), '-', '')))",
+                str(fund_portlog.TRANS_NR),
+                f"'{fund_portlog.TRANS_CODE}'",
+                f"DATE('{fund_portlog.TRANS_DATE.isoformat()}')" if fund_portlog.TRANS_DATE else "NULL",
+                f"{fund_portlog.CTOT_VALUE}",
+                portfolio_select,
+                f"(SELECT id FROM security WHERE original_id = '{fund_portlog.SECID}')" if
+                fund_portlog.SECID and fund_portlog.SECID.strip() else "NULL",
+
+                f"(SELECT id FROM security WHERE original_id = '{fund_portlog.CSECID}')" if
+                fund_portlog.CSECID and fund_portlog.CSECID.strip() else "NULL",
+
+                f"{fund_portlog.AMOUNT}",
+                f"{fund_portlog.CPRICE}",
+                f"DATE('{fund_portlog.PMT_DATE.isoformat()}')" if fund_portlog.PMT_DATE else "NULL",
+                f"{fund_portlog.CVALUE}",
+                f"{fund_portlog.PROVISION}",
+                f"'{fund_portlog.STATUS}'",
+                f"DATE('{fund_portlog.UPDATED.isoformat()}')" if fund_portlog.UPDATED else "NULL"
+            ])
+
+            self.print_message(f"INSERT INTO portfolio_log (`id`, `transaction_number`, "
+                               f"`transaction_code`, `transaction_date`, `c_total_value`, `portfolio_id`, "
+                               f"`security_id`, `c_security_id`, `amount`, `c_price`, `payment_date`, `c_value`, "
+                               f"`provision`, `status`, `updated`) VALUES ({values});")
+
+    def count_funds_portfolio_logs(self, funds_session: Session, secid: str):
+        """
+        Count portfolio logs from funds database
+        Args:
+            funds_session: Funds database session
+            secid: security id
+
+        Returns: Number of portfolio logs
+        """
+        porid_exclude_query = self.get_excluded_portfolio_ids_query()
+
+        return funds_session.execute(
+            f"SELECT COUNT(TRANS_NR) FROM TABLE_PORTLOG "
+             f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid", {
+                "secid": secid
+            }).scalar()
+
+    @staticmethod
+    def count_backend_portfolio_logs(backend_session: Session, security_id: UUID):
+        """
+        Count portfolio logs from backend database
+        Args:
+            backend_session: Backend database session
+            security_id: Security id
+
+        Returns: count of portfolio logs from backend database
+        """
+        return backend_session.query(func.count(destination_models.PortfolioLog.id))\
+            .filter(destination_models.PortfolioLog.security_id == security_id)\
+            .scalar()
+
+    def list_funds_portfolio_log_trans_nrs(self, funds_session: Session, secid: str):
+        """
+        Lists portfolio log trans nrs from funds database
+        Args:
+            funds_session: Funds database session
+            secid: security id
+
+        Returns: portfolio log nrs
+        """
+        porid_exclude_query = self.get_excluded_portfolio_ids_query()
+
+        rows = funds_session.execute(f"SELECT TRANS_NR FROM TABLE_PORTLOG " 
+                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid",
+                                     {
+                                         "secid": secid
+                                     }).all()
+
+        return [value for value, in rows]
+
+    @staticmethod
+    def list_backend_portfolio_transaction_numbers(backend_session: Session, security_id: UUID):
+        """
+        List log transaction numbers from backend database
+        Args:
+            backend_session: Backend database session
+            security_id: Security id
+
+        Returns: portfolio log transaction numbers
+        """
+        rows = backend_session.query(destination_models.PortfolioLog.transaction_number)\
+            .filter(destination_models.PortfolioLog.security_id == security_id)\
+            .all()
+
+        return [value for value, in rows]
 
     @staticmethod
     def get_backend_updates(backend_session: Session) -> Dict[UUID, datetime]:
@@ -1569,6 +1842,24 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                          "updated": updated.isoformat(),
                                          "secid": security.original_id
                                      })
+
+    def find_fund_portfolio_log(self, funds_session: Session, trans_nr: str):
+        """
+        Lists rates from funds database
+        Args:
+            funds_session: Funds database session
+            trans_nr: transaction number
+
+        Returns: found portfolio log or None if not found
+        """
+        return funds_session.execute("SELECT SECID, CSECID, PORID, COM_CODE, TRANS_NR, TRANS_CODE, TRANS_DATE, "
+                                     "CTOT_VALUE, AMOUNT, CPRICE, PMT_DATE, CVALUE, PROVISION, STATUS, "
+                                     "UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) as UPDATED "
+                                     "FROM TABLE_PORTLOG "
+                                     "WHERE TRANS_NR = :trans_nr",
+                                     {
+                                         "trans_nr": trans_nr
+                                     }).one_or_none()
 
     @staticmethod
     def upsert_portfolio_log(session, portfolio_log, transaction_number, transaction_code, transaction_date,
