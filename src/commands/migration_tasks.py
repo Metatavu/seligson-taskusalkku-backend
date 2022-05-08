@@ -2484,23 +2484,58 @@ class MigrateFundsTask(AbstractMigrationTask):
             return synchronized_count
 
     def verify(self, backend_session: Session) -> bool:
-        # TODO original_id
-        # TODO risk_level
-        # TODO group
-        # TODO kiid_url_fi
-        # TODO kiid_url_sv
-        # TODO kiid_url_en
-        # TODO deprecated
-
         with Session(self.kiid_engine) as kiid_session:
-            kiid_row_count = self.count_rows_kiid(kiid_session=kiid_session)
-            backend_row_count = self.count_rows_backend(backend_session=backend_session)
+            kiid_funds = self.list_fund_rows(kiid_session=kiid_session).all()
+            backend_funds = self.list_backend_funds(backend_session=backend_session)
+            backend_fund_map = {x.original_id: x for x in backend_funds}
 
-            if kiid_row_count != backend_row_count:
-                self.print_message(f"Warning: {kiid_row_count} != {backend_row_count} in fund table")
+            if len(backend_funds) != len(kiid_funds):
+                self.print_message(f"Warning: Fund count mismatch: "
+                                   f"{len(backend_funds)} != {len(kiid_funds)} ")
                 return False
 
-            return True
+            for kiid_fund in kiid_funds:
+                if kiid_fund.ID not in backend_fund_map:
+                    self.print_message(f"Warning: Fund {kiid_fund.ID} not found in backend")
+                    return False
+
+                backend_fund = backend_fund_map[kiid_fund.ID]
+                fund_group = self.get_fund_group(fund_type=kiid_fund.FUND_TYPE)
+                fund_risk_level = str(kiid_fund.VOLATILITY_CAT) if kiid_fund.VOLATILITY_CAT else None
+
+                if fund_group != backend_fund.group:
+                    self.print_message(f"Warning: Fund group for fund {kiid_fund.ID}"
+                                       f" {fund_group} != {backend_fund.group}")
+                    return False
+
+                if fund_risk_level != backend_fund.risk_level:
+                    self.print_message(f"Warning: Fund risk_level for fund {kiid_fund.ID}"
+                                       f" {kiid_fund.VOLATILITY_CAT} != {backend_fund.risk_level}")
+                    return False
+
+                if kiid_fund.URL_FI != backend_fund.kiid_url_fi:
+                    self.print_message(f"Warning: Fund kiid_url_fi for fund {kiid_fund.ID}"
+                                       f" {kiid_fund.URL_FI} != {backend_fund.kiid_url_fi}")
+                    return False
+
+                if kiid_fund.URL_EN != backend_fund.kiid_url_en:
+                    self.print_message(f"Warning: Fund kiid_url_sv for fund {kiid_fund.ID}"
+                                       f" {kiid_fund.URL_EN} != {backend_fund.kiid_url_en}")
+                    return False
+
+                if kiid_fund.URL_SV != backend_fund.kiid_url_sv:
+                    self.print_message(f"Warning: Fund kiid_url_fi for fund {kiid_fund.ID}"
+                                       f" {kiid_fund.URL_SV} != {backend_fund.kiid_url_sv}")
+                    return False
+
+                if kiid_fund.DEPRECATED == 1 != backend_fund.deprecated:
+                    self.print_message(f"Warning: Fund deprecated for fund {kiid_fund.ID}"
+                                       f" {kiid_fund.DEPRECATED == 1} != {backend_fund.deprecated}")
+                    return False
+
+            self.print_message(f"Verified all funds")
+
+        return True
 
     @staticmethod
     def list_original_ids_backend(backend_session: Session) -> List[str]:
@@ -2547,6 +2582,17 @@ class MigrateFundsTask(AbstractMigrationTask):
         """
         statement = f"SELECT ID, URL_FI, URL_SV, URL_EN, VOLATILITY_CAT, FUND_TYPE, DEPRECATED FROM FUND"
         return kiid_session.execute(statement=statement)
+
+    @staticmethod
+    def list_backend_funds(backend_session: Session) -> List[destination_models.Fund]:
+        """
+        Lists funds from backend database
+        Args:
+            backend_session: Backend database session
+
+        Returns: funds
+        """
+        return backend_session.query(destination_models.Fund).all()
 
     @staticmethod
     def get_fund_group(fund_type: str) -> str:
