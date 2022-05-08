@@ -1570,6 +1570,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             "SUM(CAST(CVALUE as decimal(15,2))) as cvalue_sum",
             "SUM(CAST(CPRICE as decimal(19,6))) as cprice_sum",
             "SUM(CAST(PROVISION as decimal(15,2))) as provision_sum",
+            "SUM(CAST(status as BIGINT)) as status_sum"
         ])
 
         return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTLOG "
@@ -1598,16 +1599,15 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.sum(destination_models.PortfolioLog.amount).label("amount_sum"),
             func.sum(destination_models.PortfolioLog.c_value).label("cvalue_sum"),
             func.sum(destination_models.PortfolioLog.c_price).label("cprice_sum"),
-            func.sum(destination_models.PortfolioLog.provision).label("provision_sum")
+            func.sum(destination_models.PortfolioLog.provision).label("provision_sum"),
+            func.sum(destination_models.PortfolioLog.status).label("status_sum")
         ).filter(destination_models.PortfolioLog.security_id == security_id).one()
 
     def verify(self, backend_session: Session) -> bool:
         # TODO: verify transaction_date
         # TODO: verify portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True, nullable=False)
-        # TODO: verify security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=False)
         # TODO: verify c_security_id = Column("c_security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=True)
         # TODO: verify payment_date = Column(Date, index=True, nullable=True)
-        # TODO: verify status = Column(CHAR(1), nullable=False)
 
         selected_security = self.options.get('security', None)
         result = True
@@ -1705,6 +1705,13 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.cprice_sum} != "
                                            f"{funds_verification_values.cprice_sum}")
+                        result = False
+
+                    if funds_verification_values.status_sum != backend_verification_values.status_sum:
+                        self.print_message(f"Warning: status sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.status_sum} != "
+                                           f"{funds_verification_values.status_sum}")
                         result = False
 
             return result
