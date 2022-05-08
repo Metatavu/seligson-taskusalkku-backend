@@ -2644,10 +2644,7 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
         company_original_id_map = {x.original_id: x for x in companies}
         company_id_map = {x.id: x for x in companies}
 
-        existing_rows = backend_session.query(destination_models.CompanyAccess.id,
-                                              destination_models.CompanyAccess.ssn,
-                                              destination_models.CompanyAccess.company_id
-                                              ).all()
+        existing_rows = self.list_backend_company_access(backend_session=backend_session)
         existing_map = {}
 
         for existing_row in existing_rows:
@@ -2657,7 +2654,7 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
 
         with Session(self.get_salkku_database_engine()) as salkku_session:
             self.print_message(f"Migrating company access")
-            authorization_rows = self.list_authorizations(salkku_session=salkku_session)
+            authorization_rows = self.list_salkku_authorizations(salkku_session=salkku_session)
             deleted_keys = list(existing_map.keys())
             added_authorizations = []
 
@@ -2698,12 +2695,30 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
             return synchronized_count
 
     def verify(self, backend_session: Session) -> bool:
-        # TODO: ssn
-        # TODO: company_id
-        return False
+        with Session(self.get_salkku_database_engine()) as salkku_session:
+            salkku_company_accesses = self.list_salkku_authorizations(salkku_session=salkku_session).all()
+            salkku_company_accesses_map = {f"{x.authorizedSSN}-{x.comCode}": x for x in salkku_company_accesses}
+            backend_company_accesses = self.list_backend_company_access(backend_session=backend_session)
+
+            if len(backend_company_accesses) != len(salkku_company_accesses):
+                self.print_message(f"Warning: Company access count mismatch: "
+                                   f"{len(backend_company_accesses)} != {len(salkku_company_accesses)} ")
+                return False
+
+            for backend_company_access in backend_company_accesses:
+                backend_company = backend_company_access.company
+                key = f"{backend_company_access.ssn}-{backend_company.original_id}"
+
+                if key not in salkku_company_accesses_map:
+                    self.print_message(f"Warning: Company access with key {key} not found in backend")
+                    return False
+
+            self.print_message(f"Verified all company accesses")
+
+        return True
 
     @staticmethod
-    def list_authorizations(salkku_session: Session):
+    def list_salkku_authorizations(salkku_session: Session):
         """
         Lists authorizations from salkku database
 
@@ -2723,6 +2738,18 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
                                       '  (expires IS NULL OR expires >= CURDATE()) '
                                       'GROUP BY '
                                       '  authorizedSSN, comCode')
+
+    @staticmethod
+    def list_backend_company_access(backend_session: Session):
+        """
+        Lists company access from backend database
+        Args:
+            backend_session: backend database
+
+        Returns:
+            List of company access from backend database
+        """
+        return backend_session.query(destination_models.CompanyAccess).all()
 
     @staticmethod
     def insert_company_access(backend_session: Session,
