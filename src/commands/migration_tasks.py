@@ -456,7 +456,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
         return backend_session.query(func.max(destination_models.Security.updated).label("last_update")).one_or_none()
 
     @staticmethod
-    def list_backend_securities(backend_session: Session) -> List[str]:
+    def list_backend_securities(backend_session: Session) -> List[destination_models.Security]:
         """
         Lists original ids from backend database
         Args:
@@ -1653,6 +1653,12 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             funds_session=funds_session
                         )
 
+                    self.print_suggested_status_updates(
+                        funds_session=funds_session,
+                        backend_session=backend_session,
+                        security=security
+                    )
+
                     result = False
                 elif funds_row_count > 0:
                     backend_verification_values = self.get_backend_verification_values(
@@ -1712,9 +1718,47 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.status_sum} != "
                                            f"{funds_verification_values.status_sum}")
+
+                        self.print_suggested_status_updates(
+                            funds_session=funds_session,
+                            backend_session=backend_session,
+                            security=security
+                        )
+
                         result = False
 
             return result
+
+    def print_suggested_status_updates(self,
+                                       funds_session: Session,
+                                       backend_session: Session,
+                                       security: destination_models.Security
+                                       ):
+        """
+        Prints the suggested status updates for the given security.
+        Args:
+            funds_session: The funds database session.
+            backend_session: The backend database session.
+            security: The security to print the status updates for.
+        """
+        fund_statuses = list(self.list_fund_statuses(
+            funds_session=funds_session,
+            security=security,
+            updated=datetime(1970, 1, 1)
+        ).fetchall())
+
+        backend_status = self.list_backend_status(
+            backend_session=backend_session,
+            security_id=security.id
+        )
+
+        backend_status_map = {x.transaction_number: x for x in backend_status}
+
+        for fund_status in fund_statuses:
+            backend_status = backend_status_map.get(fund_status.TRANS_NR, None)
+            if backend_status and fund_status.STATUS != backend_status.status:
+                self.print_message(f"Suggest: UPDATE portfolio_log SET status = {fund_status.STATUS} "
+                                   f"WHERE transaction_number = {fund_status.TRANS_NR};")
 
     def print_suggested_insert(self, trans_nr: str, funds_session: Session, backend_session: Session):
         """
@@ -1908,7 +1952,46 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                          "secid": security.original_id
                                      })
 
-    def find_fund_portfolio_log(self, funds_session: Session, trans_nr: str):
+    def list_fund_statuses(self, funds_session: Session, security: destination_models.Security, updated: datetime):
+        """
+        Lists statuses from funds database
+        Args:
+            funds_session: Funds database session
+            updated: min updated
+            security: security
+
+        Returns: statuses from funds database
+        """
+        porid_exclude_query = self.get_excluded_portfolio_ids_query()
+
+        return funds_session.execute("SELECT TRANS_NR, STATUS "
+                                     "FROM TABLE_PORTLOG "
+                                     "WHERE UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) >= :updated AND "
+                                     "SECID = :secid AND "
+                                     "PORID IN (SELECT PORID FROM TABLE_PORTFOL) AND "
+                                     f"PORID NOT IN ({porid_exclude_query}) ",
+                                     {
+                                         "updated": updated.isoformat(),
+                                         "secid": security.original_id
+                                     })
+
+    @staticmethod
+    def list_backend_statuses(backend_session: Session, security_id: UUID):
+        """
+        List statuses from backend database
+        Args:
+            backend_session: Backend database session
+            security_id: Security id
+
+        Returns: statuses from backend database
+        """
+        return backend_session.query(destination_models.PortfolioLog.transaction_number,
+                                     destination_models.PortfolioLog.status)\
+            .filter(destination_models.PortfolioLog.security_id == security_id)\
+            .all()
+
+    @staticmethod
+    def find_fund_portfolio_log(funds_session: Session, trans_nr: str):
         """
         Lists rates from funds database
         Args:
@@ -2072,7 +2155,6 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
             return synchronized_count
 
     def verify(self, backend_session: Session) -> bool:
-        # TODO: select count(id), sum(amount), sum(transaction_number), sum(purchase_c_value) from portfolio_transaction;
         # TODO: portfolio_id
         # TODO: security_id
 
