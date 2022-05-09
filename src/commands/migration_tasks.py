@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from uuid import UUID
 from abc import ABC, abstractmethod
-from sqlalchemy import create_engine, and_, func
+from sqlalchemy import create_engine, and_, func, text, Integer
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, TypedDict
@@ -1570,7 +1570,9 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             "SUM(CAST(CVALUE as decimal(15,2))) as cvalue_sum",
             "SUM(CAST(CPRICE as decimal(19,6))) as cprice_sum",
             "SUM(CAST(PROVISION as decimal(15,2))) as provision_sum",
-            "SUM(CAST(status as BIGINT)) as status_sum"
+            "SUM(CAST(status as BIGINT)) as status_sum",
+            "SUM(COALESCE(CAST(DATEDIFF(MINUTE, '1970-01-01', PMT_DATE) as BIGINT), 0)) as pmt_date_sum",
+            "SUM(COALESCE(CAST(DATEDIFF(MINUTE, '1970-01-01', TRANS_DATE) as BIGINT), 0)) as trans_date_date_sum"
         ])
 
         return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTLOG "
@@ -1592,6 +1594,14 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             Verification values.
         """
 
+        pmt_date_sum = func.sum(func.coalesce(func.cast(
+            func.TIMESTAMPDIFF(text('MINUTE'), datetime(1970, 1, 1), destination_models.PortfolioLog.payment_date),
+            Integer), 0))
+
+        trans_date_date_sum = func.sum(func.coalesce(func.cast(
+            func.TIMESTAMPDIFF(text('MINUTE'), datetime(1970, 1, 1), destination_models.PortfolioLog.transaction_date),
+            Integer), 0))
+
         return backend_session.query(
             func.sum(destination_models.PortfolioLog.transaction_code).label("trans_code_sum"),
             func.sum(destination_models.PortfolioLog.transaction_number).label("trans_nr_sum"),
@@ -1600,14 +1610,15 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.sum(destination_models.PortfolioLog.c_value).label("cvalue_sum"),
             func.sum(destination_models.PortfolioLog.c_price).label("cprice_sum"),
             func.sum(destination_models.PortfolioLog.provision).label("provision_sum"),
-            func.sum(destination_models.PortfolioLog.status).label("status_sum")
+            func.sum(destination_models.PortfolioLog.status).label("status_sum"),
+            func.sum(destination_models.PortfolioLog.status).label("trans_date_date_sum"),
+            pmt_date_sum.label("pmt_date_sum"),
+            trans_date_date_sum.label("trans_date_date_sum")
         ).filter(destination_models.PortfolioLog.security_id == security_id).one()
 
     def verify(self, backend_session: Session) -> bool:
-        # TODO: verify transaction_date
         # TODO: verify portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True, nullable=False)
         # TODO: verify c_security_id = Column("c_security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=True)
-        # TODO: verify payment_date = Column(Date, index=True, nullable=True)
 
         selected_security = self.options.get('security', None)
         result = True
@@ -1713,6 +1724,20 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                            f"{funds_verification_values.cprice_sum}")
                         result = False
 
+                    if funds_verification_values.pmt_date_sum != backend_verification_values.pmt_date_sum:
+                        self.print_message(f"Warning: payment date sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.pmt_date_sum} != "
+                                           f"{funds_verification_values.pmt_date_sum}")
+                        result = False
+
+                    if funds_verification_values.trans_date_date_sum != backend_verification_values.trans_date_date_sum:
+                        self.print_message(f"Warning: transaction date sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.trans_date_date_sum} != "
+                                           f"{funds_verification_values.trans_date_date_sum}")
+                        result = False
+
                     if funds_verification_values.status_sum != backend_verification_values.status_sum:
                         self.print_message(f"Warning: status sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
@@ -1747,7 +1772,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             updated=datetime(1970, 1, 1)
         ).fetchall())
 
-        backend_status = self.list_backend_status(
+        backend_status = self.list_backend_statuses(
             backend_session=backend_session,
             security_id=security.id
         )
