@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from uuid import UUID
 from abc import ABC, abstractmethod
-from sqlalchemy import create_engine, and_, func, text, Integer
+from sqlalchemy import create_engine, and_, func, text, Integer, DECIMAL
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, TypedDict
@@ -1572,7 +1572,9 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             "SUM(CAST(PROVISION as decimal(15,2))) as provision_sum",
             "SUM(CAST(status as BIGINT)) as status_sum",
             "SUM(COALESCE(CAST(DATEDIFF(MINUTE, '1970-01-01', PMT_DATE) as BIGINT), 0)) as pmt_date_sum",
-            "SUM(COALESCE(CAST(DATEDIFF(MINUTE, '1970-01-01', TRANS_DATE) as BIGINT), 0)) as trans_date_date_sum"
+            "SUM(COALESCE(CAST(DATEDIFF(MINUTE, '1970-01-01', TRANS_DATE) as BIGINT), 0)) as trans_date_date_sum",
+            "SUM(CAST(REPLACE(CASE PORID WHEN '' THEN COM_CODE ELSE PORID END, '_', '.') "
+            "   as DECIMAL(38, 2))) as por_id_sum"
         ])
 
         return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTLOG "
@@ -1602,7 +1604,14 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.TIMESTAMPDIFF(text('MINUTE'), datetime(1970, 1, 1), destination_models.PortfolioLog.transaction_date),
             Integer), 0))
 
-        return backend_session.query(
+        portfolio_original_id_query = backend_session.query(destination_models.Portfolio.original_id)\
+            .filter(destination_models.Portfolio.id == destination_models.PortfolioLog.portfolio_id).scalar_subquery()
+
+        por_id_sum = func.sum(
+            func.cast(func.replace(portfolio_original_id_query, '_', '.'), DECIMAL(38, 2))
+        )
+
+        query = backend_session.query(
             func.sum(destination_models.PortfolioLog.transaction_code).label("trans_code_sum"),
             func.sum(destination_models.PortfolioLog.transaction_number).label("trans_nr_sum"),
             func.sum(destination_models.PortfolioLog.c_total_value).label("ctot_value_sum"),
@@ -1613,11 +1622,13 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.sum(destination_models.PortfolioLog.status).label("status_sum"),
             func.sum(destination_models.PortfolioLog.status).label("trans_date_date_sum"),
             pmt_date_sum.label("pmt_date_sum"),
-            trans_date_date_sum.label("trans_date_date_sum")
-        ).filter(destination_models.PortfolioLog.security_id == security_id).one()
+            trans_date_date_sum.label("trans_date_date_sum"),
+            por_id_sum.label("por_id_sum")
+        ).filter(destination_models.PortfolioLog.security_id == security_id)
+
+        return query.one()
 
     def verify(self, backend_session: Session) -> bool:
-        # TODO: verify portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True, nullable=False)
         # TODO: verify c_security_id = Column("c_security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=True)
 
         selected_security = self.options.get('security', None)
@@ -1736,6 +1747,13 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.trans_date_date_sum} != "
                                            f"{funds_verification_values.trans_date_date_sum}")
+                        result = False
+
+                    if funds_verification_values.por_id_sum != backend_verification_values.por_id_sum:
+                        self.print_message(f"Warning: portfolio id sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.por_id_sum} != "
+                                           f"{funds_verification_values.por_id_sum}")
                         result = False
 
                     if funds_verification_values.status_sum != backend_verification_values.status_sum:
