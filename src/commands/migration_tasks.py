@@ -547,18 +547,60 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
         with Session(self.get_funds_database_engine()) as funds_session:
             funds_verification_values = self.get_funds_verification_values(funds_session=funds_session)
             backend_verification_values = self.get_backend_verification_values(backend_session=backend_session)
+            result = True
 
             if funds_verification_values.count != backend_verification_values.count:
                 self.print_message(f"Warning: Count mismatch {funds_verification_values.count} != "
                                    f"{backend_verification_values.count} in security_rate table")
-                return False
+                result = False
 
             if funds_verification_values.rate_close_sum != backend_verification_values.rate_close_sum:
                 self.print_message(f"Warning: Rate close sum mismatch {funds_verification_values.rate_close_sum} != "
                                    f"{backend_verification_values.rate_close_sum} in security_rate table")
-                return False
+                result = False
 
-            return True
+            if not result:
+                self.print_suggests(
+                    backend_session=backend_session,
+                    funds_session=funds_session
+                )
+
+            return result
+
+    def print_suggests(self, backend_session: Session, funds_session: Session):
+        """
+        Prints suggested fix for verification issues
+
+        Args:
+            backend_session: Backend session
+            funds_session: Funds session
+        """
+        securities = self.list_securities(backend_session=backend_session)
+        for security in securities:
+            funds_rate_rows = self.list_funds_security_rates(
+                funds_session=funds_session,
+                security=security,
+                rdate=date(1970, 1, 1),
+                offset=0,
+                limit=100000
+            )
+
+            for funds_rate_row in funds_rate_rows:
+                funds_rate_date = funds_rate_row.RDATE
+                funds_rate_close = funds_rate_row.RCLOSE
+
+                backend_security_rate = self.get_security_rate(
+                    backend_session=backend_session,
+                    security=security,
+                    rate_date=funds_rate_date
+                )
+
+                if funds_rate_close != backend_security_rate.rate_close:
+                    sec_id = security.original_id
+                    self.print_message(f"Suggest: UPDATE security_rate "
+                                       f"SET rate_close = {funds_rate_close} "
+                                       f"WHERE rate_date=DATE('{funds_rate_date}') AND "
+                                       f"security_id=(SELECT id FROM security WHERE original_id = '{sec_id}')")
 
     @staticmethod
     def get_funds_verification_values(funds_session: Session):
@@ -613,7 +655,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
         while not self.should_timeout(timeout=timeout):
             self.print_message(f"Migrating security {security.original_id} rates from offset {offset}")
 
-            rate_rows = self.list_security_rates(
+            rate_rows = self.list_funds_security_rates(
                 funds_session=funds_session,
                 security=security,
                 rdate=last_backend_date,
@@ -625,8 +667,8 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                 break
 
             for rate_row in rate_rows:
-                rate_date = rate_row[0]
-                rate_close = rate_row[1]
+                rate_date = rate_row.RDATE
+                rate_close = rate_row.RCLOSE
 
                 existing_security_rate = (offset == 0 or force_recheck) and self.get_security_rate(
                     backend_session=backend_session,
@@ -687,7 +729,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
         return result
 
     @staticmethod
-    def list_security_rates(funds_session: Session, security: destination_models.Security, rdate: date,
+    def list_funds_security_rates(funds_session: Session, security: destination_models.Security, rdate: date,
                             limit: int, offset: int):
         """
         Lists rates from funds database
