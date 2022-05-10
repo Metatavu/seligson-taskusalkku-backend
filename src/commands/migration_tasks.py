@@ -1620,7 +1620,6 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.sum(destination_models.PortfolioLog.c_price).label("cprice_sum"),
             func.sum(destination_models.PortfolioLog.provision).label("provision_sum"),
             func.sum(destination_models.PortfolioLog.status).label("status_sum"),
-            func.sum(destination_models.PortfolioLog.status).label("trans_date_date_sum"),
             pmt_date_sum.label("pmt_date_sum"),
             trans_date_date_sum.label("trans_date_date_sum"),
             por_id_sum.label("por_id_sum")
@@ -1628,9 +1627,49 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
         return query.one()
 
-    def verify(self, backend_session: Session) -> bool:
-        # TODO: verify c_security_id = Column("c_security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=True)
+    def get_funds_csec_counts(self, funds_session: Session, secid: str):
+        """
+        Returns ccec counts for given secid
+        Args:
+            funds_session: Session to funds database.
+            secid: Security id.
+        Returns:
+            csec counts
+        """
+        porid_exclude_query = self.get_excluded_portfolio_ids_query()
 
+        return funds_session.execute(f"SELECT CSECID, count(CSECID) as count FROM TABLE_PORTLOG "
+                                     f"WHERE CSECID IS NOT NULL AND CSECID != '' AND "
+                                     f"PORID NOT IN ({porid_exclude_query}) AND SECID = :secid "
+                                     f"GROUP BY CSECID;",
+                                     {
+                                         "secid": secid
+                                     }).all()
+
+    @staticmethod
+    def get_backend_c_security_counts(backend_session: Session, security_id: UUID):
+        """
+        Returns csec counts for given secid
+        Args:
+            backend_session: Session to backend database.
+            security_id: Security id.
+
+        Returns:
+            csec counts
+        """
+        c_security_original_id_query = backend_session.query(destination_models.Security.original_id)\
+            .filter(destination_models.Security.id == destination_models.PortfolioLog.c_security_id).scalar_subquery()
+
+        query = backend_session.query(
+            c_security_original_id_query.label("CSECID"),
+            func.count(destination_models.PortfolioLog.c_security_id).label("count"))\
+            .filter(destination_models.PortfolioLog.security_id == security_id)\
+            .filter(destination_models.PortfolioLog.c_security_id.isnot(None))\
+            .group_by(destination_models.PortfolioLog.c_security_id)
+
+        return query.all()
+
+    def verify(self, backend_session: Session) -> bool:
         selected_security = self.options.get('security', None)
         result = True
 
@@ -1692,6 +1731,35 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                         funds_session=funds_session,
                         secid=security.original_id
                     )
+
+                    backend_c_security_counts = self.get_backend_c_security_counts(
+                        backend_session=backend_session,
+                        security_id=security.id
+                    )
+
+                    backend_c_security_counts_map = {x.CSECID: x.count
+                                                     for x in backend_c_security_counts}
+
+                    funds_c_security_counts = self.get_funds_csec_counts(
+                        funds_session=funds_session,
+                        secid=security.original_id
+                    )
+
+                    for funds_c_security_count in funds_c_security_counts:
+                        cssecid = funds_c_security_count.CSECID
+                        count = funds_c_security_count.count
+
+                        if cssecid not in backend_c_security_counts_map:
+                            self.print_message(f"Warning: c_security {cssecid}"
+                                               f" not found in portfolio logs in security"
+                                               f" {security.original_id}. ")
+                            result = False
+                        elif backend_c_security_counts_map[cssecid] != count:
+                            self.print_message(f"Warning: c_security {cssecid} count mismatch"
+                                               f" in security {security.original_id}. "
+                                               f" {backend_c_security_counts_map[cssecid]}, != {count}")
+                            result = False
+
 
                     if funds_verification_values.trans_code_sum != backend_verification_values.trans_code_sum:
                         self.print_message(f"Warning: Transaction code sum mismatch in portfolio logs in security"
@@ -2198,9 +2266,6 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
             return synchronized_count
 
     def verify(self, backend_session: Session) -> bool:
-        # TODO: portfolio_id
-        # TODO: security_id
-
         selected_security = self.options.get('security', None)
         result = True
 
