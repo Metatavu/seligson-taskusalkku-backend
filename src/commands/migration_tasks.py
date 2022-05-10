@@ -2279,6 +2279,13 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                                            f"{funds_verification_values.purc_value_sum}")
                         result = False
 
+                    if funds_verification_values.por_id_sum != backend_verification_values.por_id_sum:
+                        self.print_message(f"Warning: portfolio id sum mismatch in portfolio transaction in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.por_id_sum} != "
+                                           f"{funds_verification_values.por_id_sum}")
+                        result = False
+
             return result
 
     def print_suggested_insert(self, funds_session: Session, trans_nr: str):
@@ -2344,7 +2351,8 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
             "COUNT(TRANS_NR) as count",
             "SUM(CAST(TRANS_NR as BIGINT)) as trans_nr_sum",
             "SUM(CAST(AMOUNT as decimal(19,6))) as amount_sum",
-            "SUM(CAST(PUR_CVALUE as decimal(15,2))) as purc_value_sum"
+            "SUM(CAST(PUR_CVALUE as decimal(15,2))) as purc_value_sum",
+            "SUM(CAST(REPLACE(PORID, '_', '.') as DECIMAL(38, 2))) as por_id_sum"
         ])
 
         return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTRANS "
@@ -2366,11 +2374,20 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
             Verification values.
         """
 
+        portfolio_original_id_query = backend_session.query(destination_models.Portfolio.original_id)\
+            .filter(destination_models.Portfolio.id == destination_models.PortfolioTransaction.portfolio_id)\
+            .scalar_subquery()
+
+        por_id_sum = func.sum(
+            func.cast(func.replace(portfolio_original_id_query, '_', '.'), DECIMAL(38, 2))
+        )
+
         return backend_session.query(
             func.count(destination_models.PortfolioTransaction.transaction_number).label("count"),
             func.sum(destination_models.PortfolioTransaction.transaction_number).label("trans_nr_sum"),
             func.sum(destination_models.PortfolioTransaction.amount).label("amount_sum"),
-            func.sum(destination_models.PortfolioTransaction.purchase_c_value).label("purc_value_sum")
+            func.sum(destination_models.PortfolioTransaction.purchase_c_value).label("purc_value_sum"),
+            por_id_sum.label("por_id_sum")
         ).filter(destination_models.PortfolioTransaction.security_id == security_id).one()
 
     @staticmethod
