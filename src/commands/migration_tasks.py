@@ -2208,7 +2208,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
             backend_updates = self.get_backend_updates(backend_session=backend_session)
             own_date_after = date.today() - timedelta(days=1)
             if force_recheck:
-                own_date_after = date(2021, 12, 1)
+                own_date_after = date(1970, 1, 1)
 
             removed_trans_nrs = self.list_removed_trans_nrs(
                 funds_session=funds_session,
@@ -2235,9 +2235,12 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                 if not funds_updated:
                     continue
 
-                backend_update = backend_updates.get(security.id, None)
-                if not backend_update:
+                if force_recheck:
                     backend_update = datetime(1970, 1, 1)
+                else:
+                    backend_update = backend_updates.get(security.id, None)
+                    if not backend_update:
+                        backend_update = datetime(1970, 1, 1)
 
                 if funds_updated <= backend_update:
                     continue
