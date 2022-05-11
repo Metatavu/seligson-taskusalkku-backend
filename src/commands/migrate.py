@@ -92,22 +92,37 @@ class MigrateHandler:
             }
 
             if not self.verify_only and result and (timeout > datetime.now()) and (task.get_name() in task_names):
-                result = await self.run_task(task, timeout)
+                result = await self.run_task(task, timeout, False)
 
             if result and (timeout > datetime.now()) and (task.get_name() in task_names):
-                await self.run_verify(task=task)
+                valid = await self.run_verify(task=task)
+                if not valid:
+                    if not self.verify_only:
+                        self.print_message(f"Warning: Verification failed on {task.get_name()}, forcing the task...")
+                        await self.run_task(task, timeout, True)
+                        valid = await self.run_verify(task=task)
+
+                        if not valid:
+                            self.print_message(f"Warning: Verification failed on {task.get_name()}, "
+                                               f"despite of forcing the tasl. Notifying administrators...")
+                            await self.notify_verification_failure(task)
+                    else:
+                        self.print_message(f"Warning: Verification failed on {task.get_name()}.")
+                else:
+                    self.print_message(f"Info: {task.get_name()} verification passed.")
 
         if len(self.forced_failed_tasks) > 0:
             with Session(self.backend_engine) as backend_session:
                 self.mark_forced_tasks_as_done(backend_session=backend_session)
                 backend_session.commit()
 
-    async def run_task(self, task: AbstractMigrationTask, timeout: datetime) -> bool:
+    async def run_task(self, task: AbstractMigrationTask, timeout: datetime, force: bool) -> bool:
         """
         Runs single migration task
         Args:
             task: task
             timeout: timeout
+            force: whether to force task
         """
         result = True
         start_time = datetime.now()
@@ -118,7 +133,7 @@ class MigrateHandler:
             task.prepare(backend_session=backend_session)
             force_failed_task = name in self.force_failed_tasks
 
-            if self.force_recheck or force_failed_task:
+            if force or self.force_recheck or force_failed_task:
                 self.print_message(f"\nForced recheck, migrating {name}...")
 
                 try:
@@ -176,13 +191,21 @@ class MigrateHandler:
             return result
 
     async def run_verify(self, task: AbstractMigrationTask):
+        """
+        Runs the verification task.
+        Args:
+            task: the task to run
+
+        Returns:
+            True if the verification was successful, False otherwise
+        """
         name = task.get_name()
 
         with Session(self.backend_engine) as backend_session:
             if task.verify(backend_session=backend_session):
-                self.print_message(f"\n{name} verification passed.")
+                return True
             else:
-                self.print_message(f"\n{name} verification failed.")
+                return False
 
     async def handle_synchronization_failure(self,
                                              backend_session: Session,
@@ -306,6 +329,28 @@ class MigrateHandler:
         synchronization_failure.updated = datetime.now()
         synchronization_failure.action = SYNCHRONIZATION_FAILURE_ACTION_NOTIFIED
         backend_session.add(synchronization_failure)
+
+    async def notify_verification_failure(self, task):
+        """
+        Notifies verification failure
+
+        Args:
+            task: task
+        """
+        task_name = task.get_name()
+        email_body = f"Data verification failed on {task_name}.\n\n" \
+                     f"This is an automated message, please do not reply to this email"
+
+        message = MessageSchema(
+            subject=f"Data verification failure on Taskusalkku",
+            recipients=os.environ["MAIL_SYNCHRONIZATION_FAILURE_RECIPIENTS"].split(","),
+            body=email_body
+        )
+
+        try:
+            await Mailer.send_mail(message)
+        except Exception as e:
+            self.print_message(f"Error sending email {e}")
 
     @staticmethod
     def list_force_failed_tasks(backend_session: Session) -> List[str]:
