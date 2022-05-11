@@ -2944,15 +2944,13 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
                 com_code = added_authorization.comCode
                 company = company_original_id_map.get(str(com_code), None)
                 if not company:
-                    raise MissingCompanyException(
-                        original_id=com_code
+                    self.print_message(f"Warning Company {com_code} not found")
+                else:
+                    self.insert_company_access(
+                        backend_session=backend_session,
+                        company=company,
+                        ssn=ssn
                     )
-
-                self.insert_company_access(
-                    backend_session=backend_session,
-                    company=company,
-                    ssn=ssn
-                )
 
                 synchronized_count = synchronized_count + 1
 
