@@ -65,7 +65,6 @@ class MigrateHandler:
             skip_tasks: list of tasks to skip
         """
         timeout = datetime.now() + timedelta(minutes=self.timeout)
-        result = True
         task_names = []
 
         if task_name:
@@ -91,10 +90,10 @@ class MigrateHandler:
                 "security": self.security
             }
 
-            if not self.verify_only and result and (timeout > datetime.now()) and (task.get_name() in task_names):
-                result = await self.run_task(task, timeout, False)
+            if not self.verify_only and (timeout > datetime.now()) and (task.get_name() in task_names):
+                task_result = await self.run_task(task, timeout, False)
 
-            if result and (timeout > datetime.now()) and (task.get_name() in task_names):
+            if task_result and (timeout > datetime.now()) and (task.get_name() in task_names):
                 valid = await self.run_verify(task=task)
                 if not valid:
                     if not self.verify_only:
