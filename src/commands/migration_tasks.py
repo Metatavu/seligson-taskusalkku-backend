@@ -1721,6 +1721,8 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                 if selected_security is not None and security.original_id != selected_security:
                     continue
 
+                security_valid = True
+
                 self.print_message(f"Verifying security {security.original_id} portfolio logs")
 
                 funds_row_count = self.count_funds_portfolio_logs(
@@ -1734,35 +1736,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                 )
 
                 if funds_row_count != backend_row_count:
-                    funds_nrs = self.list_funds_portfolio_log_trans_nrs(
-                        funds_session=funds_session,
-                        secid=security.original_id
-                    )
-
-                    backend_transaction_numbers = self.list_backend_portfolio_log_transaction_numbers(
-                        backend_session=backend_session,
-                        security_id=security.id
-                    )
-
-                    missing_transaction_numbers = set(funds_nrs).difference(set(backend_transaction_numbers))
-                    self.print_message(f"Warning: Row count mismatch {backend_row_count} != {funds_row_count} "
-                                       f"in portfolio logs table, security {security.original_id}. "
-                                       f"Missing transaction numbers: {missing_transaction_numbers}")
-
-                    for missing_transaction_number in missing_transaction_numbers:
-                        self.print_suggested_insert(
-                            trans_nr=missing_transaction_number,
-                            backend_session=backend_session,
-                            funds_session=funds_session
-                        )
-
-                    self.print_suggested_status_updates(
-                        funds_session=funds_session,
-                        backend_session=backend_session,
-                        security=security
-                    )
-
-                    result = False
+                    security_valid = False
                 elif funds_row_count > 0:
                     backend_verification_values = self.get_backend_verification_values(
                         backend_session=backend_session,
@@ -1779,8 +1753,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                         security_id=security.id
                     )
 
-                    backend_c_security_counts_map = {x.CSECID: x.count
-                                                     for x in backend_c_security_counts}
+                    backend_c_security_counts_map = {x.CSECID: x.count for x in backend_c_security_counts}
 
                     funds_c_security_counts = self.get_funds_csec_counts(
                         funds_session=funds_session,
@@ -1795,76 +1768,75 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             self.print_message(f"Warning: c_security {cssecid}"
                                                f" not found in portfolio logs in security"
                                                f" {security.original_id}. ")
-                            result = False
+                            security_valid = False
                         elif backend_c_security_counts_map[cssecid] != count:
                             self.print_message(f"Warning: c_security {cssecid} count mismatch"
                                                f" in security {security.original_id}. "
                                                f" {backend_c_security_counts_map[cssecid]}, != {count}")
-                            result = False
-
+                            security_valid = False
 
                     if funds_verification_values.trans_code_sum != backend_verification_values.trans_code_sum:
                         self.print_message(f"Warning: Transaction code sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.trans_code_sum} != "
                                            f"{funds_verification_values.trans_code_sum}")
-                        result = False
+                        security_valid = False
 
                     if funds_verification_values.trans_nr_sum != backend_verification_values.trans_nr_sum:
                         self.print_message(f"Warning: Transaction number sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.trans_nr_sum} != "
                                            f"{funds_verification_values.trans_nr_sum}")
-                        result = False
+                        security_valid = False
 
                     if funds_verification_values.ctot_value_sum != backend_verification_values.ctot_value_sum:
                         self.print_message(f"Warning: Total value sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.ctot_value_sum} != "
                                            f"{funds_verification_values.ctot_value_sum}")
-                        result = False
+                        security_valid = False
 
                     if funds_verification_values.amount_sum != backend_verification_values.amount_sum:
                         self.print_message(f"Warning: Amount sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.amount_sum} != "
                                            f"{funds_verification_values.amount_sum}")
-                        result = False
+                        security_valid = False
 
                     if funds_verification_values.cvalue_sum != backend_verification_values.cvalue_sum:
                         self.print_message(f"Warning: C value sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.cvalue_sum} != "
                                            f"{funds_verification_values.cvalue_sum}")
-                        result = False
+                        security_valid = False
 
                     if funds_verification_values.cprice_sum != backend_verification_values.cprice_sum:
                         self.print_message(f"Warning: C pricew sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.cprice_sum} != "
                                            f"{funds_verification_values.cprice_sum}")
-                        result = False
+                        security_valid = False
 
                     if funds_verification_values.pmt_date_sum != backend_verification_values.pmt_date_sum:
                         self.print_message(f"Warning: payment date sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.pmt_date_sum} != "
                                            f"{funds_verification_values.pmt_date_sum}")
-                        result = False
+                        security_valid = False
 
                     if funds_verification_values.trans_date_date_sum != backend_verification_values.trans_date_date_sum:
                         self.print_message(f"Warning: transaction date sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.trans_date_date_sum} != "
                                            f"{funds_verification_values.trans_date_date_sum}")
-                        result = False
+                        security_valid = False
 
                     if funds_verification_values.por_id_sum != backend_verification_values.por_id_sum:
                         self.print_message(f"Warning: portfolio id sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.por_id_sum} != "
                                            f"{funds_verification_values.por_id_sum}")
-                        result = False
+                        security_valid = False
 
                     if funds_verification_values.status_sum != backend_verification_values.status_sum:
                         self.print_message(f"Warning: status sum mismatch in portfolio logs in security"
@@ -1872,13 +1844,42 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                            f"{backend_verification_values.status_sum} != "
                                            f"{funds_verification_values.status_sum}")
 
-                        self.print_suggested_status_updates(
-                            funds_session=funds_session,
-                            backend_session=backend_session,
-                            security=security
-                        )
+                        security_valid = False
 
-                        result = False
+                if not security_valid:
+                    funds_nrs = self.list_funds_portfolio_log_trans_nrs(
+                        funds_session=funds_session,
+                        secid=security.original_id
+                    )
+
+                    backend_transaction_numbers = self.list_backend_portfolio_log_transaction_numbers(
+                        backend_session=backend_session,
+                        security_id=security.id
+                    )
+
+                    missing_transaction_numbers = set(funds_nrs).difference(set(backend_transaction_numbers))
+                    extra_transaction_numbers = set(backend_transaction_numbers).difference(set(funds_nrs))
+
+                    if len(missing_transaction_numbers) > 0:
+                        self.print_message(f"Warning: Missing transaction numbers: {missing_transaction_numbers}")
+
+                        for missing_transaction_number in missing_transaction_numbers:
+                            self.print_suggested_insert(
+                                trans_nr=missing_transaction_number,
+                                backend_session=backend_session,
+                                funds_session=funds_session
+                            )
+
+                    if len(extra_transaction_numbers) > 0:
+                        self.print_message(f"Warning: Extra transaction numbers: {missing_transaction_numbers}")
+
+                    self.print_suggested_status_updates(
+                        funds_session=funds_session,
+                        backend_session=backend_session,
+                        security=security
+                    )
+
+                result = security_valid and result
 
             return result
 
@@ -2317,6 +2318,8 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                 if selected_security is not None and security.original_id != selected_security:
                     continue
 
+                security_valid = True
+
                 self.print_message(f"Verifying security {security.original_id} portfolio transactions")
 
                 backend_verification_values = self.get_backend_verification_values(
@@ -2334,8 +2337,38 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                                        f" {security.original_id}. "
                                        f"{backend_verification_values.count} != "
                                        f"{funds_verification_values.count}")
-                    result = False
+                    security_valid = False
+                else:
+                    if funds_verification_values.trans_nr_sum != backend_verification_values.trans_nr_sum:
+                        self.print_message(f"Warning: Transaction number sum mismatch in "
+                                           f"portfolio transaction in security "
+                                           f"{security.original_id}. "
+                                           f"{backend_verification_values.trans_nr_sum} != "
+                                           f"{funds_verification_values.trans_nr_sum}")
+                        security_valid = False
 
+                    if funds_verification_values.amount_sum != backend_verification_values.amount_sum:
+                        self.print_message(f"Warning: Amount sum mismatch in portfolio transaction in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.amount_sum} != "
+                                           f"{funds_verification_values.amount_sum}")
+                        security_valid = False
+
+                    if funds_verification_values.purc_value_sum != backend_verification_values.purc_value_sum:
+                        self.print_message(f"Warning: purchase C value sum mismatch in portfolio transaction in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.purc_value_sum} != "
+                                           f"{funds_verification_values.purc_value_sum}")
+                        security_valid = False
+
+                    if funds_verification_values.por_id_sum != backend_verification_values.por_id_sum:
+                        self.print_message(f"Warning: portfolio id sum mismatch in portfolio transaction in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.por_id_sum} != "
+                                           f"{funds_verification_values.por_id_sum}")
+                        security_valid = False
+
+                if not security_valid:
                     funds_nrs = self.list_funds_portfolio_transaction_trans_nrs(
                         funds_session=funds_session,
                         secid=security.original_id
@@ -2363,35 +2396,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                             trans_nr=extra_transaction_number
                         )
 
-                else:
-                    if funds_verification_values.trans_nr_sum != backend_verification_values.trans_nr_sum:
-                        self.print_message(f"Warning: Transaction number sum mismatch in "
-                                           f"portfolio transaction in security "
-                                           f"{security.original_id}. "
-                                           f"{backend_verification_values.trans_nr_sum} != "
-                                           f"{funds_verification_values.trans_nr_sum}")
-                        result = False
-
-                    if funds_verification_values.amount_sum != backend_verification_values.amount_sum:
-                        self.print_message(f"Warning: Amount sum mismatch in portfolio transaction in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.amount_sum} != "
-                                           f"{funds_verification_values.amount_sum}")
-                        result = False
-
-                    if funds_verification_values.purc_value_sum != backend_verification_values.purc_value_sum:
-                        self.print_message(f"Warning: purchase C value sum mismatch in portfolio transaction in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.purc_value_sum} != "
-                                           f"{funds_verification_values.purc_value_sum}")
-                        result = False
-
-                    if funds_verification_values.por_id_sum != backend_verification_values.por_id_sum:
-                        self.print_message(f"Warning: portfolio id sum mismatch in portfolio transaction in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.por_id_sum} != "
-                                           f"{funds_verification_values.por_id_sum}")
-                        result = False
+                result = result and security_valid
 
             return result
 
