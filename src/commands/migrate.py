@@ -38,7 +38,7 @@ class MigrateHandler:
     Migration handler database
     """
 
-    def __init__(self, debug: bool, force_recheck: bool):
+    def __init__(self, debug: bool, force_recheck: bool, timeout: int, security: str, verify_only: bool):
         """
         Constructor
         Args:
@@ -48,8 +48,11 @@ class MigrateHandler:
         self.backend_engine = self.get_backend_engine()
         self.debug = debug
         self.force_recheck = force_recheck
+        self.timeout = timeout
         self.force_failed_tasks = []
         self.forced_failed_tasks = []
+        self.security = security
+        self.verify_only = verify_only
 
     async def handle(self,
                      task_name: Optional[str],
@@ -61,8 +64,7 @@ class MigrateHandler:
             task_name: name of the task to run. Runs everything is not specified
             skip_tasks: list of tasks to skip
         """
-        timeout = datetime.now() + timedelta(minutes=15)
-        result = True
+        timeout = datetime.now() + timedelta(minutes=self.timeout)
         task_names = []
 
         if task_name:
@@ -84,23 +86,42 @@ class MigrateHandler:
             self.print_message(f"\nForcing failed tasks: {self.force_failed_tasks}")
 
         for task in self.tasks:
-            if result and (timeout > datetime.now()) and (task.get_name() in task_names):
-                result = await self.run_task(task, timeout)
+            task.options = {
+                "security": self.security
+            }
 
-            if result and (timeout > datetime.now()) and (task.get_name() in task_names):
-                await self.run_verify(task=task)
+            if not self.verify_only and (timeout > datetime.now()) and (task.get_name() in task_names):
+                task_result = await self.run_task(task, timeout, False)
+
+            if task_result and (timeout > datetime.now()) and (task.get_name() in task_names):
+                valid = await self.run_verify(task=task)
+                if not valid:
+                    if not self.verify_only:
+                        self.print_message(f"Warning: Verification failed on {task.get_name()}, forcing the task...")
+                        await self.run_task(task, timeout, True)
+                        valid = await self.run_verify(task=task)
+
+                        if not valid:
+                            self.print_message(f"Warning: Verification failed on {task.get_name()}, "
+                                               f"despite of forcing the tasl. Notifying administrators...")
+                            await self.notify_verification_failure(task)
+                    else:
+                        self.print_message(f"Warning: Verification failed on {task.get_name()}.")
+                else:
+                    self.print_message(f"Info: {task.get_name()} verification passed.")
 
         if len(self.forced_failed_tasks) > 0:
             with Session(self.backend_engine) as backend_session:
                 self.mark_forced_tasks_as_done(backend_session=backend_session)
                 backend_session.commit()
 
-    async def run_task(self, task: AbstractMigrationTask, timeout: datetime) -> bool:
+    async def run_task(self, task: AbstractMigrationTask, timeout: datetime, force: bool) -> bool:
         """
         Runs single migration task
         Args:
             task: task
             timeout: timeout
+            force: whether to force task
         """
         result = True
         start_time = datetime.now()
@@ -111,7 +132,7 @@ class MigrateHandler:
             task.prepare(backend_session=backend_session)
             force_failed_task = name in self.force_failed_tasks
 
-            if self.force_recheck or force_failed_task:
+            if force or self.force_recheck or force_failed_task:
                 self.print_message(f"\nForced recheck, migrating {name}...")
 
                 try:
@@ -169,13 +190,21 @@ class MigrateHandler:
             return result
 
     async def run_verify(self, task: AbstractMigrationTask):
+        """
+        Runs the verification task.
+        Args:
+            task: the task to run
+
+        Returns:
+            True if the verification was successful, False otherwise
+        """
         name = task.get_name()
 
         with Session(self.backend_engine) as backend_session:
             if task.verify(backend_session=backend_session):
-                self.print_message(f"\n{name} verification passed.")
+                return True
             else:
-                self.print_message(f"\n{name} verification failed.")
+                return False
 
     async def handle_synchronization_failure(self,
                                              backend_session: Session,
@@ -300,6 +329,28 @@ class MigrateHandler:
         synchronization_failure.action = SYNCHRONIZATION_FAILURE_ACTION_NOTIFIED
         backend_session.add(synchronization_failure)
 
+    async def notify_verification_failure(self, task):
+        """
+        Notifies verification failure
+
+        Args:
+            task: task
+        """
+        task_name = task.get_name()
+        email_body = f"Data verification failed on {task_name}.\n\n" \
+                     f"This is an automated message, please do not reply to this email"
+
+        message = MessageSchema(
+            subject=f"Data verification failure on Taskusalkku",
+            recipients=os.environ["MAIL_SYNCHRONIZATION_FAILURE_RECIPIENTS"].split(","),
+            body=email_body
+        )
+
+        try:
+            await Mailer.send_mail(message)
+        except Exception as e:
+            self.print_message(f"Error sending email {e}")
+
     @staticmethod
     def list_force_failed_tasks(backend_session: Session) -> List[str]:
         """
@@ -360,9 +411,19 @@ class MigrateHandler:
 @click.option("--task", default="", help="Only run specified task")
 @click.option("--skip-tasks", default="", help="Run without specified tasks")
 @click.option("--force-recheck", default=False, help="Forces task to recheck all entities")
-def main(debug, task, skip_tasks, force_recheck):
+@click.option("--timeout", default="15", help="Timeout in minutes")
+@click.option("--security", default=None, help="Specify security for the task")
+@click.option("--verify-only", default=False, help="Runs only verifications")
+def main(debug, task, skip_tasks, force_recheck, timeout, security, verify_only):
     """Migration method"""
-    handler = MigrateHandler(debug=debug, force_recheck=force_recheck)
+    handler = MigrateHandler(
+        debug=debug,
+        force_recheck=force_recheck,
+        timeout=int(timeout),
+        security=security,
+        verify_only=verify_only
+    )
+
     asyncio.run(handler.handle(
         task_name=task,
         skip_tasks=skip_tasks
