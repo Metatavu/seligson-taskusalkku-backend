@@ -194,7 +194,8 @@ def get_companies(database: Session, ssn: str) -> List[Company]:
         List[Company]: list of matching company table rows
     """
 
-    return database.query(Company).filter(Company.ssn == ssn).all()
+    return database.query(Company).filter(Company.ssn == ssn)\
+        .order_by(Company.name).all()
 
 
 def get_company_access(database: Session, ssn: str) -> List[CompanyAccess]:

@@ -59,6 +59,43 @@ class CompaniesApiImpl(CompaniesApiSpec):
             owned=owned
         )
 
+    async def list_companies(
+            self,
+            token_bearer: TokenModel
+    ) -> Company:
+        ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        own_companies = operations.get_companies(
+            database=self.database,
+            ssn=ssn
+        )
+
+        company_access_rows = operations.get_company_access(
+            database=self.database,
+            ssn=ssn
+        )
+
+        result = []
+
+        for own_company in own_companies:
+            result.append(self.translate_company(
+                company=own_company,
+                owned=True
+            ))
+
+        for company_access in company_access_rows:
+            result.append(self.translate_company(
+                company=company_access.company,
+                owned=False
+            ))
+
+        return result
+
     @staticmethod
     def translate_company(company: DbCompany,
                           owned: bool
