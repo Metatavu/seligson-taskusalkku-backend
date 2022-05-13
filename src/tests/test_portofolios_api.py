@@ -1006,7 +1006,7 @@ class TestPortfolio:
     def assert_list_portfolios_fail(client: TestClient,
                                     expected_status: int,
                                     auth: Optional[BearerAuth],
-                                    company_id: Optional[str]
+                                    company_id: Optional[str] = None
                                     ):
         path = "/v1/portfolios"
         if company_id is not None:
