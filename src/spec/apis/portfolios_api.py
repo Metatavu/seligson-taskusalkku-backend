@@ -366,6 +366,7 @@ class PortfoliosApiSpec(ABC):
     @abstractmethod
     async def list_portfolios(
         self,
+        company_id: Optional[UUID],
         token_bearer: TokenModel,
     ) -> List[Portfolio]:
         ...
@@ -383,6 +384,7 @@ class PortfoliosApiSpec(ABC):
     )
     async def list_portfolios_spec(
         self,
+        company_id: str = Query(None, description="company id", alias="companyId"),
         token_bearer: TokenModel = FastAPISecurity(
             get_token_bearer
         ),
@@ -390,6 +392,7 @@ class PortfoliosApiSpec(ABC):
         """Lists portfolios logged user has access to"""
 
         return await self.list_portfolios(
+            company_id=self.to_uuid(company_id),
             token_bearer=token_bearer
         )
 

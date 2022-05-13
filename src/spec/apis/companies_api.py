@@ -106,6 +106,36 @@ class CompaniesApiSpec(ABC):
             token_bearer=token_bearer
         )
 
+    @abstractmethod
+    async def list_companies(
+        self,
+        token_bearer: TokenModel,
+    ) -> List[Company]:
+        ...
+
+    @router.get(
+        "/v1/companies",
+        responses={
+            200: {"model": List[Company], "description": "Companies"},
+            400: {"model": Error, "description": "Invalid request was sent to the server"},
+            403: {"model": Error, "description": "Attempted to make a call with unauthorized client"},
+            500: {"model": Error, "description": "Internal server error"},
+        },
+        tags=["Companies"],
+        summary="Lists companies",
+    )
+    async def list_companies_spec(
+        self,
+        token_bearer: TokenModel = FastAPISecurity(
+            get_token_bearer
+        ),
+    ) -> List[Company]:
+        """Lists companies"""
+
+        return await self.list_companies(
+            token_bearer=token_bearer
+        )
+
     @staticmethod
     def to_date(isodate: str) -> Optional[date]:
         """Translates given string to date
