@@ -462,6 +462,84 @@ class TestPortfolio:
                 assert expected_sum_market_value_total == Decimal(result["marketValueTotal"])
                 assert expected_sum_purchase_total == Decimal(result["purchaseTotal"])
 
+    def test_list_portfolios_by_company(self,
+                                        client: TestClient,
+                                        backend_mysql: MySqlContainer,
+                                        user_1_auth: BearerAuth,
+                                        user_2_auth: BearerAuth
+                                        ):
+        """
+        test to list portfolios by company
+        """
+        with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
+                sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
+                sql_backend_portfolio_log(backend_mysql), sql_backend_company_access(backend_mysql):
+
+            response = client.get("/v1/portfolios/?companyId=f0e88a2d-d773-46bd-b353-117a448abefd", auth=user_1_auth)
+            assert response.status_code == 200
+            results = response.json()
+            assert 2 == len(results)
+
+            portfolio_map = { x["id"]: x for x in results }
+
+            assert "6bb05ba3-2b4f-4031-960f-0f20d5244440" in portfolio_map
+            assert "84da0adf-db11-4be9-8c51-fcebc05a1d4f" in portfolio_map
+
+            main_portfolio = portfolio_map["6bb05ba3-2b4f-4031-960f-0f20d5244440"]
+            sub_portfolio = portfolio_map["84da0adf-db11-4be9-8c51-fcebc05a1d4f"]
+
+            assert "Main portfolio for 123" == main_portfolio["name"]
+            assert "f0e88a2d-d773-46bd-b353-117a448abefd" == main_portfolio["companyId"]
+            assert "OWNED" == main_portfolio["accessLevel"]
+            assert "Sub-Portfolio for 123" == sub_portfolio["name"]
+            assert "f0e88a2d-d773-46bd-b353-117a448abefd" == sub_portfolio["companyId"]
+            assert "OWNED" == sub_portfolio["accessLevel"]
+
+            response = client.get("/v1/portfolios/?companyId=feebf58a-d382-4645-9855-d7e3f7534103", auth=user_2_auth)
+            assert response.status_code == 200
+            results = response.json()
+            assert 1 == len(results)
+
+            shared_portfolio = results[0]
+            assert "ccade0c1-2fea-41b4-b1e7-22b0722b07e5" == shared_portfolio["id"]
+            assert "Main portfolio for company 333 (user 3)" == shared_portfolio["name"]
+            assert "feebf58a-d382-4645-9855-d7e3f7534103" == shared_portfolio["companyId"]
+            assert "SHARED" == shared_portfolio["accessLevel"]
+
+    def test_list_portfolios_by_company_unauthorized(self,
+                                                     client: TestClient,
+                                                     backend_mysql: MySqlContainer,
+                                                     user_1_auth: BearerAuth):
+        with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
+                sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
+                sql_backend_portfolio_log(backend_mysql), sql_backend_company_access(backend_mysql):
+
+            self.assert_list_portfolios_fail(
+                client=client,
+                expected_status=403,
+                auth=user_1_auth,
+                company_id="10dac398-4fec-4d02-9ca6-abf705a83cf4"
+            )
+
+    def test_list_portfolios_by_company_invalid_ids(self,
+                                                    client: TestClient,
+                                                    backend_mysql: MySqlContainer,
+                                                    user_1_auth: BearerAuth):
+        with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
+                sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
+                sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
+                sql_backend_portfolio_log(backend_mysql), sql_backend_company_access(backend_mysql):
+
+            for invalid_uuid in invalid_uuids:
+                self.assert_list_portfolios_fail(
+                    client=client,
+                    expected_status=400,
+                    auth=user_1_auth,
+                    company_id=invalid_uuid
+                )
+            
     @pytest.mark.parametrize("auth", invalid_auths)
     def test_list_portfolios_invalid_auth(self, client: TestClient, backend_mysql: MySqlContainer,
                                           keycloak: KeycloakContainer, auth: BearerAuth):
@@ -925,11 +1003,19 @@ class TestPortfolio:
         assert expected_status == response.status_code
 
     @staticmethod
-    def assert_list_portfolios_fail(client: TestClient, expected_status: int, auth: Optional[BearerAuth]):
+    def assert_list_portfolios_fail(client: TestClient,
+                                    expected_status: int,
+                                    auth: Optional[BearerAuth],
+                                    company_id: Optional[str]
+                                    ):
+        path = "/v1/portfolios"
+        if company_id is not None:
+            path += f"?companyId={company_id}"
+
         if auth is None:
-            response = client.get(f"/v1/portfolios")
+            response = client.get(path)
         else:
-            response = client.get(f"/v1/portfolios", auth=auth)
+            response = client.get(path, auth=auth)
 
         assert expected_status == response.status_code
 

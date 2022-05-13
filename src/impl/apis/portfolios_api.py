@@ -261,6 +261,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
     async def list_portfolios(
             self,
+            company_id: Optional[UUID],
             token_bearer: TokenModel,
     ) -> List[Portfolio]:
         """ list portfolios"""
@@ -277,17 +278,51 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                 detail=f"Cannot resolve logged user SSN"
             )
 
-        own_companies = operations.get_companies(
-            database=self.database,
-            ssn=ssn
-        )
+        own_companies = []
+        company_access_companies = []
 
-        company_access = operations.get_company_access(
-            database=self.database,
-            ssn=ssn
-        )
+        if company_id:
+            company = operations.find_company(
+                database=self.database,
+                company_id=company_id
+            )
 
-        company_access_companies = list(map(lambda i: i.company, company_access))
+            if not company:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Company with id {company_id} not found"
+                )
+
+            owned = company.ssn == ssn
+            if not owned:
+                company_access = operations.find_company_access_by_ssn_and_company_id(
+                    database=self.database,
+                    ssn=ssn,
+                    company_id=company_id
+                )
+
+                if not company_access:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"No permission to find this company"
+                    )
+
+                company_access_companies = [ company ]
+            else:
+                own_companies = [ company ]
+        else:
+            own_companies = operations.get_companies(
+                database=self.database,
+                ssn=ssn
+            )
+
+            company_access = operations.get_company_access(
+                database=self.database,
+                ssn=ssn
+            )
+
+            company_access_companies = list(map(lambda i: i.company, company_access))
+
         companies = own_companies + company_access_companies
         portfolios = []
 
