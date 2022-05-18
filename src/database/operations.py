@@ -113,6 +113,22 @@ def list_securities_with_fund(database: Session,
         .all()
 
 
+def get_last_rate_date_for_security_rate(database: Session, security_id: UUID) -> date:
+    """
+    Returns the last rate date for a security.
+
+    Args:
+        database (Session): database session
+        security_id (UUID): security id
+
+    Returns:
+        Optional[datetime]: last rate date
+    """
+    return database.query(func.max(SecurityRate.rate_date)) \
+        .filter(SecurityRate.security_id == security_id) \
+        .scalar()
+
+
 def query_security_rates(database: Session,
                          security_id: UUID,
                          rate_date_min: date,
