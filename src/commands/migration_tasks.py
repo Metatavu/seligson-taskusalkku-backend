@@ -595,7 +595,9 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                     rate_date=funds_rate_date
                 )
 
-                if funds_rate_close != backend_security_rate.rate_close:
+                if backend_security_rate is None:
+                    self.print_message(f"Warning Rate close missing from {funds_rate_date} for {sec_id}")
+                elif funds_rate_close != backend_security_rate.rate_close:
                     sec_id = security.original_id
                     self.print_message(f"Suggest: UPDATE security_rate "
                                        f"SET rate_close = {funds_rate_close} "

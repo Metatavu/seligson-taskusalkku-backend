@@ -90,6 +90,7 @@ class MigrateHandler:
                 "security": self.security
             }
 
+            task_result = True
             if not self.verify_only and (timeout > datetime.now()) and (task.get_name() in task_names):
                 task_result = await self.run_task(task, timeout, False)
 
