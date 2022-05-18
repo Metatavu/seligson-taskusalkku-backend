@@ -123,6 +123,14 @@ class FundsApiImpl(FundsApiSpec):
             security_id=security.original_id
         )
 
+        price_date = database.get_last_rate_date_for_security_rate(
+            database=self.database,
+            security_id=security.id
+        )
+
+        if price_date is None:
+            price_date = fund_meta["price_date"]
+
         if fund_meta is None:
             logger.warning("Fund meta for fund id %s not found", fund.original_id)
             return None
@@ -156,7 +164,7 @@ class FundsApiImpl(FundsApiSpec):
             color=color,
             risk=risk_level,
             group=group,
-            priceDate=fund_meta["price_date"],
+            priceDate=price_date,
             aShareValue=fund_meta["a_share_value"],
             bShareValue=fund_meta["b_share_value"],
             changeData=self.translate_change_date(fund_meta),
