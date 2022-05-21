@@ -1447,9 +1447,11 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
-        batch = 1000
+        batch = 20000
         unix_time = datetime(1970, 1, 1, 0, 0)
         selected_security = self.options.get('security', None)
+        backend_companies = list(self.list_backend_companies(backend_session=backend_session))
+        backend_company_map = {x.original_id: x for x in backend_companies}
 
         with Session(self.get_funds_database_engine()) as funds_session:
 
@@ -1538,8 +1540,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             # without the portfolio key we cant do anything, we try to grab the right portfolio from
                             # portfolio table considering the company code. If there are more than one portfolio then
                             # we should alert and ask how to resolve the situation manually.
-                            company = self.get_company_by_original_id(backend_session=backend_session,
-                                                                      original_id=portfolio_log_row.COM_CODE)
+                            company = backend_company_map.get(portfolio_log_row.COM_CODE, None)
                             if not company:
                                 raise MissingCompanyException(
                                     original_id=portfolio_log_row.COM_CODE
@@ -1554,6 +1555,17 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             else:
                                 portfolio = portfolios[0]
                                 portfolio_id = portfolio.id
+
+                        ccom_code = portfolio_log_row.CCOM_CODE
+                        if ccom_code and ccom_code.strip() != '':
+                            c_company = backend_company_map.get(ccom_code, None)
+                            if not c_company:
+                                raise MissingCompanyException(
+                                    original_id=ccom_code
+                                )
+                            c_company_id = c_company.id
+                        else:
+                            c_company_id = None
 
                         existing_portfolio_log = existing_portfolio_log_map.get(portfolio_log_row.TRANS_NR, None)
                         logged_date = portfolio_log_row.PMT_DATE
@@ -1573,6 +1585,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                                   portfolio_id=portfolio_id,
                                                   security_id=security.id,
                                                   c_security_id=c_security_id,
+                                                  c_company_id=c_company_id,
                                                   amount=portfolio_log_row.AMOUNT,
                                                   c_price=portfolio_log_row.CPRICE,
                                                   payment_date=payment_date,
@@ -2093,7 +2106,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
 
         return funds_session.execute("SELECT SECID, CSECID, PORID, COM_CODE, TRANS_NR, TRANS_CODE, TRANS_DATE, "
-                                     "CTOT_VALUE, AMOUNT, CPRICE, PMT_DATE, CVALUE, PROVISION, STATUS, "
+                                     "CCOM_CODE, CTOT_VALUE, AMOUNT, CPRICE, PMT_DATE, CVALUE, PROVISION, STATUS, "
                                      "UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) as UPDATED "
                                      "FROM TABLE_PORTLOG "
                                      "WHERE UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) >= :updated AND "
@@ -2166,10 +2179,24 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                      }).one_or_none()
 
     @staticmethod
-    def upsert_portfolio_log(session, portfolio_log, transaction_number, transaction_code, transaction_date,
+    def upsert_portfolio_log(session,
+                             portfolio_log,
+                             transaction_number,
+                             transaction_code,
+                             transaction_date,
                              c_total_value,
-                             portfolio_id, security_id, c_security_id, amount, c_price, payment_date, c_value,
-                             provision, status, updated: datetime):
+                             portfolio_id,
+                             security_id,
+                             c_security_id,
+                             c_company_id: Optional[UUID],
+                             amount: Decimal,
+                             c_price: Decimal,
+                             payment_date,
+                             c_value,
+                             provision,
+                             status,
+                             updated: datetime
+                             ):
         new_portfolio_log = portfolio_log if portfolio_log else destination_models.PortfolioLog()
         new_portfolio_log.transaction_number = transaction_number
         new_portfolio_log.transaction_code = transaction_code
@@ -2178,6 +2205,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         new_portfolio_log.portfolio_id = portfolio_id
         new_portfolio_log.security_id = security_id
         new_portfolio_log.c_security_id = c_security_id
+        new_portfolio_log.c_company_id = c_company_id
         new_portfolio_log.amount = amount
         new_portfolio_log.c_price = c_price
         new_portfolio_log.payment_date = payment_date
