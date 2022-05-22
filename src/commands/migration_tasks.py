@@ -1688,8 +1688,6 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.sum(c_company_query).label("ccom_code_sum")
         ).filter(destination_models.PortfolioLog.security_id == security_id)
 
-        print(query)
-
         return query.one()
 
     def get_funds_csec_counts(self, funds_session: Session, secid: str):
@@ -2251,28 +2249,32 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
 
             funds_updates = self.get_funds_updates(funds_session=funds_session)
             backend_updates = self.get_backend_updates(backend_session=backend_session)
-            own_date_after = date.today() - timedelta(days=1)
-            if force_recheck:
-                own_date_after = date(1970, 1, 1)
-
-            removed_trans_nrs = self.list_removed_trans_nrs(
-                funds_session=funds_session,
-                own_end_after=own_date_after
-            )
-
-            if len(removed_trans_nrs) > 0:
-                removed_count = backend_session.query(destination_models.PortfolioTransaction) \
-                    .filter(destination_models.PortfolioTransaction.transaction_number.in_(removed_trans_nrs)) \
-                    .delete(synchronize_session=False)
-
-                if removed_count > 0:
-                    self.print_message(f"Removed {removed_count} portfolio transactions.")
-                    synchronized_count += removed_count
 
             securities = self.list_securities(backend_session=backend_session)
             for security in securities:
                 if self.should_timeout(timeout=timeout):
                     break
+
+                funds_nrs = self.list_funds_portfolio_transaction_trans_nrs(
+                    funds_session=funds_session,
+                    secid=security.original_id
+                )
+
+                backend_transaction_numbers = self.list_backend_portfolio_transaction_transaction_numbers(
+                    backend_session=backend_session,
+                    security_id=security.id
+                )
+
+                removed_trans_nrs = set(backend_transaction_numbers).difference(set(funds_nrs))
+
+                if len(removed_trans_nrs) > 0:
+                    removed_count = backend_session.query(destination_models.PortfolioTransaction) \
+                        .filter(destination_models.PortfolioTransaction.transaction_number.in_(removed_trans_nrs)) \
+                        .delete(synchronize_session=False)
+
+                    if removed_count > 0:
+                        self.print_message(f"Removed {removed_count} portfolio transactions.")
+                        synchronized_count += removed_count
 
                 offset = 0
 
@@ -2631,23 +2633,6 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                                      {
                                          "trans_nr": trans_nr
                                      }).one_or_none()
-
-    @staticmethod
-    def list_removed_trans_nrs(funds_session: Session, own_end_after: date):
-        """
-        Lists TRANS_NRs that have been removed from the TABLE_PORTRANS table after given time
-        Args:
-            funds_session: Funds database session
-            own_end_after: Time after the own has ended
-
-        Returns:
-            List of removed TRANS_NRs
-        """
-        result = funds_session.execute("SELECT TRANS_NR FROM TABLE_PORTHIST WHERE OWN_END >= :own_end",
-                                       {
-                                           "own_end": own_end_after.isoformat()
-                                       }).all()
-        return [x for (x,) in result]
 
     def list_funds_portfolio_transaction_trans_nrs(self, funds_session: Session, secid: str):
         """
