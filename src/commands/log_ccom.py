@@ -110,7 +110,8 @@ class LogCCom:
     def get_excluded_portfolio_ids_query():
         """
         Returns exclude query for excluded porids
-        Returns: exclude query for excluded porids
+        Returns:
+            exclude query for excluded porids
         """
         return "SELECT DISTINCT P.PORID " \
                "FROM TABLE_PORTFOL P " \
