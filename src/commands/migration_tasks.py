@@ -1631,7 +1631,8 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             "SUM(COALESCE(CAST(DATEDIFF(MINUTE, '1970-01-01', PMT_DATE) as BIGINT), 0)) as pmt_date_sum",
             "SUM(COALESCE(CAST(DATEDIFF(MINUTE, '1970-01-01', TRANS_DATE) as BIGINT), 0)) as trans_date_date_sum",
             "SUM(CAST(REPLACE(CASE PORID WHEN '' THEN COM_CODE ELSE PORID END, '_', '.') "
-            "   as DECIMAL(38, 2))) as por_id_sum"
+            "   as DECIMAL(38, 2))) as por_id_sum",
+            "SUM(CAST(REPLACE(TRIM(CCOM_CODE),'', 0) as BIGINT)) as ccom_code_sum"
         ])
 
         return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTLOG "
@@ -1668,6 +1669,10 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.cast(func.replace(portfolio_original_id_query, '_', '.'), DECIMAL(38, 2))
         )
 
+        c_company_query = backend_session.query(destination_models.Company.original_id)\
+            .filter(destination_models.Company.id == destination_models.PortfolioLog.c_company_id)\
+            .scalar_subquery()
+
         query = backend_session.query(
             func.sum(destination_models.PortfolioLog.transaction_code).label("trans_code_sum"),
             func.sum(destination_models.PortfolioLog.transaction_number).label("trans_nr_sum"),
@@ -1679,8 +1684,11 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.sum(destination_models.PortfolioLog.status).label("status_sum"),
             pmt_date_sum.label("pmt_date_sum"),
             trans_date_date_sum.label("trans_date_date_sum"),
-            por_id_sum.label("por_id_sum")
+            por_id_sum.label("por_id_sum"),
+            func.sum(c_company_query).label("ccom_code_sum")
         ).filter(destination_models.PortfolioLog.security_id == security_id)
+
+        print(query)
 
         return query.one()
 
@@ -1851,6 +1859,13 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                            f" {security.original_id}. "
                                            f"{backend_verification_values.por_id_sum} != "
                                            f"{funds_verification_values.por_id_sum}")
+                        security_valid = False
+
+                    if funds_verification_values.ccom_code_sum != backend_verification_values.ccom_code_sum:
+                        self.print_message(f"Warning: c company id sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.ccom_code_sum} != "
+                                           f"{funds_verification_values.ccom_code_sum}")
                         security_valid = False
 
                     if funds_verification_values.status_sum != backend_verification_values.status_sum:
