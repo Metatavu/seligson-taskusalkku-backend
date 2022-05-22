@@ -595,10 +595,11 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                     rate_date=funds_rate_date
                 )
 
+                sec_id = security.original_id
+
                 if backend_security_rate is None:
                     self.print_message(f"Warning Rate close missing from {funds_rate_date} for {sec_id}")
                 elif funds_rate_close != backend_security_rate.rate_close:
-                    sec_id = security.original_id
                     self.print_message(f"Suggest: UPDATE security_rate "
                                        f"SET rate_close = {funds_rate_close} "
                                        f"WHERE rate_date=DATE('{funds_rate_date}') AND "
@@ -1970,6 +1971,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                 if len(portfolios) != 1:
                     self.print_message(f"Warning: could not resolve portfolio for company by com code {com_code} "
                                        f"for missing transaction {trans_nr}")
+                    return
 
                 else:
                     portfolio_select = f"(SELECT id FROM portfolio WHERE original_id = '{portfolios[0].original_id}')"
@@ -2254,6 +2256,8 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
             for security in securities:
                 if self.should_timeout(timeout=timeout):
                     break
+
+                self.print_message(f"Checking removed portfolio transactions from security {security.original_id}...")
 
                 funds_nrs = self.list_funds_portfolio_transaction_trans_nrs(
                     funds_session=funds_session,
