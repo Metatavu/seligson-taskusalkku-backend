@@ -595,10 +595,11 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                     rate_date=funds_rate_date
                 )
 
+                sec_id = security.original_id
+
                 if backend_security_rate is None:
                     self.print_message(f"Warning Rate close missing from {funds_rate_date} for {sec_id}")
                 elif funds_rate_close != backend_security_rate.rate_close:
-                    sec_id = security.original_id
                     self.print_message(f"Suggest: UPDATE security_rate "
                                        f"SET rate_close = {funds_rate_close} "
                                        f"WHERE rate_date=DATE('{funds_rate_date}') AND "
@@ -1447,9 +1448,11 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
-        batch = 1000
+        batch = 20000
         unix_time = datetime(1970, 1, 1, 0, 0)
         selected_security = self.options.get('security', None)
+        backend_companies = list(self.list_backend_companies(backend_session=backend_session))
+        backend_company_map = {x.original_id: x for x in backend_companies}
 
         with Session(self.get_funds_database_engine()) as funds_session:
 
@@ -1538,8 +1541,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             # without the portfolio key we cant do anything, we try to grab the right portfolio from
                             # portfolio table considering the company code. If there are more than one portfolio then
                             # we should alert and ask how to resolve the situation manually.
-                            company = self.get_company_by_original_id(backend_session=backend_session,
-                                                                      original_id=portfolio_log_row.COM_CODE)
+                            company = backend_company_map.get(portfolio_log_row.COM_CODE, None)
                             if not company:
                                 raise MissingCompanyException(
                                     original_id=portfolio_log_row.COM_CODE
@@ -1554,6 +1556,17 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             else:
                                 portfolio = portfolios[0]
                                 portfolio_id = portfolio.id
+
+                        ccom_code = portfolio_log_row.CCOM_CODE
+                        if ccom_code and ccom_code.strip() != '':
+                            c_company = backend_company_map.get(ccom_code, None)
+                            if not c_company:
+                                raise MissingCompanyException(
+                                    original_id=ccom_code
+                                )
+                            c_company_id = c_company.id
+                        else:
+                            c_company_id = None
 
                         existing_portfolio_log = existing_portfolio_log_map.get(portfolio_log_row.TRANS_NR, None)
                         logged_date = portfolio_log_row.PMT_DATE
@@ -1573,6 +1586,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                                   portfolio_id=portfolio_id,
                                                   security_id=security.id,
                                                   c_security_id=c_security_id,
+                                                  c_company_id=c_company_id,
                                                   amount=portfolio_log_row.AMOUNT,
                                                   c_price=portfolio_log_row.CPRICE,
                                                   payment_date=payment_date,
@@ -1618,7 +1632,8 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             "SUM(COALESCE(CAST(DATEDIFF(MINUTE, '1970-01-01', PMT_DATE) as BIGINT), 0)) as pmt_date_sum",
             "SUM(COALESCE(CAST(DATEDIFF(MINUTE, '1970-01-01', TRANS_DATE) as BIGINT), 0)) as trans_date_date_sum",
             "SUM(CAST(REPLACE(CASE PORID WHEN '' THEN COM_CODE ELSE PORID END, '_', '.') "
-            "   as DECIMAL(38, 2))) as por_id_sum"
+            "   as DECIMAL(38, 2))) as por_id_sum",
+            "SUM(CAST(REPLACE(TRIM(CCOM_CODE),'', 0) as BIGINT)) as ccom_code_sum"
         ])
 
         return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTLOG "
@@ -1655,6 +1670,10 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.cast(func.replace(portfolio_original_id_query, '_', '.'), DECIMAL(38, 2))
         )
 
+        c_company_query = backend_session.query(destination_models.Company.original_id)\
+            .filter(destination_models.Company.id == destination_models.PortfolioLog.c_company_id)\
+            .scalar_subquery()
+
         query = backend_session.query(
             func.sum(destination_models.PortfolioLog.transaction_code).label("trans_code_sum"),
             func.sum(destination_models.PortfolioLog.transaction_number).label("trans_nr_sum"),
@@ -1666,7 +1685,8 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             func.sum(destination_models.PortfolioLog.status).label("status_sum"),
             pmt_date_sum.label("pmt_date_sum"),
             trans_date_date_sum.label("trans_date_date_sum"),
-            por_id_sum.label("por_id_sum")
+            por_id_sum.label("por_id_sum"),
+            func.sum(c_company_query).label("ccom_code_sum")
         ).filter(destination_models.PortfolioLog.security_id == security_id)
 
         return query.one()
@@ -1840,6 +1860,13 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                            f"{funds_verification_values.por_id_sum}")
                         security_valid = False
 
+                    if funds_verification_values.ccom_code_sum != backend_verification_values.ccom_code_sum:
+                        self.print_message(f"Warning: c company id sum mismatch in portfolio logs in security"
+                                           f" {security.original_id}. "
+                                           f"{backend_verification_values.ccom_code_sum} != "
+                                           f"{funds_verification_values.ccom_code_sum}")
+                        security_valid = False
+
                     if funds_verification_values.status_sum != backend_verification_values.status_sum:
                         self.print_message(f"Warning: status sum mismatch in portfolio logs in security"
                                            f" {security.original_id}. "
@@ -1944,6 +1971,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                 if len(portfolios) != 1:
                     self.print_message(f"Warning: could not resolve portfolio for company by com code {com_code} "
                                        f"for missing transaction {trans_nr}")
+                    return
 
                 else:
                     portfolio_select = f"(SELECT id FROM portfolio WHERE original_id = '{portfolios[0].original_id}')"
@@ -2093,7 +2121,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
 
         return funds_session.execute("SELECT SECID, CSECID, PORID, COM_CODE, TRANS_NR, TRANS_CODE, TRANS_DATE, "
-                                     "CTOT_VALUE, AMOUNT, CPRICE, PMT_DATE, CVALUE, PROVISION, STATUS, "
+                                     "CCOM_CODE, CTOT_VALUE, AMOUNT, CPRICE, PMT_DATE, CVALUE, PROVISION, STATUS, "
                                      "UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) as UPDATED "
                                      "FROM TABLE_PORTLOG "
                                      "WHERE UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) >= :updated AND "
@@ -2166,10 +2194,24 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                      }).one_or_none()
 
     @staticmethod
-    def upsert_portfolio_log(session, portfolio_log, transaction_number, transaction_code, transaction_date,
+    def upsert_portfolio_log(session,
+                             portfolio_log,
+                             transaction_number,
+                             transaction_code,
+                             transaction_date,
                              c_total_value,
-                             portfolio_id, security_id, c_security_id, amount, c_price, payment_date, c_value,
-                             provision, status, updated: datetime):
+                             portfolio_id,
+                             security_id,
+                             c_security_id,
+                             c_company_id: Optional[UUID],
+                             amount: Decimal,
+                             c_price: Decimal,
+                             payment_date,
+                             c_value,
+                             provision,
+                             status,
+                             updated: datetime
+                             ):
         new_portfolio_log = portfolio_log if portfolio_log else destination_models.PortfolioLog()
         new_portfolio_log.transaction_number = transaction_number
         new_portfolio_log.transaction_code = transaction_code
@@ -2178,6 +2220,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         new_portfolio_log.portfolio_id = portfolio_id
         new_portfolio_log.security_id = security_id
         new_portfolio_log.c_security_id = c_security_id
+        new_portfolio_log.c_company_id = c_company_id
         new_portfolio_log.amount = amount
         new_portfolio_log.c_price = c_price
         new_portfolio_log.payment_date = payment_date
@@ -2208,28 +2251,34 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
 
             funds_updates = self.get_funds_updates(funds_session=funds_session)
             backend_updates = self.get_backend_updates(backend_session=backend_session)
-            own_date_after = date.today() - timedelta(days=1)
-            if force_recheck:
-                own_date_after = date(1970, 1, 1)
-
-            removed_trans_nrs = self.list_removed_trans_nrs(
-                funds_session=funds_session,
-                own_end_after=own_date_after
-            )
-
-            if len(removed_trans_nrs) > 0:
-                removed_count = backend_session.query(destination_models.PortfolioTransaction) \
-                    .filter(destination_models.PortfolioTransaction.transaction_number.in_(removed_trans_nrs)) \
-                    .delete(synchronize_session=False)
-
-                if removed_count > 0:
-                    self.print_message(f"Removed {removed_count} portfolio transactions.")
-                    synchronized_count += removed_count
 
             securities = self.list_securities(backend_session=backend_session)
             for security in securities:
                 if self.should_timeout(timeout=timeout):
                     break
+
+                self.print_message(f"Checking removed portfolio transactions from security {security.original_id}...")
+
+                funds_nrs = self.list_funds_portfolio_transaction_trans_nrs(
+                    funds_session=funds_session,
+                    secid=security.original_id
+                )
+
+                backend_transaction_numbers = self.list_backend_portfolio_transaction_transaction_numbers(
+                    backend_session=backend_session,
+                    security_id=security.id
+                )
+
+                removed_trans_nrs = set(backend_transaction_numbers).difference(set(funds_nrs))
+
+                if len(removed_trans_nrs) > 0:
+                    removed_count = backend_session.query(destination_models.PortfolioTransaction) \
+                        .filter(destination_models.PortfolioTransaction.transaction_number.in_(removed_trans_nrs)) \
+                        .delete(synchronize_session=False)
+
+                    if removed_count > 0:
+                        self.print_message(f"Removed {removed_count} portfolio transactions.")
+                        synchronized_count += removed_count
 
                 offset = 0
 
@@ -2588,23 +2637,6 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                                      {
                                          "trans_nr": trans_nr
                                      }).one_or_none()
-
-    @staticmethod
-    def list_removed_trans_nrs(funds_session: Session, own_end_after: date):
-        """
-        Lists TRANS_NRs that have been removed from the TABLE_PORTRANS table after given time
-        Args:
-            funds_session: Funds database session
-            own_end_after: Time after the own has ended
-
-        Returns:
-            List of removed TRANS_NRs
-        """
-        result = funds_session.execute("SELECT TRANS_NR FROM TABLE_PORTHIST WHERE OWN_END >= :own_end",
-                                       {
-                                           "own_end": own_end_after.isoformat()
-                                       }).all()
-        return [x for (x,) in result]
 
     def list_funds_portfolio_transaction_trans_nrs(self, funds_session: Session, secid: str):
         """

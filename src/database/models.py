@@ -69,6 +69,8 @@ class Company(Base):
     updated = Column(DateTime, nullable=False)
     portfolios = relationship("Portfolio", back_populates="company", lazy=True)
     company_access = relationship("CompanyAccess", back_populates="company", lazy=True)
+    c_portfolio_logs = relationship("PortfolioLog", back_populates="c_company", lazy=True,
+                                    foreign_keys="PortfolioLog.c_company_id")
 
 
 class CompanyAccess(Base):
@@ -115,6 +117,8 @@ class PortfolioLog(Base):
     portfolio_id = Column("portfolio_id", SqlAlchemyUuid, ForeignKey('portfolio.id'), index=True, nullable=False)
     security_id = Column("security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=False)
     c_security_id = Column("c_security_id", SqlAlchemyUuid, ForeignKey('security.id'), index=True, nullable=True)
+    c_company_id = Column("c_company_id", SqlAlchemyUuid, ForeignKey('company.id'), index=True, nullable=True)
+
     amount = Column(DECIMAL(19, 6), nullable=False)
     c_price = Column(DECIMAL(19, 6), nullable=False)
     payment_date = Column(Date, index=True, nullable=True)
@@ -128,6 +132,8 @@ class PortfolioLog(Base):
                               foreign_keys="PortfolioLog.c_security_id")
     security = relationship("Security", back_populates="portfolio_logs", lazy=True,
                             foreign_keys="PortfolioLog.security_id")
+    c_company = relationship("Company", back_populates="c_portfolio_logs", lazy=True,
+                             foreign_keys="PortfolioLog.c_company_id")
     __table_args__ = (Index("ix_portfolio_log_security_id_updated", "security_id", "updated"),)
 
 

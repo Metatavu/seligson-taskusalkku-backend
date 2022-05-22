@@ -131,6 +131,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             token_bearer: TokenModel
     ) -> List[PortfolioHistoryValue]:
         portfolio = self.get_portfolio(token_bearer=token_bearer, portfolio_id=portfolio_id)
+        portfolio_company_id = portfolio.company_id
 
         if end_date > date.today():
             end_date = date.today()
@@ -151,8 +152,9 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         """Add transactions to holdings object"""
         for row in rows:
             transaction_code = row.transaction_code
+
             is_subscription = transaction_code == "11"
-            to_port = transaction_code == "31"
+            to_port = transaction_code == "31" and portfolio_company_id == row.c_company_id
             is_transfer = transaction_code == "46"
             is_removal = transaction_code == "80"
 
