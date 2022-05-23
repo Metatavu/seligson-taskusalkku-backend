@@ -17,6 +17,8 @@ depends_on = None
 
 
 def upgrade():
+    op.execute('SET FOREIGN_KEY_CHECKS=0')
+
     op.add_column('portfolio_log', sa.Column('c_company_id', sa.BINARY(length=16), nullable=True))
 
     op.create_foreign_key(
@@ -28,6 +30,8 @@ def upgrade():
     )
 
     op.create_index(op.f('ix_portfolio_log_c_company_id'), 'portfolio_log', ['c_company_id'], unique=False)
+
+    op.execute('SET FOREIGN_KEY_CHECKS=1')
 
 
 def downgrade():
