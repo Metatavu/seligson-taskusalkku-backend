@@ -42,7 +42,7 @@ class TestFunds:
             assert "https://example.com/PASSIVETESTSV" == fund["KIID"]["sv"]
             assert "https://example.com/PASSIVETESTEN" == fund["KIID"]["en"]
             assert "PASSIVE" == fund["group"]
-            assert "2020-06-06" == fund["priceDate"]
+            assert "2021-11-10" == fund["priceDate"]
             assert "1.2345" == fund["aShareValue"]
             assert "1.098" == fund["bShareValue"]
             assert "0.00" == fund["changeData"]["change1d"]

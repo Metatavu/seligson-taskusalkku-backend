@@ -309,9 +309,9 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                         detail=f"No permission to find this company"
                     )
 
-                company_access_companies = [ company ]
+                company_access_companies = [company]
             else:
-                own_companies = [ company ]
+                own_companies = [company]
         else:
             own_companies = operations.get_companies(
                 database=self.database,
@@ -561,8 +561,12 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             detail=f"Invalid transaction code found {transaction_code}"
         )
 
-    @staticmethod
-    def translate_portfolio_security(portfolio_security_values: PortfolioSecurityValues) -> PortfolioSecurity:
+    def translate_portfolio_security(self, portfolio_security_values: PortfolioSecurityValues) -> PortfolioSecurity:
+        rate_date = operations.get_last_rate_date_for_security_rate(
+            database=self.database,
+            security_id=portfolio_security_values.security_id
+        )
+
         """
         Translates portfolio security into REST resource
         """
@@ -570,5 +574,6 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             id=str(portfolio_security_values.security_id),
             amount=str(portfolio_security_values.total_amount),
             totalValue=str(portfolio_security_values.market_value_total),
-            purchaseValue=str(portfolio_security_values.purchase_total)
+            purchaseValue=str(portfolio_security_values.purchase_total),
+            rateDate=rate_date
         )

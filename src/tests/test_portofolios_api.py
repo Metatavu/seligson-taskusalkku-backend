@@ -589,8 +589,8 @@ class TestPortfolio:
                                        backend_mysql: MySqlContainer):
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
                 sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
-                sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
-                sql_backend_portfolio_log(backend_mysql):
+                sql_backend_security_rates(backend_mysql), sql_backend_portfolio(backend_mysql), \
+                sql_backend_portfolio_transaction(backend_mysql), sql_backend_portfolio_log(backend_mysql):
 
             portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
 
@@ -598,6 +598,7 @@ class TestPortfolio:
             assert response.status_code == 200
             responses = response.json()
             assert 5 == len(responses)
+
             for response in responses:
                 security_id = response["id"]
                 total_amounts = portfolio_values[portfolio_id]["total_amounts"][security_id]
@@ -610,6 +611,7 @@ class TestPortfolio:
                     f"totalValue does not match on {response['id']} fund"
                 assert purchase_total == Decimal(response["purchaseValue"]), \
                     f"purchaseValue does not match on {response['id']} fund"
+                assert "2020-06-06" == response["rateDate"]
 
     def test_list_portfolio_securities_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,
                                                   user_1_auth: BearerAuth):
