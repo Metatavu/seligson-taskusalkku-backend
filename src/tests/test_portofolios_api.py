@@ -611,7 +611,7 @@ class TestPortfolio:
                     f"totalValue does not match on {response['id']} fund"
                 assert purchase_total == Decimal(response["purchaseValue"]), \
                     f"purchaseValue does not match on {response['id']} fund"
-                assert "2020-06-06" == portfolio_values[portfolio_id]["rateDate"]
+                assert "2020-06-06" == response["rateDate"]
 
     def test_list_portfolio_securities_invalid_id(self, client: TestClient, backend_mysql: MySqlContainer,
                                                   user_1_auth: BearerAuth):
