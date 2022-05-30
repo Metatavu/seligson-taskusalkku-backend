@@ -263,6 +263,39 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
 
     async def list_portfolios(
             self,
+            token_bearer: TokenModel,
+    ) -> List[Portfolio]:
+        """ list portfolios"""
+        if not AuthUtils.has_user_role(token_bearer=token_bearer):
+            raise HTTPException(
+                status_code=403,
+                detail="This endpoint is not available for anonymous users"
+            )
+
+        ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        companies = operations.get_companies(
+            database=self.database,
+            ssn=ssn
+        )
+
+        portfolios = []
+
+        for company in companies:
+            portfolios = portfolios + company.portfolios
+
+        return list(map(lambda portfolio: self.translate_portfolio(
+            portfolio=portfolio,
+            own_companies=companies
+        ), portfolios))
+
+    async def list_portfolios_v2(
+            self,
             company_id: Optional[UUID],
             token_bearer: TokenModel,
     ) -> List[Portfolio]:

@@ -419,7 +419,7 @@ class TestPortfolio:
                 sql_backend_security(backend_mysql), sql_backend_portfolio(backend_mysql), \
                 sql_backend_company_access(backend_mysql):
 
-            user_2_portfolios_response = client.get("/v1/portfolios/", auth=user_2_auth)
+            user_2_portfolios_response = client.get("/v2/portfolios/", auth=user_2_auth)
             assert user_2_portfolios_response.status_code == 200
             user_2_portfolios = user_2_portfolios_response.json()
 
@@ -446,7 +446,7 @@ class TestPortfolio:
                 sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
                 sql_backend_portfolio_log(backend_mysql):
 
-            response = client.get("/v1/portfolios/", auth=user_1_auth)
+            response = client.get("/v2/portfolios/", auth=user_1_auth)
             assert response.status_code == 200
             results = response.json()
             assert 4 == len(results)
@@ -476,7 +476,7 @@ class TestPortfolio:
                 sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
                 sql_backend_portfolio_log(backend_mysql), sql_backend_company_access(backend_mysql):
 
-            response = client.get("/v1/portfolios/?companyId=f0e88a2d-d773-46bd-b353-117a448abefd", auth=user_1_auth)
+            response = client.get("/v2/portfolios/?companyId=f0e88a2d-d773-46bd-b353-117a448abefd", auth=user_1_auth)
             assert response.status_code == 200
             results = response.json()
             assert 2 == len(results)
@@ -496,7 +496,7 @@ class TestPortfolio:
             assert "f0e88a2d-d773-46bd-b353-117a448abefd" == sub_portfolio["companyId"]
             assert "OWNED" == sub_portfolio["accessLevel"]
 
-            response = client.get("/v1/portfolios/?companyId=feebf58a-d382-4645-9855-d7e3f7534103", auth=user_2_auth)
+            response = client.get("/v2/portfolios/?companyId=feebf58a-d382-4645-9855-d7e3f7534103", auth=user_2_auth)
             assert response.status_code == 200
             results = response.json()
             assert 1 == len(results)
@@ -572,7 +572,7 @@ class TestPortfolio:
                 sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
                 sql_backend_portfolio_log(backend_mysql):
 
-            response = client.get("/v1/portfolios/", auth=user_5_auth)
+            response = client.get("/v2/portfolios/", auth=user_5_auth)
             assert response.status_code == 200
             results = response.json()
             assert 0 == len(results)
@@ -1010,7 +1010,7 @@ class TestPortfolio:
                                     auth: Optional[BearerAuth],
                                     company_id: Optional[str] = None
                                     ):
-        path = "/v1/portfolios"
+        path = "/v2/portfolios"
         if company_id is not None:
             path += f"?companyId={company_id}"
 
