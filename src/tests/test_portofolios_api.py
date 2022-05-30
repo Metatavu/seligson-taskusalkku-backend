@@ -572,7 +572,7 @@ class TestPortfolio:
                 sql_backend_portfolio(backend_mysql), sql_backend_portfolio_transaction(backend_mysql), \
                 sql_backend_portfolio_log(backend_mysql):
 
-            response = client.get("/v1/portfolios/", auth=user_5_auth)
+            response = client.get("/v2/portfolios/", auth=user_5_auth)
             assert response.status_code == 200
             results = response.json()
             assert 0 == len(results)
