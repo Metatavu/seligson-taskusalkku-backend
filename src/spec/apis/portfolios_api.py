@@ -396,6 +396,39 @@ class PortfoliosApiSpec(ABC):
             token_bearer=token_bearer
         )
 
+    @abstractmethod
+    async def list_portfolios_v2(
+        self,
+        company_id: Optional[UUID],
+        token_bearer: TokenModel,
+    ) -> List[Portfolio]:
+        ...
+
+    @router.get(
+        "/v2/portfolios",
+        responses={
+            200: {"model": List[Portfolio], "description": "List of portfolios"},
+            400: {"model": Error, "description": "Invalid request was sent to the server"},
+            403: {"model": Error, "description": "Attempted to make a call with unauthorized client"},
+            500: {"model": Error, "description": "Internal server error"},
+        },
+        tags=["Portfolios"],
+        summary="List portfolios.",
+    )
+    async def list_portfolios_v2_spec(
+        self,
+        company_id: str = Query(None, description="company id", alias="companyId"),
+        token_bearer: TokenModel = FastAPISecurity(
+            get_token_bearer
+        ),
+    ) -> List[Portfolio]:
+        """Lists portfolios logged user has access to"""
+
+        return await self.list_portfolios_v2(
+            company_id=self.to_uuid(company_id),
+            token_bearer=token_bearer
+        )
+
     @staticmethod
     def to_date(isodate: str) -> Optional[date]:
         """Translates given string to date
