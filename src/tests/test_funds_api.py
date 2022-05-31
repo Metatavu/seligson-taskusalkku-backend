@@ -1,6 +1,6 @@
 from typing import List
 
-from .utils.database import sql_backend_funds, sql_backend_security
+from .utils.database import sql_backend_funds, sql_backend_security, sql_backend_security_rates
 
 from .constants import fund_ids, invalid_uuids, invalid_auths
 
@@ -22,7 +22,8 @@ class TestFunds:
     """Tests for funds endpoints"""
 
     def test_find_fund(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
-        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql):
+        with sql_backend_funds(backend_mysql), sql_backend_security(backend_mysql), \
+                sql_backend_security_rates(backend_mysql):
             fund_id = fund_ids["passivetest01"]
             response = client.get(f"/v1/funds/{fund_id}", auth=user_1_auth)
             assert response.status_code == 200

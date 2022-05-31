@@ -20,11 +20,13 @@ class PortfolioSecurity(BaseModel):
         amount: The amount of this PortfolioSecurity.
         purchaseValue: The purchaseValue of this PortfolioSecurity.
         totalValue: The totalValue of this PortfolioSecurity.
+        rateDate: The rateDate of this PortfolioSecurity [Optional].
     """
     id: str
     amount: str
     purchaseValue: str
     totalValue: str
+    rateDate: Optional[date] = None
 
     @classmethod
     @validator("amount")

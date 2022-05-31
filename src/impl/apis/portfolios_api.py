@@ -15,7 +15,8 @@ from spec.models.portfolio_summary import PortfolioSummary
 from spec.models.portfolio_history_value import PortfolioHistoryValue
 from database import operations
 from business_logics import business_logics
-from database.models import Portfolio as DbPortfolio, PortfolioLog as DbPortfolioLog, Security as DbSecurity
+from database.models import Portfolio as DbPortfolio, PortfolioLog as DbPortfolioLog, Security as DbSecurity, \
+    Company as DbCompany
 from spec.models.portfolio_security import PortfolioSecurity
 from spec.models.portfolio_transaction import PortfolioTransaction
 from spec.models.transaction_type import TransactionType
@@ -34,9 +35,21 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             token_bearer: TokenModel
     ) -> Portfolio:
         portfolio = self.get_portfolio(token_bearer=token_bearer, portfolio_id=portfolio_id)
+        ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        own_companies = operations.get_companies(
+            database=self.database,
+            ssn=ssn
+        )
 
         return self.translate_portfolio(
-            portfolio=portfolio
+            portfolio=portfolio,
+            own_companies=own_companies
         )
 
     async def get_portfolio_summary(
@@ -118,6 +131,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             token_bearer: TokenModel
     ) -> List[PortfolioHistoryValue]:
         portfolio = self.get_portfolio(token_bearer=token_bearer, portfolio_id=portfolio_id)
+        portfolio_company_id = portfolio.company_id
 
         if end_date > date.today():
             end_date = date.today()
@@ -138,8 +152,9 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         """Add transactions to holdings object"""
         for row in rows:
             transaction_code = row.transaction_code
+
             is_subscription = transaction_code == "11"
-            to_port = transaction_code == "31"
+            to_port = transaction_code == "31" and portfolio_company_id == row.c_company_id
             is_transfer = transaction_code == "46"
             is_removal = transaction_code == "80"
 
@@ -274,7 +289,85 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         for company in companies:
             portfolios = portfolios + company.portfolios
 
-        return list(map(self.translate_portfolio, portfolios))
+        return list(map(lambda portfolio: self.translate_portfolio(
+            portfolio=portfolio,
+            own_companies=companies
+        ), portfolios))
+
+    async def list_portfolios_v2(
+            self,
+            company_id: Optional[UUID],
+            token_bearer: TokenModel,
+    ) -> List[Portfolio]:
+        """ list portfolios"""
+        if not AuthUtils.has_user_role(token_bearer=token_bearer):
+            raise HTTPException(
+                status_code=403,
+                detail="This endpoint is not available for anonymous users"
+            )
+
+        ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
+        if not ssn:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Cannot resolve logged user SSN"
+            )
+
+        own_companies = []
+        company_access_companies = []
+
+        if company_id:
+            company = operations.find_company(
+                database=self.database,
+                company_id=company_id
+            )
+
+            if not company:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Company with id {company_id} not found"
+                )
+
+            owned = company.ssn == ssn
+            if not owned:
+                company_access = operations.find_company_access_by_ssn_and_company_id(
+                    database=self.database,
+                    ssn=ssn,
+                    company_id=company_id
+                )
+
+                if not company_access:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"No permission to find this company"
+                    )
+
+                company_access_companies = [company]
+            else:
+                own_companies = [company]
+        else:
+            own_companies = operations.get_companies(
+                database=self.database,
+                ssn=ssn
+            )
+
+            company_access = operations.get_company_access(
+                database=self.database,
+                ssn=ssn
+            )
+
+            company_access_companies = list(map(lambda i: i.company, company_access))
+
+        companies = own_companies + company_access_companies
+        portfolios = []
+
+        for company in companies:
+            portfolios = portfolios + company.portfolios
+
+        return list(map(lambda portfolio: self.translate_portfolio(
+            portfolio=portfolio,
+            own_companies=own_companies
+        ), portfolios))
 
     async def list_portfolio_transactions(
             self,
@@ -378,29 +471,49 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
                 detail=f"Portfolio {portfolio_id} not found"
             )
 
-        ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
-        if not ssn:
+        user_ssn = AuthUtils.get_user_ssn(token_bearer=token_bearer)
+        if not user_ssn:
             raise HTTPException(
                 status_code=403,
                 detail=f"Cannot resolve logged user SSN"
             )
 
-        if portfolio.company.ssn != ssn:
-            raise HTTPException(
-                status_code=403,
-                detail=f"No permission to find this portfolio"
+        if user_ssn != portfolio.company.ssn:
+            company_access = operations.find_company_access_by_ssn_and_company_id(
+                database=self.database,
+                ssn=user_ssn,
+                company_id=portfolio.company.id
             )
+
+            if not company_access:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"No permission to find this portfolio"
+                )
 
         return portfolio
 
-    def translate_portfolio(self, portfolio: DbPortfolio) -> Portfolio:
+    def translate_portfolio(self,
+                            portfolio: DbPortfolio,
+                            own_companies: List[DbCompany],
+                            ) -> Portfolio:
         """
         Translates portfolio into REST resource
+
+        Args:
+            portfolio: portfolio to translate
+            own_companies: list of companies that user owns
+
+        Returns:
+            REST resource
         """
         portfolio_values = PortfolioUtils.get_portfolio_values(
             database=self.database,
             portfolio=portfolio
         )
+
+        own_company_ids = [company.id for company in own_companies]
+        access_level = "OWNED" if portfolio.company_id in own_company_ids else "SHARED"
 
         total_amount = str(portfolio_values.total_amount) \
             if portfolio_values.total_amount is not None else "0"
@@ -416,9 +529,12 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         portfolio_key = PortfolioUtils.get_portfolio_key(portfolio.original_id)
         reference_a = PortfolioUtils.make_reference(share_a, company_code, portfolio_key)
         reference_b = PortfolioUtils.make_reference(share_b, company_code, portfolio_key)
+        company_id = str(portfolio.company_id)
 
         return Portfolio(
             id=str(portfolio.id),
+            companyId=company_id,
+            accessLevel=access_level,
             name=portfolio.name,
             totalAmount=total_amount,
             marketValueTotal=market_value_total,
@@ -478,8 +594,12 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             detail=f"Invalid transaction code found {transaction_code}"
         )
 
-    @staticmethod
-    def translate_portfolio_security(portfolio_security_values: PortfolioSecurityValues) -> PortfolioSecurity:
+    def translate_portfolio_security(self, portfolio_security_values: PortfolioSecurityValues) -> PortfolioSecurity:
+        rate_date = operations.get_last_rate_date_for_security_rate(
+            database=self.database,
+            security_id=portfolio_security_values.security_id
+        )
+
         """
         Translates portfolio security into REST resource
         """
@@ -487,5 +607,6 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             id=str(portfolio_security_values.security_id),
             amount=str(portfolio_security_values.total_amount),
             totalValue=str(portfolio_security_values.market_value_total),
-            purchaseValue=str(portfolio_security_values.purchase_total)
+            purchaseValue=str(portfolio_security_values.purchase_total),
+            rateDate=rate_date
         )

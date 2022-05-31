@@ -52,6 +52,38 @@ def user_3_auth(keycloak: KeycloakContainer) -> BearerAuth:
 
 
 @pytest.fixture()
+def user_4_auth(keycloak: KeycloakContainer) -> BearerAuth:
+    """Fixture for providing auth for user 3
+
+    Args:
+        keycloak (str): Keycloak container
+
+    Returns:
+        BearerAuth: authentication
+    """
+
+    access_token_provider = AccessTokenProvider(keycloak=keycloak, realm="seligson", client_id="ui")
+    token = access_token_provider.get_access_token(username="user4", password="test")  # NOSONAR
+    return BearerAuth(token=token)
+
+
+@pytest.fixture()
+def user_5_auth(keycloak: KeycloakContainer) -> BearerAuth:
+    """Fixture for providing auth for user 3
+
+    Args:
+        keycloak (str): Keycloak container
+
+    Returns:
+        BearerAuth: authentication
+    """
+
+    access_token_provider = AccessTokenProvider(keycloak=keycloak, realm="seligson", client_id="ui")
+    token = access_token_provider.get_access_token(username="user5", password="test")  # NOSONAR
+    return BearerAuth(token=token)
+
+
+@pytest.fixture()
 def anonymous_auth(keycloak: KeycloakContainer) -> BearerAuth:
     """Fixture for providing auth for anonymous user
 

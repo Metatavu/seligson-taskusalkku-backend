@@ -1,0 +1,1 @@
+INSERT INTO company_access (id, ssn, company_id) VALUES ((UNHEX(REPLACE(UUID(), "-",""))), '010200A9618', (SELECT id FROM company WHERE original_id = '333'));

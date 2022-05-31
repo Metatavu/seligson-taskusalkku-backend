@@ -11,7 +11,8 @@ from csv import reader
 from datetime import date, datetime, timedelta, time
 from spec.models.extra_models import TokenModel
 from fastapi import HTTPException
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from fastapi_mail import MessageSchema
+from mail.mailer import Mailer
 
 LOCAL_TIMEZONE = 'Europe/Helsinki'
 
@@ -24,23 +25,6 @@ class MeetingsApiImpl(MeetingsApiSpec):
         meeting: Meeting,
         token_bearer: TokenModel
     ) -> Meeting:
-
-        mail_username = os.environ["MAIL_USERNAME"]
-        mail_password = os.environ["MAIL_PASSWORD"]
-        use_credentials = bool(mail_username) and bool(mail_password)
-        validate_certs = use_credentials
-
-        email_conf = ConnectionConfig(
-            MAIL_USERNAME=mail_username,
-            MAIL_PASSWORD=mail_password,
-            MAIL_FROM=os.environ["MAIL_FROM"],
-            MAIL_PORT=os.environ["MAIL_PORT"],
-            MAIL_SERVER=os.environ["MAIL_SERVER"],
-            MAIL_TLS=eval(os.environ["MAIL_TLS"]),
-            MAIL_SSL=eval(os.environ["MAIL_SSL"]),
-            USE_CREDENTIALS=use_credentials,
-            VALIDATE_CERTS=validate_certs
-        )
 
         local_time = meeting.time.replace(tzinfo=pytz.utc).astimezone(pytz.timezone(LOCAL_TIMEZONE))
 
@@ -64,9 +48,8 @@ class MeetingsApiImpl(MeetingsApiSpec):
             recipients=os.environ["MAIL_TO"].split(","),
             body=email_body)
 
-        fm = FastMail(email_conf)
         try:
-            await fm.send_message(message)
+            await Mailer.send_mail(message)
         except Exception:
             raise HTTPException(
                                 status_code=500,

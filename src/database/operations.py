@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy.sql.functions import coalesce
 
-from .models import Fund, SecurityRate, Company, PortfolioTransaction, LastRate, Security, Portfolio, PortfolioLog
+from .models import Fund, SecurityRate, Company, CompanyAccess, PortfolioTransaction, LastRate, Security, Portfolio, \
+    PortfolioLog
 from datetime import date
 
 
@@ -112,6 +113,22 @@ def list_securities_with_fund(database: Session,
         .all()
 
 
+def get_last_rate_date_for_security_rate(database: Session, security_id: UUID) -> date:
+    """
+    Returns the last rate date for a security.
+
+    Args:
+        database (Session): database session
+        security_id (UUID): security id
+
+    Returns:
+        Optional[datetime]: last rate date
+    """
+    return database.query(func.max(SecurityRate.rate_date)) \
+        .filter(SecurityRate.security_id == security_id) \
+        .scalar()
+
+
 def query_security_rates(database: Session,
                          security_id: UUID,
                          rate_date_min: date,
@@ -170,6 +187,19 @@ def find_most_recent_security_rate(database: Session,
         .one_or_none()
 
 
+def find_company(database: Session, company_id: UUID) -> Optional[Company]:
+    """Queries the company table
+
+    Args:
+        database (Session): database session
+        company_id (UUID): company id
+    Returns:
+        List[Company]: list of matching company table rows
+    """
+
+    return database.query(Company).filter(Company.id == company_id).one_or_none()
+
+
 def get_companies(database: Session, ssn: str) -> List[Company]:
     """Queries the company table
 
@@ -177,10 +207,41 @@ def get_companies(database: Session, ssn: str) -> List[Company]:
         database (Session): database session
         ssn (str): ssn of user/ or company id
     Returns:
-        List[Company]: list of matching Company table rows
+        List[Company]: list of matching company table rows
     """
 
-    return database.query(Company).filter(Company.ssn == ssn).all()
+    return database.query(Company).filter(Company.ssn == ssn)\
+        .order_by(Company.name).all()
+
+
+def get_company_access(database: Session, ssn: str) -> List[CompanyAccess]:
+    """Queries the company access table
+
+    Args:
+        database (Session): database session
+        ssn (str): ssn of user/ or company id
+    Returns:
+        List[CompanyAccess]: list of matching company access table rows
+    """
+
+    return database.query(CompanyAccess).filter(CompanyAccess.ssn == ssn).all()
+
+
+def find_company_access_by_ssn_and_company_id(database: Session, ssn: str, company_id: UUID) -> Optional[CompanyAccess]:
+    """Finds company access row by ssn and company_id
+
+    Args:
+        database (Session): database session
+        ssn (str): ssn of user
+        company_id (UUID): company id
+    Returns:
+        Optional[CompanyAccess]: found company access or None if not found
+    """
+
+    return database.query(CompanyAccess)\
+        .filter(CompanyAccess.ssn == ssn) \
+        .filter(CompanyAccess.company_id == company_id) \
+        .one_or_none()
 
 
 def find_portfolio(database: Session, portfolio_id: UUID) -> Optional[Portfolio]:
