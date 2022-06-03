@@ -140,7 +140,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         rows: List[DbPortfolioLog] = operations.get_portfolio_logs(
             database=self.database,
             portfolio=portfolio,
-            transaction_codes=['11', '31', '46', '80'],
+            transaction_codes=['11', '30', '31', '46', '80'],
             transaction_date_min=None,
             transaction_date_max=end_date,
         )
@@ -154,11 +154,12 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             transaction_code = row.transaction_code
 
             is_subscription = transaction_code == "11"
+            is_move_to_port = transaction_code == "30"
             to_port = transaction_code == "31" and portfolio_company_id == row.c_company_id
             is_transfer = transaction_code == "46"
             is_removal = transaction_code == "80"
 
-            if is_subscription or to_port:
+            if is_subscription or to_port or is_move_to_port:
                 """If subscription or a transfer to portfolio, add amount to security position."""
                 holdings.add_holding(security_id=row.security_id, amount=row.amount, 
                                      holding_date=row.transaction_date)
