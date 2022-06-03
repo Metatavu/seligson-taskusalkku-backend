@@ -1949,6 +1949,11 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                     if len(extra_transaction_numbers) > 0:
                         self.print_message(f"Warning: Extra transaction numbers: {extra_transaction_numbers}")
 
+                        for extra_transaction_number in extra_transaction_numbers:
+                            self.print_suggested_delete(
+                                trans_nr=extra_transaction_number
+                            )
+
                     self.print_suggested_status_updates(
                         funds_session=funds_session,
                         backend_session=backend_session,
@@ -2049,6 +2054,15 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                f"`transaction_code`, `transaction_date`, `c_total_value`, `portfolio_id`, "
                                f"`security_id`, `c_security_id`, `amount`, `c_price`, `payment_date`, `c_value`, "
                                f"`provision`, `status`, `updated`) VALUES ({values});")
+
+    def print_suggested_delete(self, trans_nr: str):
+        """
+        Prints suggested fix for detected fault
+
+        Args:
+            trans_nr: transaction number
+        """
+        self.print_message(f"Suggest: DELETE FROM portfolio_log WHERE transaction_number = {trans_nr};")
 
     def count_funds_portfolio_logs(self, funds_session: Session, secid: str):
         """
