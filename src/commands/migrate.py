@@ -92,7 +92,10 @@ class MigrateHandler:
 
             task_result = True
             if not self.verify_only and (timeout > datetime.now()) and (task.get_name() in task_names):
-                task_result = await self.run_task(task, timeout, False)
+                try:
+                    task_result = await self.run_task(task, timeout, False)
+                except Exception as e:
+                    await self.notify_error(e)
 
             if task_result and (timeout > datetime.now()) and (task.get_name() in task_names):
                 valid = await self.run_verify(task=task)
@@ -284,6 +287,30 @@ class MigrateHandler:
             synchronization_failure.updated = datetime.now()
             backend_session.add(synchronization_failure)
             return synchronization_failure
+
+    async def notify_error(self, error: Exception):
+        """
+        Notifies administrators about synchronization error.
+        Args:
+            error:
+                error
+
+        """
+        logger.error("Synchronization error", error)
+        email_body = f"Synchronization has crashed with following error" \
+                     f"{error}" \
+                     f"This is an automated message, please do not reply to this email"
+
+        message = MessageSchema(
+            subject=f"Synchronization error on Taskusalkku",
+            recipients=os.environ["MAIL_SYNCHRONIZATION_FAILURE_RECIPIENTS"].split(","),
+            body=email_body
+        )
+
+        try:
+            await Mailer.send_mail(message)
+        except Exception as e:
+            self.print_message(f"Error sending email {e}")
 
     async def notify_synchronization_failure(self,
                                              backend_session: Session,
