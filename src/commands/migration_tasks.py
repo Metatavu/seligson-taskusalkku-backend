@@ -1031,11 +1031,35 @@ class MigrateCompaniesTask(AbstractFundsTask):
                     removed_com_codes.append(original_id)
 
             if len(removed_com_codes) > 0:
-                self.print_message(f"Deleting companies with original_ids {removed_com_codes}")
+                removed_company_ids_query = backend_session.query(destination_models.Company.id) \
+                    .filter(destination_models.Company.original_id.in_(removed_com_codes))
 
-                synchronized_count = synchronized_count + backend_session.query(destination_models.Company) \
-                    .filter(destination_models.Company.original_id.in_(removed_com_codes)) \
-                    .delete(synchronize_session=False)
+                removed_company_ids = [value for value, in removed_company_ids_query]
+
+                log_c_company_ids = backend_session.query(destination_models.PortfolioLog.c_company_id) \
+                    .filter(destination_models.PortfolioLog.c_company_id.in_(removed_company_ids))
+
+                company_access_company_ids = backend_session.query(destination_models.CompanyAccess.company_id) \
+                    .filter(destination_models.CompanyAccess.company_id.in_(removed_company_ids))
+
+                portfolio_company_ids = backend_session.query(destination_models.Portfolio.company_id) \
+                    .filter(destination_models.Portfolio.company_id.in_(removed_company_ids))
+
+                company_ids_in_use_rows = portfolio_company_ids.union(log_c_company_ids, company_access_company_ids)\
+                    .all()
+
+                company_ids_in_use = [value for value, in company_ids_in_use_rows]
+
+                if len(company_ids_in_use) > 0:
+                    self.print_message(f"Excluding companies in use from the removal {company_ids_in_use}")
+                    removed_company_ids = set(removed_company_ids).difference(set(company_ids_in_use))
+
+                if len(removed_company_ids) > 0:
+                    self.print_message(f"Deleting {len(removed_company_ids)} companies")
+
+                    synchronized_count = synchronized_count + backend_session.query(destination_models.Company) \
+                        .filter(destination_models.Company.id.in_(removed_company_ids)) \
+                        .delete(synchronize_session=False)
 
             if self.should_timeout(timeout=timeout):
                 self.print_message(TIMED_OUT)
@@ -1298,10 +1322,33 @@ class MigratePortfoliosTask(AbstractFundsTask):
                     removed_por_ids.append(original_id)
 
             if len(removed_por_ids) > 0:
-                self.print_message(f"Deleting portfolios with original_ids {removed_por_ids}")
-                synchronized_count = synchronized_count + backend_session.query(destination_models.Portfolio) \
-                    .filter(destination_models.Portfolio.original_id.in_(removed_por_ids)) \
-                    .delete(synchronize_session=False)
+                removed_portfolio_ids_query = backend_session.query(destination_models.Portfolio.id) \
+                    .filter(destination_models.Portfolio.original_id.in_(removed_por_ids))
+
+                removed_portfolio_ids = [value for value, in removed_portfolio_ids_query]
+
+                transactions_portfolio_ids = backend_session.query(destination_models.
+                                                                   PortfolioTransaction.portfolio_id) \
+                    .filter(destination_models.PortfolioTransaction.portfolio_id.in_(removed_portfolio_ids))
+
+                log_portfolio_ids = backend_session.query(destination_models.PortfolioLog.portfolio_id) \
+                    .filter(destination_models.PortfolioLog.portfolio_id.in_(removed_portfolio_ids))
+
+                portfolio_ids_in_use_rows = transactions_portfolio_ids.union(log_portfolio_ids) \
+                    .all()
+
+                portfolio_ids_in_use = [value for value, in portfolio_ids_in_use_rows]
+
+                if len(portfolio_ids_in_use) > 0:
+                    self.print_message(f"Excluding portfolios in use from the removal {portfolio_ids_in_use}")
+                    removed_portfolio_ids = set(removed_portfolio_ids).difference(set(portfolio_ids_in_use))
+
+                if len(removed_portfolio_ids) > 0:
+                    self.print_message(f"Deleting portfolios with original_ids {removed_portfolio_ids}")
+                    
+                    synchronized_count = synchronized_count + backend_session.query(destination_models.Portfolio) \
+                        .filter(destination_models.Portfolio.id.in_(removed_portfolio_ids)) \
+                        .delete(synchronize_session=False)
 
             if self.should_timeout(timeout=timeout):
                 self.print_message(TIMED_OUT)
