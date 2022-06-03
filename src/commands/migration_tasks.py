@@ -1947,7 +1947,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             )
 
                     if len(extra_transaction_numbers) > 0:
-                        self.print_message(f"Warning: Extra transaction numbers: {missing_transaction_numbers}")
+                        self.print_message(f"Warning: Extra transaction numbers: {extra_transaction_numbers}")
 
                     self.print_suggested_status_updates(
                         funds_session=funds_session,
