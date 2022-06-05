@@ -332,7 +332,7 @@ class TestPortfolio:
 
             expected_value_1998_01_23 = 2.6354
             expected_value_2020_06_01 = 1120.0312
-            expected_value_2020_06_06 = 3263.4449
+            expected_value_2020_06_06 = 3381.4887
 
             responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
                                    f"startDate=1998-01-23&endDate=1998-01-23", auth=user_1_auth).json()
