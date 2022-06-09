@@ -218,6 +218,8 @@ class MigrateHandler:
                 self.print_message(f"Error: {task.get_name()} verification failed after retry. Notifying admins...")
                 await self.notify_verification_failure(task)
             else:
+                self.print_message(f"Error: {task.get_name()} verification failed. Retrying...")
+
                 await self.run_and_verify_default_task(
                     backend_session=backend_session,
                     task=task,
@@ -250,6 +252,10 @@ class MigrateHandler:
                 security=security,
                 retry=False
             )
+
+            if task.should_timeout(timeout=timeout):
+                self.print_message(f"Info: {task.get_name()} timeout reached.")
+                return
 
     async def run_and_verify_security_based_task_security(self,
                                                           backend_session: Session,
@@ -562,7 +568,7 @@ class MigrateHandler:
 @click.option("--task", default="", help="Only run specified task")
 @click.option("--skip-tasks", default="", help="Run without specified tasks")
 @click.option("--force-recheck", default=False, help="Forces task to recheck all entities")
-@click.option("--timeout", default="15", help="Timeout in minutes")
+@click.option("--timeout", default="90", help="Timeout in minutes")
 @click.option("--security", default=None, help="Specify security for the task")
 @click.option("--verify-only", default=False, help="Runs only verifications")
 def main(debug, task, skip_tasks, force_recheck, timeout, security, verify_only):
