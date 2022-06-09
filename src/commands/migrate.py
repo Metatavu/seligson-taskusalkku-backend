@@ -16,10 +16,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from commands.migration_tasks import AbstractMigrationTask, MigrateFundsTask, MigrateSecuritiesTask, \
     MigrateSecurityRatesTask, MigrateLastRatesTask, MigrateCompaniesTask, MigratePortfoliosTask, \
-    MigrateCompanyAccessTask, MigratePortfolioLogsTask, MigratePortfolioTransactionsTask
+    MigrateCompanyAccessTask, MigratePortfolioLogsTask, MigratePortfolioTransactionsTask, MigrationTaskType
 
 from commands.migration_exceptions import MigrationException, MissingEntityException
-from database.models import SynchronizationFailure
+from database.models import SynchronizationFailure, Security
 from mail.mailer import Mailer
 
 logger = logging.getLogger(__name__)
@@ -51,6 +51,7 @@ class MigrateHandler:
         self.timeout = timeout
         self.force_failed_tasks = []
         self.forced_failed_tasks = []
+        self.securities = []
         self.security = security
         self.verify_only = verify_only
 
@@ -76,116 +77,100 @@ class MigrateHandler:
             task_names = list(filter(lambda x: x not in skip_tasks, task_names))
 
         with Session(self.backend_engine) as backend_session:
+            if self.security:
+                self.securities = self.list_securities_by_original_id(
+                    backend_session=backend_session,
+                    original_id=self.security
+                )
+            else:
+                self.securities = self.list_securities(backend_session=backend_session)
+
             self.force_failed_tasks = self.list_force_failed_tasks(backend_session)
 
-        self.print_message(f"\nRunning tasks: {task_names}")
+        self.print_message(f"Info: Running tasks: {task_names}")
 
         self.force_failed_tasks = list(filter(lambda x: x in task_names, self.force_failed_tasks))
 
         if len(self.force_failed_tasks) > 0:
-            self.print_message(f"\nForcing failed tasks: {self.force_failed_tasks}")
+            self.print_message(f"Info: Forcing failed tasks: {self.force_failed_tasks}")
 
         for task in self.tasks:
-            task.options = {
-                "security": self.security
-            }
-
-            task_result = True
-            if not self.verify_only and (timeout > datetime.now()) and (task.get_name() in task_names):
+            if timeout > datetime.now() and task.get_name() in task_names:
                 try:
-                    task_result = await self.run_task(task, timeout, False)
+                    await self.run_and_verify_task(task=task, timeout=timeout)
                 except Exception as e:
                     await self.notify_error(e)
-
-            if task_result and (timeout > datetime.now()) and (task.get_name() in task_names):
-                valid = await self.run_verify(task=task)
-                if not valid:
-                    if not self.verify_only:
-                        self.print_message(f"Warning: Verification failed on {task.get_name()}, forcing the task...")
-                        await self.run_task(task, timeout, True)
-                        valid = await self.run_verify(task=task)
-
-                        if not valid:
-                            self.print_message(f"Warning: Verification failed on {task.get_name()}, "
-                                               f"despite of forcing the tasl. Notifying administrators...")
-                            await self.notify_verification_failure(task)
-                    else:
-                        self.print_message(f"Warning: Verification failed on {task.get_name()}.")
-                else:
-                    self.print_message(f"Info: {task.get_name()} verification passed.")
 
         if len(self.forced_failed_tasks) > 0:
             with Session(self.backend_engine) as backend_session:
                 self.mark_forced_tasks_as_done(backend_session=backend_session)
                 backend_session.commit()
 
-    async def run_task(self, task: AbstractMigrationTask, timeout: datetime, force: bool) -> bool:
+    async def run_and_verify_task(self,
+                                  task: AbstractMigrationTask,
+                                  timeout: datetime
+                                  ) -> bool:
         """
-        Runs single migration task
+        Runs a task and verify
         Args:
-            task: task
+            task: task to run
             timeout: timeout
-            force: whether to force task
+
+        Returns:
+            Whether the task was successful
         """
         result = True
         start_time = datetime.now()
-        name = task.get_name()
-        self.print_message(f"Start time: {start_time}")
+        force_failed_task = task.get_name() in self.force_failed_tasks
+        force = self.force_recheck or force_failed_task
+        self.print_message(f"Info: Start time: {start_time}")
 
         with Session(self.backend_engine) as backend_session:
             task.prepare(backend_session=backend_session)
-            force_failed_task = name in self.force_failed_tasks
 
-            if force or self.force_recheck or force_failed_task:
-                self.print_message(f"\nForced recheck, migrating {name}...")
+            up_to_date = task.up_to_date(backend_session)
 
-                try:
-                    count = task.migrate(backend_session=backend_session,
-                                         timeout=timeout,
-                                         force_recheck=True)
-                    self.print_message(f"\n{name} migration complete. {count} updated entries")
+            if force:
+                self.print_message(f"Info: {task.get_name()} is forced.")
+            elif up_to_date:
+                self.print_message(f"Info: {task.get_name()} is already up-to-date.")
+            else:
+                self.print_message(f"Info: {task.get_name()} is not up-to-date. Migrating...")
 
-                    if force_failed_task:
-                        self.forced_failed_tasks.append(name)
-
-                except MissingEntityException as e:
-                    await self.handle_synchronization_failure(
+            try:
+                if task.get_type() == MigrationTaskType.DEFAULT:
+                    await self.run_and_verify_default_task(
                         backend_session=backend_session,
-                        original_id=e.original_id,
-                        message=e.message,
-                        target_task=e.target_task,
-                        origin_task=name
+                        task=task,
+                        timeout=timeout,
+                        force=force,
+                        retry=False
                     )
 
-                    result = False
-            else:
-                up_to_date = task.up_to_date(backend_session)
-                if up_to_date:
-                    self.print_message(f"\n{name} is already up-to-date.")
-                else:
-                    self.print_message(f"\n{name} is not up-to-date. Migrating...")
+                elif task.get_type() == MigrationTaskType.SECURITY_BASED:
+                    await self.run_and_verify_security_based_task(
+                        backend_session=backend_session,
+                        task=task,
+                        timeout=timeout,
+                        force=force
+                    )
 
-                    try:
-                        count = task.migrate(backend_session=backend_session,
-                                             timeout=timeout,
-                                             force_recheck=self.force_recheck)
-                        self.print_message(f"\n{name} migration complete. {count} updated entries")
-                    except MissingEntityException as e:
-                        await self.handle_synchronization_failure(
-                            backend_session=backend_session,
-                            original_id=e.original_id,
-                            message=e.message,
-                            target_task=e.target_task,
-                            origin_task=name
-                        )
+            except MissingEntityException as e:
+                await self.handle_synchronization_failure(
+                    backend_session=backend_session,
+                    original_id=e.original_id,
+                    message=e.message,
+                    target_task=e.target_task,
+                    origin_task=task.get_name()
+                )
 
-                        result = False
+                result = False
 
             if not self.debug:
                 backend_session.commit()
-                self.print_message(f"\nSaved changes.")
+                self.print_message(f"Info: Saved changes.")
             else:
-                self.print_message(f"\nRunning in debug mode, not saving the changes")
+                self.print_message(f"Warning: Running in debug mode, not saving the changes")
 
             end_time = datetime.now()
             total_time = end_time - start_time
@@ -193,22 +178,137 @@ class MigrateHandler:
             self.print_message(f"Success: {result}, End time: {end_time}, total time: {total_time}")
             return result
 
-    async def run_verify(self, task: AbstractMigrationTask):
+    async def run_and_verify_default_task(self,
+                                          backend_session: Session,
+                                          task: AbstractMigrationTask,
+                                          timeout: datetime,
+                                          force: bool,
+                                          retry: bool
+                                          ):
         """
-        Runs the verification task.
+        Runs default task
         Args:
-            task: the task to run
+            backend_session: backend session
+            task: task to run
+            timeout: timeout
+            force: whether to force task
+            retry: whether this is a retry attempt
+        """
+
+        count = task.migrate(backend_session=backend_session,
+                             timeout=timeout,
+                             force_recheck=force or retry,
+                             security=None)
+
+        self.print_message(f"Info: \n{task.get_name()} migration complete. {count} updated entries")
+
+        if task.should_timeout(timeout=timeout):
+            self.print_message(f"Info: {task.get_name()} timeout reached.")
+            return
+
+        valid = task.verify(
+            backend_session=backend_session,
+            security=None
+        )
+
+        if valid:
+            self.print_message(f"Info: {task.get_name()} verification passed.")
+        else:
+            if retry:
+                self.print_message(f"Error: {task.get_name()} verification failed after retry. Notifying admins...")
+                await self.notify_verification_failure(task)
+            else:
+                await self.run_and_verify_default_task(
+                    backend_session=backend_session,
+                    task=task,
+                    timeout=timeout,
+                    force=force,
+                    retry=True
+                )
+
+    async def run_and_verify_security_based_task(self,
+                                                 backend_session: Session,
+                                                 task: AbstractMigrationTask,
+                                                 timeout: datetime,
+                                                 force: bool
+                                                 ):
+        """
+        Runs a security based task
+
+        Args:
+            backend_session: backend session
+            task: task to run
+            timeout: timeout
+            force: whether to force the task
+        """
+        for security in self.securities:
+            await self.run_and_verify_security_based_task_security(
+                backend_session=backend_session,
+                task=task,
+                timeout=timeout,
+                force=force,
+                security=security,
+                retry=False
+            )
+
+    async def run_and_verify_security_based_task_security(self,
+                                                          backend_session: Session,
+                                                          task: AbstractMigrationTask,
+                                                          timeout: datetime,
+                                                          force: bool,
+                                                          retry: bool,
+                                                          security: Security
+                                                          ):
+        """
+        Runs a security-based task and verification. If the verification fails, it will retry the task.
+        Args:
+            backend_session: backend session
+            task: task to be run
+            timeout: timeout
+            force: whether to force the task
+            retry: whether this is a retry attempt
+            security: security to be used
 
         Returns:
-            True if the verification was successful, False otherwise
+            count of updated entries
         """
-        name = task.get_name()
 
-        with Session(self.backend_engine) as backend_session:
-            if task.verify(backend_session=backend_session):
-                return True
+        count = task.migrate(backend_session=backend_session,
+                             timeout=timeout,
+                             force_recheck=force or retry,
+                             security=security)
+
+        self.print_message(f"Info: {task.get_name()}, security {security.original_id} migration complete. "
+                           f"{count} updated entries")
+
+        if task.should_timeout(timeout=timeout):
+            self.print_message(f"Info: {task.get_name()}, security {security.original_id} timeout reached.")
+            return
+
+        valid = task.verify(
+            backend_session=backend_session,
+            security=security
+        )
+
+        if valid:
+            self.print_message(f"Info: {task.get_name()}, security {security.original_id} verification passed.")
+        else:
+            if retry:
+                self.print_message(f"Error: {task.get_name()}, security {security.original_id} verification failed "
+                                   f"after retry. Notifying admins...")
+                await self.notify_verification_failure(task)
             else:
-                return False
+                self.print_message(f"Warning: {task.get_name()}, security {security.original_id} "
+                                   f"verification failed. Retrying..")
+
+                await self.run_and_verify_security_based_task_security(
+                    backend_session=backend_session,
+                    task=task,
+                    timeout=timeout,
+                    force=force,
+                    retry=True,
+                    security=security
+                )
 
     async def handle_synchronization_failure(self,
                                              backend_session: Session,
@@ -410,6 +510,29 @@ class MigrateHandler:
             if synchronization_failure is not None:
                 synchronization_failure.handled = True
                 backend_session.add(synchronization_failure)
+
+    @staticmethod
+    def list_securities_by_original_id(backend_session: Session, original_id: str) -> List[Security]:
+        """
+        Lists all securities
+        Args:
+            backend_session: backend database session
+            original_id: original id
+
+        Returns: all securities
+        """
+        return backend_session.query(Security).filter(Security.original_id == original_id).all()
+
+    @staticmethod
+    def list_securities(backend_session: Session) -> List[Security]:
+        """
+        Lists all securities
+        Args:
+            backend_session: backend database session
+
+        Returns: all securities
+        """
+        return backend_session.query(Security).all()
 
     @staticmethod
     def get_backend_engine() -> MockConnection:

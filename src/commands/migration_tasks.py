@@ -3,6 +3,7 @@ import logging
 import re
 
 from decimal import Decimal
+from enum import Enum
 
 from uuid import UUID
 from abc import ABC, abstractmethod
@@ -28,6 +29,11 @@ class TaskOptions(TypedDict):
     security: Optional[str]
 
 
+class MigrationTaskType(Enum):
+    DEFAULT = 1
+    SECURITY_BASED = 2
+
+
 class AbstractMigrationTask(ABC):
     """
     Abstract migration task
@@ -39,6 +45,14 @@ class AbstractMigrationTask(ABC):
         """
         Returns task's name
         Returns: task's name
+        """
+        ...
+
+    @abstractmethod
+    def get_type(self) -> MigrationTaskType:
+        """
+        Returns task's type
+        Returns: task's type
         """
         ...
 
@@ -67,13 +81,15 @@ class AbstractMigrationTask(ABC):
         ...
 
     @abstractmethod
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
         """
         Runs migration task
         Args:
             backend_session: backend database session
             timeout: timeout
             force_recheck: Whether task should be forced to recheck all entities
+            security: security to verify (set only for security migration tasks)
 
         Returns:
             count of updated entries
@@ -81,12 +97,13 @@ class AbstractMigrationTask(ABC):
         ...
 
     @abstractmethod
-    def verify(self, backend_session: Session) -> bool:
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         """
         Verifies data correctness
 
         Args:
             backend_session: backend database session
+            security: security to verify (set only for security migration tasks)
 
         Returns:
             whether data is correct or not
@@ -166,17 +183,6 @@ class AbstractMigrationTask(ABC):
     def list_portfolios_by_company(backend_session: Session, company_id: UUID) -> List[destination_models.Portfolio]:
         return backend_session.query(destination_models.Portfolio).filter(
             destination_models.Portfolio.company_id == company_id).all()
-
-    @staticmethod
-    def list_securities(backend_session: Session) -> List[destination_models.Security]:
-        """
-        Lists all securities
-        Args:
-            backend_session: backend database session
-
-        Returns: all securities
-        """
-        return backend_session.query(destination_models.Security).all()
 
     @staticmethod
     def round_datetime_to_seconds(value: datetime) -> datetime:
@@ -263,6 +269,9 @@ class MigrateSecuritiesTask(AbstractFundsTask):
     def get_name(self):
         return "securities"
 
+    def get_type(self) -> MigrationTaskType:
+        return MigrationTaskType.DEFAULT
+
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             fund_count = self.count_fund_security_rows(funds_session=funds_session)
@@ -281,7 +290,8 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
             return backend_updated == funds_updated
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
         synchronized_count = 0
         with Session(self.get_funds_database_engine()) as funds_session:
 
@@ -342,7 +352,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
             return synchronized_count
 
-    def verify(self, backend_session: Session) -> bool:
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             fund_securities = self.list_fund_security_rows(funds_session=funds_session).all()
             backend_securities = self.list_backend_securities(backend_session=backend_session)
@@ -501,13 +511,17 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
     def get_name(self):
         return "security-rates"
 
+    def get_type(self) -> MigrationTaskType:
+        return MigrationTaskType.DEFAULT
+
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM security_rate").scalar()
             funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATE").scalar()
             return backend_count >= funds_count
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
         synchronized_count = 0
 
         with Session(self.get_funds_database_engine()) as funds_session:
@@ -543,7 +557,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
             return synchronized_count
 
-    def verify(self, backend_session: Session) -> bool:
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             funds_verification_values = self.get_funds_verification_values(funds_session=funds_session)
             backend_verification_values = self.get_backend_verification_values(backend_session=backend_session)
@@ -809,6 +823,9 @@ class MigrateLastRatesTask(AbstractFundsTask):
     def get_name(self):
         return "last-rate"
 
+    def get_type(self) -> MigrationTaskType:
+        return MigrationTaskType.DEFAULT
+
     def prepare(self, backend_session: Session):
         with Session(self.get_funds_database_engine()) as funds_session:
             fund_rows = funds_session.execute("SELECT SECID, RDATE, RCLOSE FROM TABLE_RATELAST")
@@ -826,7 +843,7 @@ class MigrateLastRatesTask(AbstractFundsTask):
 
         return True
 
-    def verify(self, backend_session: Session) -> bool:
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             funds_verification_values = self.get_funds_verification_values(funds_session=funds_session)
             backend_verification_values = self.get_backend_verification_values(backend_session=backend_session)
@@ -871,7 +888,8 @@ class MigrateLastRatesTask(AbstractFundsTask):
         return backend_session.execute("SELECT COUNT(id) as count, SUM(rate_close) as rate_close_sum "
                                        "FROM last_rate").one()
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
         synchronized_count = 0
 
         for security_original_id, funds_row in self.funds_entities.items():
@@ -943,6 +961,9 @@ class MigrateCompaniesTask(AbstractFundsTask):
     def get_name(self):
         return "companies"
 
+    def get_type(self) -> MigrationTaskType:
+        return MigrationTaskType.DEFAULT
+
     def prepare(self, backend_session: Session):
         """
         Resolves last update dates for both databases
@@ -969,7 +990,8 @@ class MigrateCompaniesTask(AbstractFundsTask):
             backend_count = self.count_backend_companies(backend_session=backend_session)
             return funds_count == backend_count
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
         synchronized_count = 0
         batch = 10000
         offset = 0
@@ -1066,7 +1088,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
 
             return synchronized_count
 
-    def verify(self, backend_session: Session) -> bool:
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         batch = 10000
         offset = 0
 
@@ -1246,6 +1268,9 @@ class MigratePortfoliosTask(AbstractFundsTask):
     def get_name(self):
         return "portfolios"
 
+    def get_type(self) -> MigrationTaskType:
+        return MigrationTaskType.DEFAULT
+
     def up_to_date(self, backend_session: Session) -> bool:
         with Session(self.get_funds_database_engine()) as funds_session:
             backend_count = self.count_backend_portfolios(backend_session=backend_session)
@@ -1264,7 +1289,8 @@ class MigratePortfoliosTask(AbstractFundsTask):
         """
         return backend_session.query(func.count(destination_models.Portfolio.id)).scalar()
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
         synchronized_count = 0
         batch = 10000
         offset = 0
@@ -1355,7 +1381,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
 
             return synchronized_count
 
-    def verify(self, backend_session: Session) -> bool:
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         batch = 10000
         offset = 0
 
@@ -1487,167 +1513,168 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
     Migration task for portfolio logs
     """
 
+    def __init__(self):
+        self.funds_updates = None
+        self.backend_updates = None
+
     def get_name(self):
         return "portfolio-logs"
+
+    def get_type(self) -> MigrationTaskType:
+        return MigrationTaskType.SECURITY_BASED
 
     def up_to_date(self, backend_session: Session) -> bool:
         return False
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def prepare(self, backend_session: Session):
+        with Session(self.get_funds_database_engine()) as funds_session:
+            self.funds_updates = self.get_funds_updates(funds_session=funds_session)
+            self.backend_updates = self.get_backend_updates(backend_session=backend_session)
+
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
+
         synchronized_count = 0
         batch = 20000
         unix_time = datetime(1970, 1, 1, 0, 0)
-        selected_security = self.options.get('security', None)
         backend_companies = list(self.list_backend_companies(backend_session=backend_session))
         backend_company_map = {x.original_id: x for x in backend_companies}
 
         with Session(self.get_funds_database_engine()) as funds_session:
+            offset = 0
 
-            funds_updates = self.get_funds_updates(funds_session=funds_session)
-            backend_updates = self.get_backend_updates(backend_session=backend_session)
+            if force_recheck:
+                backend_update = datetime(1970, 1, 1)
+            else:
+                funds_updated = self.funds_updates.get(security.original_id, None)
+                if not funds_updated:
+                    return 0
 
-            securities = self.list_securities(backend_session=backend_session)
-            for security in securities:
-                if selected_security is not None and security.original_id != selected_security:
-                    continue
+                backend_update = self.backend_updates.get(security.id, None)
+                if not backend_update:
+                    backend_update = datetime(1970, 1, 1)
 
-                if self.should_timeout(timeout=timeout):
+                if funds_updated <= backend_update:
+                    return 0
+
+                self.print_message(f"Info: Security {security.original_id} portfolio logs are not upd-to-date funds "
+                                   f"{funds_updated}, backend {backend_update}")
+
+            while not self.should_timeout(timeout=timeout):
+                self.print_message(f"Info: Migrating security {security.original_id} portfolio logs from offset {offset}")
+
+                portfolio_log_rows = list(self.list_portfolio_logs(
+                    funds_session=funds_session,
+                    security=security,
+                    updated=backend_update,
+                    offset=offset,
+                    limit=batch
+                ).fetchall())
+
+                if len(portfolio_log_rows) == 0:
                     break
 
-                offset = 0
+                trans_nrs = list(map(lambda i: i.TRANS_NR, portfolio_log_rows))
+                por_ids = set(map(lambda i: i.PORID, portfolio_log_rows))
 
-                if force_recheck:
-                    backend_update = datetime(1970, 1, 1)
-                else:
-                    funds_updated = funds_updates.get(security.original_id, None)
-                    if not funds_updated:
-                        continue
+                existing_portfolio_logs = backend_session.query(destination_models.PortfolioLog).filter(
+                    destination_models.PortfolioLog.transaction_number.in_(trans_nrs)) \
+                    .all()
 
-                    backend_update = backend_updates.get(security.id, None)
-                    if not backend_update:
-                        backend_update = datetime(1970, 1, 1)
+                portfolio_ids = backend_session.query(destination_models.Portfolio.id,
+                                                      destination_models.Portfolio.original_id) \
+                    .filter(destination_models.Portfolio.original_id.in_(por_ids)).all()
 
-                    if funds_updated <= backend_update:
-                        continue
+                existing_portfolio_log_map = {x.transaction_number: x for x in existing_portfolio_logs}
+                portfolio_id_map = {x.original_id: x.id for x in portfolio_ids}
 
-                    self.print_message(f"Security {security.original_id} portfolio logs are not upd-to-date funds "
-                                       f"{funds_updated}, backend {backend_update}")
+                for portfolio_log_row in portfolio_log_rows:
+                    c_security_original_id = portfolio_log_row.CSECID
+                    # for the case that null is inserted as SECID = ' '
+                    if c_security_original_id and c_security_original_id.strip():
+                        c_security = self.get_security_by_original_id(backend_session=backend_session,
+                                                                      original_id=c_security_original_id)
+                        if not c_security:
+                            raise MissingSecurityException(
+                                original_id=c_security_original_id
+                            )
 
-                while not self.should_timeout(timeout=timeout):
-                    self.print_message(f"Migrating security {security.original_id} portfolio logs from offset {offset}")
+                        c_security_id = c_security.id
+                    else:
+                        c_security_id = None
 
-                    portfolio_log_rows = list(self.list_portfolio_logs(
-                        funds_session=funds_session,
-                        security=security,
-                        updated=backend_update,
-                        offset=offset,
-                        limit=batch
-                    ).fetchall())
+                    portfolio_original_id = portfolio_log_row.PORID
+                    if portfolio_original_id:
+                        portfolio_id = portfolio_id_map.get(portfolio_original_id, None)
+                        if not portfolio_id:
+                            raise MissingPortfolioException(
+                                original_id=portfolio_original_id
+                            )
 
-                    if len(portfolio_log_rows) == 0:
-                        break
+                    else:
+                        # without the portfolio key we cant do anything, we try to grab the right portfolio from
+                        # portfolio table considering the company code. If there are more than one portfolio then
+                        # we should alert and ask how to resolve the situation manually.
+                        company = backend_company_map.get(portfolio_log_row.COM_CODE, None)
+                        if not company:
+                            raise MissingCompanyException(
+                                original_id=portfolio_log_row.COM_CODE
+                            )
 
-                    trans_nrs = list(map(lambda i: i.TRANS_NR, portfolio_log_rows))
-                    por_ids = set(map(lambda i: i.PORID, portfolio_log_rows))
-
-                    existing_portfolio_logs = backend_session.query(destination_models.PortfolioLog).filter(
-                        destination_models.PortfolioLog.transaction_number.in_(trans_nrs)) \
-                        .all()
-
-                    portfolio_ids = backend_session.query(destination_models.Portfolio.id,
-                                                          destination_models.Portfolio.original_id) \
-                        .filter(destination_models.Portfolio.original_id.in_(por_ids)).all()
-
-                    existing_portfolio_log_map = {x.transaction_number: x for x in existing_portfolio_logs}
-                    portfolio_id_map = {x.original_id: x.id for x in portfolio_ids}
-
-                    for portfolio_log_row in portfolio_log_rows:
-                        c_security_original_id = portfolio_log_row.CSECID
-                        # for the case that null is inserted as SECID = ' '
-                        if c_security_original_id and c_security_original_id.strip():
-                            c_security = self.get_security_by_original_id(backend_session=backend_session,
-                                                                          original_id=c_security_original_id)
-                            if not c_security:
-                                raise MissingSecurityException(
-                                    original_id=c_security_original_id
-                                )
-
-                            c_security_id = c_security.id
-                        else:
-                            c_security_id = None
-
-                        portfolio_original_id = portfolio_log_row.PORID
-                        if portfolio_original_id:
-                            portfolio_id = portfolio_id_map.get(portfolio_original_id, None)
-                            if not portfolio_id:
-                                raise MissingPortfolioException(
-                                    original_id=portfolio_original_id
-                                )
+                        portfolios = self.list_portfolios_by_company(backend_session=backend_session,
+                                                                     company_id=company.id)
+                        if len(portfolios) != 1:
+                            raise MigrationException(f"Could not resolve portfolio for company "
+                                                     f"{portfolio_log_row.COM_CODE}")
 
                         else:
-                            # without the portfolio key we cant do anything, we try to grab the right portfolio from
-                            # portfolio table considering the company code. If there are more than one portfolio then
-                            # we should alert and ask how to resolve the situation manually.
-                            company = backend_company_map.get(portfolio_log_row.COM_CODE, None)
-                            if not company:
-                                raise MissingCompanyException(
-                                    original_id=portfolio_log_row.COM_CODE
-                                )
+                            portfolio = portfolios[0]
+                            portfolio_id = portfolio.id
 
-                            portfolios = self.list_portfolios_by_company(backend_session=backend_session,
-                                                                         company_id=company.id)
-                            if len(portfolios) != 1:
-                                raise MigrationException(f"Could not resolve portfolio for company "
-                                                         f"{portfolio_log_row.COM_CODE}")
+                    ccom_code = portfolio_log_row.CCOM_CODE
+                    if ccom_code and ccom_code.strip() != '':
+                        c_company = backend_company_map.get(ccom_code, None)
+                        if not c_company:
+                            raise MissingCompanyException(
+                                original_id=ccom_code
+                            )
+                        c_company_id = c_company.id
+                    else:
+                        c_company_id = None
 
-                            else:
-                                portfolio = portfolios[0]
-                                portfolio_id = portfolio.id
+                    existing_portfolio_log = existing_portfolio_log_map.get(portfolio_log_row.TRANS_NR, None)
+                    logged_date = portfolio_log_row.PMT_DATE
 
-                        ccom_code = portfolio_log_row.CCOM_CODE
-                        if ccom_code and ccom_code.strip() != '':
-                            c_company = backend_company_map.get(ccom_code, None)
-                            if not c_company:
-                                raise MissingCompanyException(
-                                    original_id=ccom_code
-                                )
-                            c_company_id = c_company.id
-                        else:
-                            c_company_id = None
+                    # dates that are before 1970-01-01 are considered to be nulls
+                    if logged_date and logged_date > unix_time:
+                        payment_date = logged_date
+                    else:
+                        payment_date = None
 
-                        existing_portfolio_log = existing_portfolio_log_map.get(portfolio_log_row.TRANS_NR, None)
-                        logged_date = portfolio_log_row.PMT_DATE
+                    self.upsert_portfolio_log(session=backend_session,
+                                              portfolio_log=existing_portfolio_log,
+                                              transaction_number=portfolio_log_row.TRANS_NR,
+                                              transaction_code=portfolio_log_row.TRANS_CODE,
+                                              transaction_date=portfolio_log_row.TRANS_DATE,
+                                              c_total_value=portfolio_log_row.CTOT_VALUE,
+                                              portfolio_id=portfolio_id,
+                                              security_id=security.id,
+                                              c_security_id=c_security_id,
+                                              c_company_id=c_company_id,
+                                              amount=portfolio_log_row.AMOUNT,
+                                              c_price=portfolio_log_row.CPRICE,
+                                              payment_date=payment_date,
+                                              c_value=portfolio_log_row.CVALUE,
+                                              provision=portfolio_log_row.PROVISION,
+                                              status=portfolio_log_row.STATUS,
+                                              updated=portfolio_log_row.UPDATED)
 
-                        # dates that are before 1970-01-01 are considered to be nulls
-                        if logged_date and logged_date > unix_time:
-                            payment_date = logged_date
-                        else:
-                            payment_date = None
+                    synchronized_count = synchronized_count + 1
 
-                        self.upsert_portfolio_log(session=backend_session,
-                                                  portfolio_log=existing_portfolio_log,
-                                                  transaction_number=portfolio_log_row.TRANS_NR,
-                                                  transaction_code=portfolio_log_row.TRANS_CODE,
-                                                  transaction_date=portfolio_log_row.TRANS_DATE,
-                                                  c_total_value=portfolio_log_row.CTOT_VALUE,
-                                                  portfolio_id=portfolio_id,
-                                                  security_id=security.id,
-                                                  c_security_id=c_security_id,
-                                                  c_company_id=c_company_id,
-                                                  amount=portfolio_log_row.AMOUNT,
-                                                  c_price=portfolio_log_row.CPRICE,
-                                                  payment_date=payment_date,
-                                                  c_value=portfolio_log_row.CVALUE,
-                                                  provision=portfolio_log_row.PROVISION,
-                                                  status=portfolio_log_row.STATUS,
-                                                  updated=portfolio_log_row.UPDATED)
+                if len(portfolio_log_rows) < batch:
+                    break
 
-                        synchronized_count = synchronized_count + 1
-
-                    if len(portfolio_log_rows) < batch:
-                        break
-
-                    offset += batch
+                offset += batch
 
             if self.should_timeout(timeout=timeout):
                 self.print_message(TIMED_OUT)
@@ -1780,187 +1807,177 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
         return query.all()
 
-    def verify(self, backend_session: Session) -> bool:
-        selected_security = self.options.get('security', None)
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         result = True
 
         with Session(self.get_funds_database_engine()) as funds_session:
-            securities = self.list_securities(backend_session=backend_session)
-            for security in securities:
-                if selected_security is not None and security.original_id != selected_security:
-                    continue
+            self.print_message(f"Info: Verifying security {security.original_id} portfolio logs")
 
-                security_valid = True
+            funds_row_count = self.count_funds_portfolio_logs(
+                funds_session=funds_session,
+                secid=security.original_id
+            )
 
-                self.print_message(f"Verifying security {security.original_id} portfolio logs")
+            backend_row_count = self.count_backend_portfolio_logs(
+                backend_session=backend_session,
+                security_id=security.id
+            )
 
-                funds_row_count = self.count_funds_portfolio_logs(
-                    funds_session=funds_session,
-                    secid=security.original_id
-                )
-
-                backend_row_count = self.count_backend_portfolio_logs(
+            if funds_row_count != backend_row_count:
+                result = False
+            elif funds_row_count > 0:
+                backend_verification_values = self.get_backend_verification_values(
                     backend_session=backend_session,
                     security_id=security.id
                 )
 
-                if funds_row_count != backend_row_count:
-                    security_valid = False
-                elif funds_row_count > 0:
-                    backend_verification_values = self.get_backend_verification_values(
-                        backend_session=backend_session,
-                        security_id=security.id
-                    )
+                funds_verification_values = self.get_funds_verification_values(
+                    funds_session=funds_session,
+                    secid=security.original_id
+                )
 
-                    funds_verification_values = self.get_funds_verification_values(
-                        funds_session=funds_session,
-                        secid=security.original_id
-                    )
+                backend_c_security_counts = self.get_backend_c_security_counts(
+                    backend_session=backend_session,
+                    security_id=security.id
+                )
 
-                    backend_c_security_counts = self.get_backend_c_security_counts(
-                        backend_session=backend_session,
-                        security_id=security.id
-                    )
+                backend_c_security_counts_map = {x.CSECID: x.count for x in backend_c_security_counts}
 
-                    backend_c_security_counts_map = {x.CSECID: x.count for x in backend_c_security_counts}
+                funds_c_security_counts = self.get_funds_csec_counts(
+                    funds_session=funds_session,
+                    secid=security.original_id
+                )
 
-                    funds_c_security_counts = self.get_funds_csec_counts(
-                        funds_session=funds_session,
-                        secid=security.original_id
-                    )
+                for funds_c_security_count in funds_c_security_counts:
+                    cssecid = funds_c_security_count.CSECID
+                    count = funds_c_security_count.count
 
-                    for funds_c_security_count in funds_c_security_counts:
-                        cssecid = funds_c_security_count.CSECID
-                        count = funds_c_security_count.count
+                    if cssecid not in backend_c_security_counts_map:
+                        self.print_message(f"Warning: c_security {cssecid}"
+                                           f" not found in portfolio logs in security"
+                                           f" {security.original_id}. ")
+                        result = False
+                    elif backend_c_security_counts_map[cssecid] != count:
+                        self.print_message(f"Warning: c_security {cssecid} count mismatch"
+                                           f" in security {security.original_id}. "
+                                           f" {backend_c_security_counts_map[cssecid]}, != {count}")
+                        result = False
 
-                        if cssecid not in backend_c_security_counts_map:
-                            self.print_message(f"Warning: c_security {cssecid}"
-                                               f" not found in portfolio logs in security"
-                                               f" {security.original_id}. ")
-                            security_valid = False
-                        elif backend_c_security_counts_map[cssecid] != count:
-                            self.print_message(f"Warning: c_security {cssecid} count mismatch"
-                                               f" in security {security.original_id}. "
-                                               f" {backend_c_security_counts_map[cssecid]}, != {count}")
-                            security_valid = False
+                if funds_verification_values.trans_code_sum != backend_verification_values.trans_code_sum:
+                    self.print_message(f"Warning: Transaction code sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.trans_code_sum} != "
+                                       f"{funds_verification_values.trans_code_sum}")
+                    result = False
 
-                    if funds_verification_values.trans_code_sum != backend_verification_values.trans_code_sum:
-                        self.print_message(f"Warning: Transaction code sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.trans_code_sum} != "
-                                           f"{funds_verification_values.trans_code_sum}")
-                        security_valid = False
+                if funds_verification_values.trans_nr_sum != backend_verification_values.trans_nr_sum:
+                    self.print_message(f"Warning: Transaction number sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.trans_nr_sum} != "
+                                       f"{funds_verification_values.trans_nr_sum}")
+                    result = False
 
-                    if funds_verification_values.trans_nr_sum != backend_verification_values.trans_nr_sum:
-                        self.print_message(f"Warning: Transaction number sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.trans_nr_sum} != "
-                                           f"{funds_verification_values.trans_nr_sum}")
-                        security_valid = False
+                if funds_verification_values.ctot_value_sum != backend_verification_values.ctot_value_sum:
+                    self.print_message(f"Warning: Total value sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.ctot_value_sum} != "
+                                       f"{funds_verification_values.ctot_value_sum}")
+                    result = False
 
-                    if funds_verification_values.ctot_value_sum != backend_verification_values.ctot_value_sum:
-                        self.print_message(f"Warning: Total value sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.ctot_value_sum} != "
-                                           f"{funds_verification_values.ctot_value_sum}")
-                        security_valid = False
+                if funds_verification_values.amount_sum != backend_verification_values.amount_sum:
+                    self.print_message(f"Warning: Amount sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.amount_sum} != "
+                                       f"{funds_verification_values.amount_sum}")
+                    result = False
 
-                    if funds_verification_values.amount_sum != backend_verification_values.amount_sum:
-                        self.print_message(f"Warning: Amount sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.amount_sum} != "
-                                           f"{funds_verification_values.amount_sum}")
-                        security_valid = False
+                if funds_verification_values.cvalue_sum != backend_verification_values.cvalue_sum:
+                    self.print_message(f"Warning: C value sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.cvalue_sum} != "
+                                       f"{funds_verification_values.cvalue_sum}")
+                    result = False
 
-                    if funds_verification_values.cvalue_sum != backend_verification_values.cvalue_sum:
-                        self.print_message(f"Warning: C value sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.cvalue_sum} != "
-                                           f"{funds_verification_values.cvalue_sum}")
-                        security_valid = False
+                if funds_verification_values.cprice_sum != backend_verification_values.cprice_sum:
+                    self.print_message(f"Warning: C pricew sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.cprice_sum} != "
+                                       f"{funds_verification_values.cprice_sum}")
+                    result = False
 
-                    if funds_verification_values.cprice_sum != backend_verification_values.cprice_sum:
-                        self.print_message(f"Warning: C pricew sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.cprice_sum} != "
-                                           f"{funds_verification_values.cprice_sum}")
-                        security_valid = False
+                if funds_verification_values.pmt_date_sum != backend_verification_values.pmt_date_sum:
+                    self.print_message(f"Warning: payment date sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.pmt_date_sum} != "
+                                       f"{funds_verification_values.pmt_date_sum}")
+                    result = False
 
-                    if funds_verification_values.pmt_date_sum != backend_verification_values.pmt_date_sum:
-                        self.print_message(f"Warning: payment date sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.pmt_date_sum} != "
-                                           f"{funds_verification_values.pmt_date_sum}")
-                        security_valid = False
+                if funds_verification_values.trans_date_date_sum != backend_verification_values.trans_date_date_sum:
+                    self.print_message(f"Warning: transaction date sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.trans_date_date_sum} != "
+                                       f"{funds_verification_values.trans_date_date_sum}")
+                    result = False
 
-                    if funds_verification_values.trans_date_date_sum != backend_verification_values.trans_date_date_sum:
-                        self.print_message(f"Warning: transaction date sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.trans_date_date_sum} != "
-                                           f"{funds_verification_values.trans_date_date_sum}")
-                        security_valid = False
+                if funds_verification_values.por_id_sum != backend_verification_values.por_id_sum:
+                    self.print_message(f"Warning: portfolio id sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.por_id_sum} != "
+                                       f"{funds_verification_values.por_id_sum}")
+                    result = False
 
-                    if funds_verification_values.por_id_sum != backend_verification_values.por_id_sum:
-                        self.print_message(f"Warning: portfolio id sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.por_id_sum} != "
-                                           f"{funds_verification_values.por_id_sum}")
-                        security_valid = False
+                if funds_verification_values.ccom_code_sum != backend_verification_values.ccom_code_sum:
+                    self.print_message(f"Warning: c company id sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.ccom_code_sum} != "
+                                       f"{funds_verification_values.ccom_code_sum}")
+                    result = False
 
-                    if funds_verification_values.ccom_code_sum != backend_verification_values.ccom_code_sum:
-                        self.print_message(f"Warning: c company id sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.ccom_code_sum} != "
-                                           f"{funds_verification_values.ccom_code_sum}")
-                        security_valid = False
+                if funds_verification_values.status_sum != backend_verification_values.status_sum:
+                    self.print_message(f"Warning: status sum mismatch in portfolio logs in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.status_sum} != "
+                                       f"{funds_verification_values.status_sum}")
 
-                    if funds_verification_values.status_sum != backend_verification_values.status_sum:
-                        self.print_message(f"Warning: status sum mismatch in portfolio logs in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.status_sum} != "
-                                           f"{funds_verification_values.status_sum}")
+                    result = False
 
-                        security_valid = False
+            if not result:
+                funds_nrs = self.list_funds_portfolio_log_trans_nrs(
+                    funds_session=funds_session,
+                    secid=security.original_id
+                )
 
-                if not security_valid:
-                    funds_nrs = self.list_funds_portfolio_log_trans_nrs(
-                        funds_session=funds_session,
-                        secid=security.original_id
-                    )
+                backend_transaction_numbers = self.list_backend_portfolio_log_transaction_numbers(
+                    backend_session=backend_session,
+                    security_id=security.id
+                )
 
-                    backend_transaction_numbers = self.list_backend_portfolio_log_transaction_numbers(
-                        backend_session=backend_session,
-                        security_id=security.id
-                    )
+                missing_transaction_numbers = set(funds_nrs).difference(set(backend_transaction_numbers))
+                extra_transaction_numbers = set(backend_transaction_numbers).difference(set(funds_nrs))
 
-                    missing_transaction_numbers = set(funds_nrs).difference(set(backend_transaction_numbers))
-                    extra_transaction_numbers = set(backend_transaction_numbers).difference(set(funds_nrs))
+                if len(missing_transaction_numbers) > 0:
+                    self.print_message(f"Warning: Missing transaction numbers: {missing_transaction_numbers}")
 
-                    if len(missing_transaction_numbers) > 0:
-                        self.print_message(f"Warning: Missing transaction numbers: {missing_transaction_numbers}")
+                    for missing_transaction_number in missing_transaction_numbers:
+                        self.print_suggested_insert(
+                            trans_nr=missing_transaction_number,
+                            backend_session=backend_session,
+                            funds_session=funds_session
+                        )
 
-                        for missing_transaction_number in missing_transaction_numbers:
-                            self.print_suggested_insert(
-                                trans_nr=missing_transaction_number,
-                                backend_session=backend_session,
-                                funds_session=funds_session
-                            )
+                if len(extra_transaction_numbers) > 0:
+                    self.print_message(f"Warning: Extra transaction numbers: {extra_transaction_numbers}")
 
-                    if len(extra_transaction_numbers) > 0:
-                        self.print_message(f"Warning: Extra transaction numbers: {extra_transaction_numbers}")
+                    for extra_transaction_number in extra_transaction_numbers:
+                        self.print_suggested_delete(
+                            trans_nr=extra_transaction_number
+                        )
 
-                        for extra_transaction_number in extra_transaction_numbers:
-                            self.print_suggested_delete(
-                                trans_nr=extra_transaction_number
-                            )
-
-                    self.print_suggested_status_updates(
-                        funds_session=funds_session,
-                        backend_session=backend_session,
-                        security=security
-                    )
-
-                result = security_valid and result
+                self.print_suggested_status_updates(
+                    funds_session=funds_session,
+                    backend_session=backend_session,
+                    security=security
+                )
 
             return result
 
@@ -2301,10 +2318,14 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
     def get_name(self):
         return "portfolio-transactions"
 
+    def get_type(self) -> MigrationTaskType:
+        return MigrationTaskType.DEFAULT
+
     def up_to_date(self, backend_session: Session) -> bool:
         return False
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
         synchronized_count = 0
         batch = 1000
 
@@ -2423,7 +2444,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
 
             return synchronized_count
 
-    def verify(self, backend_session: Session) -> bool:
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         selected_security = self.options.get('security', None)
         result = True
 
@@ -2785,10 +2806,14 @@ class MigrateFundsTask(AbstractMigrationTask):
     def get_name(self):
         return "funds"
 
+    def get_type(self) -> MigrationTaskType:
+        return MigrationTaskType.DEFAULT
+
     def up_to_date(self, backend_session: Session) -> bool:
         return False
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
         synchronized_count = 0
 
         with Session(self.kiid_engine) as kiid_session:
@@ -2842,7 +2867,7 @@ class MigrateFundsTask(AbstractMigrationTask):
 
             return synchronized_count
 
-    def verify(self, backend_session: Session) -> bool:
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         with Session(self.kiid_engine) as kiid_session:
             kiid_funds = self.list_fund_rows(kiid_session=kiid_session).all()
             backend_funds = self.list_backend_funds(backend_session=backend_session)
@@ -2989,10 +3014,14 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
     def get_name(self):
         return "company_access"
 
+    def get_type(self) -> MigrationTaskType:
+        return MigrationTaskType.DEFAULT
+
     def up_to_date(self, backend_session: Session) -> bool:
         return False
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                security: Optional[destination_models.Security]) -> int:
         synchronized_count = 0
 
         companies = list(backend_session.query(destination_models.Company.id,
@@ -3051,7 +3080,7 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
 
             return synchronized_count
 
-    def verify(self, backend_session: Session) -> bool:
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         with Session(self.get_salkku_database_engine()) as salkku_session:
             salkku_company_accesses = self.list_salkku_authorizations(salkku_session=salkku_session).all()
             salkku_company_accesses_map = {f"{x.authorizedSSN}-{x.comCode}": x for x in salkku_company_accesses}
