@@ -485,7 +485,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
         Returns: original ids
         """
-        return [ value for value, in backend_session.query(destination_models.Security.original_id).all() ]
+        return [value for value, in backend_session.query(destination_models.Security.original_id).all()]
 
     @staticmethod
     def upsert_security(backend_session: Session, security, original_id, updated, fund_id=None, currency="", name_fi="",
@@ -646,6 +646,17 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
         return backend_session.execute("SELECT COUNT(id) as count, SUM(rate_close) as rate_close_sum "
                                        "FROM security_rate").one()
 
+    @staticmethod
+    def list_securities(backend_session: Session) -> List[destination_models.Security]:
+        """
+        Lists all securities
+        Args:
+            backend_session: backend database session
+
+        Returns: all securities
+        """
+        return backend_session.query(destination_models.Security).all()
+
     def migrate_security_rates(self, security: destination_models.Security,
                                funds_session: Session,
                                backend_session: Session,
@@ -747,7 +758,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
 
     @staticmethod
     def list_funds_security_rates(funds_session: Session, security: destination_models.Security, rdate: date,
-                            limit: int, offset: int):
+                                  limit: int, offset: int):
         """
         Lists rates from funds database
         Args:
@@ -1561,7 +1572,8 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                    f"{funds_updated}, backend {backend_update}")
 
             while not self.should_timeout(timeout=timeout):
-                self.print_message(f"Info: Migrating security {security.original_id} portfolio logs from offset {offset}")
+                self.print_message(f"Info: Migrating security {security.original_id} "
+                                   f"portfolio logs from offset {offset}")
 
                 portfolio_log_rows = list(self.list_portfolio_logs(
                     funds_session=funds_session,
@@ -1612,7 +1624,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                             )
 
                     else:
-                        # without the portfolio key we cant do anything, we try to grab the right portfolio from
+                        # without the portfolio key we can't do anything, we try to grab the right portfolio from
                         # portfolio table considering the company code. If there are more than one portfolio then
                         # we should alert and ask how to resolve the situation manually.
                         company = backend_company_map.get(portfolio_log_row.COM_CODE, None)
@@ -2378,8 +2390,8 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
             if funds_updated <= backend_update:
                 return 0
 
-            self.print_message(f"Info: Security {security.original_id} portfolio transactions are not upd-to-date funds "
-                               f"{funds_updated}, backend {backend_update}")
+            self.print_message(f"Info: Security {security.original_id} portfolio transactions are not upd-to-date "
+                               f"funds {funds_updated}, backend {backend_update}")
 
             while not self.should_timeout(timeout=timeout):
                 self.print_message(f"Info: Migrating security {security.original_id} portfolio transactions "
@@ -2920,7 +2932,7 @@ class MigrateFundsTask(AbstractMigrationTask):
 
         Returns: original ids
         """
-        return [ value for value, in backend_session.query(destination_models.Fund.original_id).all() ]
+        return [value for value, in backend_session.query(destination_models.Fund.original_id).all()]
 
     @staticmethod
     def count_rows_kiid(kiid_session: Session):
