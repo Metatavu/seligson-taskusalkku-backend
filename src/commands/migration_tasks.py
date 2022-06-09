@@ -596,7 +596,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
                 security=security,
                 rdate=date(1970, 1, 1),
                 offset=0,
-                limit=100000
+                limit=1000000
             )
 
             for funds_rate_row in funds_rate_rows:
