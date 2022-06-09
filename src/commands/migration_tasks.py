@@ -2315,11 +2315,20 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
     Migration task for portfolio transactions
     """
 
+    def __init__(self):
+        self.funds_updates = None
+        self.backend_updates = None
+
+    def prepare(self, backend_session: Session):
+        with Session(self.get_funds_database_engine()) as funds_session:
+            self.funds_updates = self.get_funds_updates(funds_session=funds_session)
+            self.backend_updates = self.get_backend_updates(backend_session=backend_session)
+
     def get_name(self):
         return "portfolio-transactions"
 
     def get_type(self) -> MigrationTaskType:
-        return MigrationTaskType.DEFAULT
+        return MigrationTaskType.SECURITY_BASED
 
     def up_to_date(self, backend_session: Session) -> bool:
         return False
@@ -2330,17 +2339,164 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
         batch = 1000
 
         with Session(self.get_funds_database_engine()) as funds_session:
+            self.print_message(f"Info: Checking removed portfolio transactions from security {security.original_id}...")
 
-            funds_updates = self.get_funds_updates(funds_session=funds_session)
-            backend_updates = self.get_backend_updates(backend_session=backend_session)
+            funds_nrs = self.list_funds_portfolio_transaction_trans_nrs(
+                funds_session=funds_session,
+                secid=security.original_id
+            )
 
-            securities = self.list_securities(backend_session=backend_session)
-            for security in securities:
-                if self.should_timeout(timeout=timeout):
+            backend_transaction_numbers = self.list_backend_portfolio_transaction_transaction_numbers(
+                backend_session=backend_session,
+                security_id=security.id
+            )
+
+            removed_trans_nrs = set(backend_transaction_numbers).difference(set(funds_nrs))
+
+            if len(removed_trans_nrs) > 0:
+                removed_count = backend_session.query(destination_models.PortfolioTransaction) \
+                    .filter(destination_models.PortfolioTransaction.transaction_number.in_(removed_trans_nrs)) \
+                    .delete(synchronize_session=False)
+
+                if removed_count > 0:
+                    self.print_message(f"Info: Removed {removed_count} portfolio transactions.")
+                    synchronized_count += removed_count
+
+            offset = 0
+
+            funds_updated = self.funds_updates.get(security.original_id, None)
+            if not funds_updated:
+                return 0
+
+            if force_recheck:
+                backend_update = datetime(1970, 1, 1)
+            else:
+                backend_update = self.backend_updates.get(security.id, None)
+                if not backend_update:
+                    backend_update = datetime(1970, 1, 1)
+
+            if funds_updated <= backend_update:
+                return 0
+
+            self.print_message(f"Info: Security {security.original_id} portfolio transactions are not upd-to-date funds "
+                               f"{funds_updated}, backend {backend_update}")
+
+            while not self.should_timeout(timeout=timeout):
+                self.print_message(f"Info: Migrating security {security.original_id} portfolio transactions "
+                                   f"from offset {offset}")
+
+                portfolio_transaction_cursor = self.list_portfolio_transactions(
+                    funds_session=funds_session,
+                    security=security,
+                    updated=backend_update,
+                    offset=offset,
+                    limit=batch
+                )
+
+                if portfolio_transaction_cursor.rowcount == 0:
                     break
 
-                self.print_message(f"Checking removed portfolio transactions from security {security.original_id}...")
+                portfolio_transaction_rows = list(portfolio_transaction_cursor.fetchall())
+                trans_nrs = list(map(lambda i: i.TRANS_NR, portfolio_transaction_rows))
+                por_ids = set(map(lambda i: i.PORID, portfolio_transaction_rows))
 
+                existing_transactions = backend_session.query(destination_models.PortfolioTransaction) \
+                    .filter(destination_models.PortfolioTransaction.transaction_number.in_(trans_nrs)) \
+                    .all()
+
+                portfolio_ids = backend_session.query(destination_models.Portfolio.id,
+                                                      destination_models.Portfolio.original_id) \
+                    .filter(destination_models.Portfolio.original_id.in_(por_ids)).all()
+
+                existing_transaction_map = {x.transaction_number: x for x in existing_transactions}
+                portfolio_id_map = {x.original_id: x.id for x in portfolio_ids}
+
+                for portfolio_transaction_row in portfolio_transaction_rows:
+                    portfolio_original_id = portfolio_transaction_row.PORID
+                    portfolio_id = portfolio_id_map.get(portfolio_original_id, None)
+                    if not portfolio_id:
+                        raise MissingPortfolioException(
+                            original_id=portfolio_original_id
+                        )
+
+                    existing_transaction = existing_transaction_map.get(portfolio_transaction_row.TRANS_NR, None)
+
+                    self.upsert_portfolio_transaction(backend_session=backend_session,
+                                                      portfolio_transaction=existing_transaction,
+                                                      transaction_number=portfolio_transaction_row.TRANS_NR,
+                                                      transaction_date=portfolio_transaction_row.TRANS_DATE,
+                                                      amount=portfolio_transaction_row.AMOUNT,
+                                                      purchase_c_value=portfolio_transaction_row.PUR_CVALUE,
+                                                      portfolio_id=portfolio_id,
+                                                      security_id=security.id,
+                                                      updated=portfolio_transaction_row.UPDATED
+                                                      )
+
+                    synchronized_count = synchronized_count + 1
+
+                if len(portfolio_transaction_rows) < batch:
+                    break
+
+                offset += batch
+
+            if self.should_timeout(timeout=timeout):
+                self.print_message(TIMED_OUT)
+
+            return synchronized_count
+
+    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
+        result = True
+
+        with Session(self.get_funds_database_engine()) as funds_session:
+            self.print_message(f"Info: Verifying security {security.original_id} portfolio transactions")
+
+            backend_verification_values = self.get_backend_verification_values(
+                backend_session=backend_session,
+                security_id=security.id
+            )
+
+            funds_verification_values = self.get_funds_verification_values(
+                funds_session=funds_session,
+                secid=security.original_id
+            )
+
+            if funds_verification_values.count != backend_verification_values.count:
+                self.print_message(f"Warning: Transaction row count mismatch in portfolio transaction in security"
+                                   f" {security.original_id}. "
+                                   f"{backend_verification_values.count} != "
+                                   f"{funds_verification_values.count}")
+                result = False
+            else:
+                if funds_verification_values.trans_nr_sum != backend_verification_values.trans_nr_sum:
+                    self.print_message(f"Warning: Transaction number sum mismatch in "
+                                       f"portfolio transaction in security "
+                                       f"{security.original_id}. "
+                                       f"{backend_verification_values.trans_nr_sum} != "
+                                       f"{funds_verification_values.trans_nr_sum}")
+                    result = False
+
+                if funds_verification_values.amount_sum != backend_verification_values.amount_sum:
+                    self.print_message(f"Warning: Amount sum mismatch in portfolio transaction in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.amount_sum} != "
+                                       f"{funds_verification_values.amount_sum}")
+                    result = False
+
+                if funds_verification_values.purc_value_sum != backend_verification_values.purc_value_sum:
+                    self.print_message(f"Warning: purchase C value sum mismatch in portfolio transaction in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.purc_value_sum} != "
+                                       f"{funds_verification_values.purc_value_sum}")
+                    result = False
+
+                if funds_verification_values.por_id_sum != backend_verification_values.por_id_sum:
+                    self.print_message(f"Warning: portfolio id sum mismatch in portfolio transaction in security"
+                                       f" {security.original_id}. "
+                                       f"{backend_verification_values.por_id_sum} != "
+                                       f"{funds_verification_values.por_id_sum}")
+                    result = False
+
+            if not result:
                 funds_nrs = self.list_funds_portfolio_transaction_trans_nrs(
                     funds_session=funds_session,
                     secid=security.original_id
@@ -2351,188 +2507,22 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
                     security_id=security.id
                 )
 
-                removed_trans_nrs = set(backend_transaction_numbers).difference(set(funds_nrs))
+                missing_transaction_numbers = set(funds_nrs).difference(set(backend_transaction_numbers))
+                extra_transaction_numbers = set(backend_transaction_numbers).difference(set(funds_nrs))
 
-                if len(removed_trans_nrs) > 0:
-                    removed_count = backend_session.query(destination_models.PortfolioTransaction) \
-                        .filter(destination_models.PortfolioTransaction.transaction_number.in_(removed_trans_nrs)) \
-                        .delete(synchronize_session=False)
+                self.print_message(f"Warning: Missing transaction numbers: {missing_transaction_numbers}")
+                self.print_message(f"Warning: Extra transaction numbers: {extra_transaction_numbers}")
 
-                    if removed_count > 0:
-                        self.print_message(f"Removed {removed_count} portfolio transactions.")
-                        synchronized_count += removed_count
-
-                offset = 0
-
-                funds_updated = funds_updates.get(security.original_id, None)
-                if not funds_updated:
-                    continue
-
-                if force_recheck:
-                    backend_update = datetime(1970, 1, 1)
-                else:
-                    backend_update = backend_updates.get(security.id, None)
-                    if not backend_update:
-                        backend_update = datetime(1970, 1, 1)
-
-                if funds_updated <= backend_update:
-                    continue
-
-                self.print_message(f"Security {security.original_id} portfolio transactions are not upd-to-date funds "
-                                   f"{funds_updated}, backend {backend_update}")
-
-                while not self.should_timeout(timeout=timeout):
-                    self.print_message(f"Migrating security {security.original_id} portfolio transactions "
-                                       f"from offset {offset}")
-
-                    portfolio_transaction_cursor = self.list_portfolio_transactions(
-                        funds_session=funds_session,
-                        security=security,
-                        updated=backend_update,
-                        offset=offset,
-                        limit=batch
+                for missing_transaction_number in missing_transaction_numbers:
+                    self.print_suggested_insert(
+                        trans_nr=missing_transaction_number,
+                        funds_session=funds_session
                     )
 
-                    if portfolio_transaction_cursor.rowcount == 0:
-                        break
-
-                    portfolio_transaction_rows = list(portfolio_transaction_cursor.fetchall())
-                    trans_nrs = list(map(lambda i: i.TRANS_NR, portfolio_transaction_rows))
-                    por_ids = set(map(lambda i: i.PORID, portfolio_transaction_rows))
-
-                    existing_transactions = backend_session.query(destination_models.PortfolioTransaction) \
-                        .filter(destination_models.PortfolioTransaction.transaction_number.in_(trans_nrs)) \
-                        .all()
-
-                    portfolio_ids = backend_session.query(destination_models.Portfolio.id,
-                                                          destination_models.Portfolio.original_id) \
-                        .filter(destination_models.Portfolio.original_id.in_(por_ids)).all()
-
-                    existing_transaction_map = {x.transaction_number: x for x in existing_transactions}
-                    portfolio_id_map = {x.original_id: x.id for x in portfolio_ids}
-
-                    for portfolio_transaction_row in portfolio_transaction_rows:
-                        portfolio_original_id = portfolio_transaction_row.PORID
-                        portfolio_id = portfolio_id_map.get(portfolio_original_id, None)
-                        if not portfolio_id:
-                            raise MissingPortfolioException(
-                                original_id=portfolio_original_id
-                            )
-
-                        existing_transaction = existing_transaction_map.get(portfolio_transaction_row.TRANS_NR, None)
-
-                        self.upsert_portfolio_transaction(backend_session=backend_session,
-                                                          portfolio_transaction=existing_transaction,
-                                                          transaction_number=portfolio_transaction_row.TRANS_NR,
-                                                          transaction_date=portfolio_transaction_row.TRANS_DATE,
-                                                          amount=portfolio_transaction_row.AMOUNT,
-                                                          purchase_c_value=portfolio_transaction_row.PUR_CVALUE,
-                                                          portfolio_id=portfolio_id,
-                                                          security_id=security.id,
-                                                          updated=portfolio_transaction_row.UPDATED
-                                                          )
-
-                        synchronized_count = synchronized_count + 1
-
-                    if len(portfolio_transaction_rows) < batch:
-                        break
-
-                    offset += batch
-
-            if self.should_timeout(timeout=timeout):
-                self.print_message(TIMED_OUT)
-
-            return synchronized_count
-
-    def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
-        selected_security = self.options.get('security', None)
-        result = True
-
-        with Session(self.get_funds_database_engine()) as funds_session:
-            securities = self.list_securities(backend_session=backend_session)
-            for security in securities:
-                if selected_security is not None and security.original_id != selected_security:
-                    continue
-
-                security_valid = True
-
-                self.print_message(f"Verifying security {security.original_id} portfolio transactions")
-
-                backend_verification_values = self.get_backend_verification_values(
-                    backend_session=backend_session,
-                    security_id=security.id
-                )
-
-                funds_verification_values = self.get_funds_verification_values(
-                    funds_session=funds_session,
-                    secid=security.original_id
-                )
-
-                if funds_verification_values.count != backend_verification_values.count:
-                    self.print_message(f"Warning: Transaction row count mismatch in portfolio transaction in security"
-                                       f" {security.original_id}. "
-                                       f"{backend_verification_values.count} != "
-                                       f"{funds_verification_values.count}")
-                    security_valid = False
-                else:
-                    if funds_verification_values.trans_nr_sum != backend_verification_values.trans_nr_sum:
-                        self.print_message(f"Warning: Transaction number sum mismatch in "
-                                           f"portfolio transaction in security "
-                                           f"{security.original_id}. "
-                                           f"{backend_verification_values.trans_nr_sum} != "
-                                           f"{funds_verification_values.trans_nr_sum}")
-                        security_valid = False
-
-                    if funds_verification_values.amount_sum != backend_verification_values.amount_sum:
-                        self.print_message(f"Warning: Amount sum mismatch in portfolio transaction in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.amount_sum} != "
-                                           f"{funds_verification_values.amount_sum}")
-                        security_valid = False
-
-                    if funds_verification_values.purc_value_sum != backend_verification_values.purc_value_sum:
-                        self.print_message(f"Warning: purchase C value sum mismatch in portfolio transaction in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.purc_value_sum} != "
-                                           f"{funds_verification_values.purc_value_sum}")
-                        security_valid = False
-
-                    if funds_verification_values.por_id_sum != backend_verification_values.por_id_sum:
-                        self.print_message(f"Warning: portfolio id sum mismatch in portfolio transaction in security"
-                                           f" {security.original_id}. "
-                                           f"{backend_verification_values.por_id_sum} != "
-                                           f"{funds_verification_values.por_id_sum}")
-                        security_valid = False
-
-                if not security_valid:
-                    funds_nrs = self.list_funds_portfolio_transaction_trans_nrs(
-                        funds_session=funds_session,
-                        secid=security.original_id
+                for extra_transaction_number in extra_transaction_numbers:
+                    self.print_suggested_delete(
+                        trans_nr=extra_transaction_number
                     )
-
-                    backend_transaction_numbers = self.list_backend_portfolio_transaction_transaction_numbers(
-                        backend_session=backend_session,
-                        security_id=security.id
-                    )
-
-                    missing_transaction_numbers = set(funds_nrs).difference(set(backend_transaction_numbers))
-                    extra_transaction_numbers = set(backend_transaction_numbers).difference(set(funds_nrs))
-
-                    self.print_message(f"Missing transaction numbers: {missing_transaction_numbers}")
-                    self.print_message(f"Extra transaction numbers: {extra_transaction_numbers}")
-
-                    for missing_transaction_number in missing_transaction_numbers:
-                        self.print_suggested_insert(
-                            trans_nr=missing_transaction_number,
-                            funds_session=funds_session
-                        )
-
-                    for extra_transaction_number in extra_transaction_numbers:
-                        self.print_suggested_delete(
-                            trans_nr=extra_transaction_number
-                        )
-
-                result = result and security_valid
 
             return result
 
