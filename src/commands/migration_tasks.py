@@ -524,7 +524,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
         with Session(self.get_funds_database_engine()) as funds_session:
             backend_count = backend_session.execute(statement="SELECT COUNT(ID) FROM security_rate").scalar()
             funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATE").scalar()
-            return backend_count != funds_count
+            return backend_count == funds_count
 
     def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
