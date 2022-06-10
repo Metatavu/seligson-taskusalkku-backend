@@ -210,7 +210,8 @@ class MigrateHandler:
 
         with Session(self.backend_engine) as backend_session:
             valid = task.verify(
-                backend_session=backend_session
+                backend_session=backend_session,
+                security=None
             )
 
         if valid:
