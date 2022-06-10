@@ -210,8 +210,7 @@ class MigrateHandler:
 
         with Session(self.backend_engine) as backend_session:
             valid = task.verify(
-                backend_session=backend_session,
-                security=None
+                backend_session=backend_session
             )
 
         if valid:
@@ -279,7 +278,7 @@ class MigrateHandler:
             security: security to be used
         """
 
-        if not self.verify_only and (not up_to_date or force):
+        if not self.verify_only and (not up_to_date or force or retry):
             with Session(self.backend_engine) as backend_session:
                 count = task.migrate_security(backend_session=backend_session,
                                               timeout=timeout,
