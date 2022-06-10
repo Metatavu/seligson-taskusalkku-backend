@@ -274,9 +274,6 @@ class MigrateHandler:
             force: whether to force the task
             retry: whether this is a retry attempt
             security: security to be used
-
-        Returns:
-            count of updated entries
         """
 
         count = task.migrate(backend_session=backend_session,
