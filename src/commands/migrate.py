@@ -189,7 +189,7 @@ class MigrateHandler:
             retry: whether this is a retry attempt
         """
 
-        if not self.verify_only and (not up_to_date or force):
+        if not self.verify_only and (not up_to_date or force or retry):
             with Session(self.backend_engine) as backend_session:
                 count = task.migrate(backend_session=backend_session,
                                      timeout=timeout,
