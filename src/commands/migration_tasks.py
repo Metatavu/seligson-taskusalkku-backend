@@ -25,10 +25,6 @@ TIMED_OUT = "Timed out."
 logger = logging.getLogger(__name__)
 
 
-class TaskOptions(TypedDict):
-    security: Optional[str]
-
-
 class MigrationTaskType(Enum):
     DEFAULT = 1
     SECURITY_BASED = 2
@@ -38,7 +34,6 @@ class AbstractMigrationTask(ABC):
     """
     Abstract migration task
     """
-    options: TaskOptions
 
     @abstractmethod
     def get_name(self) -> str:
