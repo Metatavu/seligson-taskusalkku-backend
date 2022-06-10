@@ -197,10 +197,10 @@ class MigrateHandler:
 
         count = task.migrate(backend_session=backend_session,
                              timeout=timeout,
-                             force_recheck=force or retry,
-                             security=None)
+                             force_recheck=force or retry
+                             )
 
-        self.print_message(f"Info: \n{task.get_name()} migration complete. {count} updated entries")
+        self.print_message(f"Info: {task.get_name()} migration complete. {count} updated entries")
 
         if task.should_timeout(timeout=timeout):
             self.print_message(f"Info: {task.get_name()} timeout reached.")
@@ -276,10 +276,10 @@ class MigrateHandler:
             security: security to be used
         """
 
-        count = task.migrate(backend_session=backend_session,
-                             timeout=timeout,
-                             force_recheck=force or retry,
-                             security=security)
+        count = task.migrate_security(backend_session=backend_session,
+                                      timeout=timeout,
+                                      force_recheck=force or retry,
+                                      security=security)
 
         self.print_message(f"Info: {task.get_name()}, security {security.original_id} migration complete. "
                            f"{count} updated entries")

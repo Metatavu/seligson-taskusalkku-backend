@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from sqlalchemy import create_engine, and_, func, text, Integer, DECIMAL
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
-from typing import Optional, List, Dict, TypedDict
+from typing import Optional, List, Dict
 
 from database import models as destination_models
 from datetime import datetime, date, timedelta
@@ -75,9 +75,21 @@ class AbstractMigrationTask(ABC):
         """
         ...
 
-    @abstractmethod
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
+        """
+        Runs migration task
+        Args:
+            backend_session: backend database session
+            timeout: timeout
+            force_recheck: Whether task should be forced to recheck all entities
+
+        Returns:
+            count of updated entries
+        """
+        raise MigrationException("Migration is not implemented")
+
+    def migrate_security(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                         security: destination_models.Security) -> int:
         """
         Runs migration task
         Args:
@@ -89,7 +101,7 @@ class AbstractMigrationTask(ABC):
         Returns:
             count of updated entries
         """
-        ...
+        raise MigrationException("Security migration is not implemented")
 
     @abstractmethod
     def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
@@ -285,8 +297,7 @@ class MigrateSecuritiesTask(AbstractFundsTask):
 
             return backend_updated == funds_updated
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
         with Session(self.get_funds_database_engine()) as funds_session:
 
@@ -515,8 +526,7 @@ class MigrateSecurityRatesTask(AbstractFundsTask):
             funds_count = funds_session.execute(statement="SELECT COUNT(*) FROM TABLE_RATE").scalar()
             return backend_count >= funds_count
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
 
         with Session(self.get_funds_database_engine()) as funds_session:
@@ -894,8 +904,7 @@ class MigrateLastRatesTask(AbstractFundsTask):
         return backend_session.execute("SELECT COUNT(id) as count, SUM(rate_close) as rate_close_sum "
                                        "FROM last_rate").one()
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
 
         for security_original_id, funds_row in self.funds_entities.items():
@@ -903,8 +912,11 @@ class MigrateLastRatesTask(AbstractFundsTask):
             funds_rate_date = funds_row.RDATE.date()
             rate_date = existing_last_rate.rate_date if existing_last_rate else None
 
-            if rate_date is None:
+            if force_recheck or rate_date is None:
                 rate_date = date(1970, 1, 1)
+
+            if isinstance(rate_date, datetime):
+                rate_date = rate_date.date()
 
             if rate_date < funds_rate_date:
                 self.print_message(f"Updating security {security_original_id} last rate "
@@ -996,8 +1008,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
             backend_count = self.count_backend_companies(backend_session=backend_session)
             return funds_count == backend_count
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
         batch = 10000
         offset = 0
@@ -1295,8 +1306,7 @@ class MigratePortfoliosTask(AbstractFundsTask):
         """
         return backend_session.query(func.count(destination_models.Portfolio.id)).scalar()
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
         batch = 10000
         offset = 0
@@ -1537,8 +1547,8 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             self.funds_updates = self.get_funds_updates(funds_session=funds_session)
             self.backend_updates = self.get_backend_updates(backend_session=backend_session)
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate_security(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                         security: destination_models.Security) -> int:
 
         synchronized_count = 0
         batch = 20000
@@ -2025,6 +2035,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
         Args:
             funds_session: Funds database session
+            backend_session: Backend database session
             trans_nr: transaction number
         """
         fund_portlog = self.find_fund_portfolio_log(funds_session=funds_session, trans_nr=trans_nr)
@@ -2340,8 +2351,8 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
     def up_to_date(self, backend_session: Session) -> bool:
         return False
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate_security(self, backend_session: Session, timeout: datetime, force_recheck: bool,
+                         security: destination_models.Security) -> int:
         synchronized_count = 0
         batch = 1000
 
@@ -2809,8 +2820,7 @@ class MigrateFundsTask(AbstractMigrationTask):
     def up_to_date(self, backend_session: Session) -> bool:
         return False
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
 
         with Session(self.kiid_engine) as kiid_session:
@@ -3017,8 +3027,7 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
     def up_to_date(self, backend_session: Session) -> bool:
         return False
 
-    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool,
-                security: Optional[destination_models.Security]) -> int:
+    def migrate(self, backend_session: Session, timeout: datetime, force_recheck: bool) -> int:
         synchronized_count = 0
 
         companies = list(backend_session.query(destination_models.Company.id,
