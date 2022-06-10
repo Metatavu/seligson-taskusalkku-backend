@@ -140,7 +140,7 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
         rows: List[DbPortfolioLog] = operations.get_portfolio_logs(
             database=self.database,
             portfolio=portfolio,
-            transaction_codes=['11', '30', '31', '39', '46', '80'],
+            transaction_codes=['11', '12', '30', '31', '46'],
             transaction_date_min=None,
             transaction_date_max=end_date,
         )
@@ -154,24 +154,31 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             transaction_code = row.transaction_code
 
             is_subscription = transaction_code == "11"
-            is_move_to_port = transaction_code == "30"
-            is_other = transaction_code == "39"
-            to_port = transaction_code == "31" and portfolio_company_id == row.c_company_id
-            is_transfer = transaction_code == "46"
-            is_removal = transaction_code == "80"
+            is_redemption = transaction_code == "12"
+            is_transfer_to_portfolio = transaction_code == "30"
+            is_transfer_from_portfolio = transaction_code == "31"
+            is_fund_change = transaction_code == "46"
 
-            if is_subscription or to_port or is_move_to_port or is_other:
-                """If subscription or a transfer to portfolio, add amount to security position."""
+            if is_subscription:
+                """User has subscribed, add value to security"""
                 holdings.add_holding(security_id=row.security_id, amount=row.amount, 
                                      holding_date=row.transaction_date)
-            elif is_transfer:
-                """If transfer from one security to another, add amount to target security position."""
-                holdings.add_holding(security_id=row.c_security_id, amount=row.amount, 
+            elif is_fund_change:
+                """User has changed fund, remove value security and add to c_security"""
+                holdings.add_holding(security_id=row.security_id, amount=-row.amount,
                                      holding_date=row.transaction_date)
-            elif is_removal:
-                """If any type of removal from portfolio, subtract amount from portfolio position.
-                 transaction_code 80 includes redemptions, transfers from one portfolio to another and 
-                 transfers from one security to another."""
+                holdings.add_holding(security_id=row.c_security_id, amount=row.amount,
+                                     holding_date=row.transaction_date)
+            elif is_redemption:
+                """User has redeemed, remove value from security"""
+                holdings.add_holding(security_id=row.security_id, amount=-row.amount,
+                                     holding_date=row.transaction_date)
+            elif is_transfer_to_portfolio:
+                """User has transferred to portfolio, add value to security"""
+                holdings.add_holding(security_id=row.security_id, amount=row.amount,
+                                     holding_date=row.transaction_date)
+            elif is_transfer_from_portfolio:
+                """User has transferred from portfolio, remove value from security"""
                 holdings.add_holding(security_id=row.security_id, amount=-row.amount,
                                      holding_date=row.transaction_date)
 
