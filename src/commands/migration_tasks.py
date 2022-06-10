@@ -2354,7 +2354,7 @@ class MigratePortfolioTransactionsTask(AbstractFundsTask):
     def migrate_security(self, backend_session: Session, timeout: datetime, force_recheck: bool,
                          security: destination_models.Security) -> int:
         synchronized_count = 0
-        batch = 1000
+        batch = 10000
 
         with Session(self.get_funds_database_engine()) as funds_session:
             self.print_message(f"Info: Checking removed portfolio transactions from security {security.original_id}...")
