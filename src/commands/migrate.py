@@ -60,10 +60,30 @@ class MigrateHandler:
                      skip_tasks: Optional[List[str]] = None
                      ):
         """
+        Handles migration
+
+        Args:
+            task_name: name of the task to run. Runs everything is not specified
+            skip_tasks: list of tasks to skip
+        """
+        with Session(self.backend_engine) as backend_session:
+            await self.do_handle(
+                task_name=task_name,
+                skip_tasks=skip_tasks,
+                backend_session=backend_session
+            )
+
+    async def do_handle(self,
+                        task_name: Optional[str],
+                        skip_tasks: Optional[List[str]],
+                        backend_session: Session
+                        ):
+        """
         Runs migrations
         Args:
             task_name: name of the task to run. Runs everything is not specified
             skip_tasks: list of tasks to skip
+            backend_session: backend session
         """
         timeout = datetime.now() + timedelta(minutes=self.timeout)
         task_names = []
@@ -76,16 +96,15 @@ class MigrateHandler:
         if skip_tasks is not None:
             task_names = list(filter(lambda x: x not in skip_tasks, task_names))
 
-        with Session(self.backend_engine) as backend_session:
-            if self.security:
-                self.securities = self.list_securities_by_original_id(
-                    backend_session=backend_session,
-                    original_id=self.security
-                )
-            else:
-                self.securities = self.list_securities(backend_session=backend_session)
+        if self.security:
+            self.securities = self.list_securities_by_original_id(
+                backend_session=backend_session,
+                original_id=self.security
+            )
+        else:
+            self.securities = self.list_securities(backend_session=backend_session)
 
-            self.force_failed_tasks = self.list_force_failed_tasks(backend_session)
+        self.force_failed_tasks = self.list_force_failed_tasks(backend_session)
 
         self.print_message(f"Info: Running tasks: {task_names}")
 
@@ -97,25 +116,25 @@ class MigrateHandler:
         for task in self.tasks:
             if timeout > datetime.now() and task.get_name() in task_names:
                 try:
-                    await self.run_and_verify_task(task=task, timeout=timeout)
+                    await self.run_and_verify_task(task=task, timeout=timeout, backend_session=backend_session)
                 except Exception as e:
                     await self.notify_error(e)
 
         if len(self.forced_failed_tasks) > 0:
-            with Session(self.backend_engine) as backend_session:
-                self.mark_forced_tasks_as_done(backend_session=backend_session)
-                backend_session.commit()
+            self.mark_forced_tasks_as_done(backend_session=backend_session)
+            backend_session.commit()
 
     async def run_and_verify_task(self,
                                   task: AbstractMigrationTask,
-                                  timeout: datetime
+                                  timeout: datetime,
+                                  backend_session: Session
                                   ) -> bool:
         """
         Runs a task and verify
         Args:
             task: task to run
             timeout: timeout
-
+            backend_session: backend session
         Returns:
             Whether the task was successful
         """
@@ -126,16 +145,15 @@ class MigrateHandler:
 
         self.print_message(f"Info: Start time: {start_time}")
 
-        with Session(self.backend_engine) as backend_session:
-            task.prepare(backend_session=backend_session)
-            up_to_date = task.up_to_date(backend_session)
+        task.prepare(backend_session=backend_session)
+        up_to_date = task.up_to_date(backend_session)
 
-            if force:
-                self.print_message(f"Info: {task.get_name()} is forced.")
-            elif up_to_date:
-                self.print_message(f"Info: {task.get_name()} is already up-to-date.")
-            else:
-                self.print_message(f"Info: {task.get_name()} is not up-to-date. Migrating...")
+        if force:
+            self.print_message(f"Info: {task.get_name()} is forced.")
+        elif up_to_date:
+            self.print_message(f"Info: {task.get_name()} is already up-to-date.")
+        else:
+            self.print_message(f"Info: {task.get_name()} is not up-to-date. Migrating...")
 
         try:
             if task.get_type() == MigrationTaskType.DEFAULT:
@@ -144,7 +162,8 @@ class MigrateHandler:
                     timeout=timeout,
                     force=force,
                     up_to_date=up_to_date,
-                    retry=False
+                    retry=False,
+                    backend_session=backend_session
                 )
 
             elif task.get_type() == MigrationTaskType.SECURITY_BASED:
@@ -152,7 +171,8 @@ class MigrateHandler:
                     task=task,
                     timeout=timeout,
                     force=force,
-                    up_to_date=up_to_date
+                    up_to_date=up_to_date,
+                    backend_session=backend_session
                 )
 
         except MissingEntityException as e:
@@ -177,7 +197,8 @@ class MigrateHandler:
                                           timeout: datetime,
                                           force: bool,
                                           up_to_date: bool,
-                                          retry: bool
+                                          retry: bool,
+                                          backend_session: Session
                                           ):
         """
         Runs default task
@@ -187,32 +208,31 @@ class MigrateHandler:
             force: whether to force task
             up_to_date: whether the task is up-to-date
             retry: whether this is a retry attempt
+            backend_session: backend session
         """
 
         if not self.verify_only and (not up_to_date or force or retry):
-            with Session(self.backend_engine) as backend_session:
-                count = task.migrate(backend_session=backend_session,
-                                     timeout=timeout,
-                                     force_recheck=force or retry
-                                     )
+            count = task.migrate(backend_session=backend_session,
+                                 timeout=timeout,
+                                 force_recheck=force or retry
+                                 )
 
-                if not self.debug:
-                    backend_session.commit()
-                    self.print_message(f"Info: Saved changes.")
-                else:
-                    self.print_message(f"Warning: Running in debug mode, not saving the changes")
+            if not self.debug:
+                backend_session.commit()
+                self.print_message(f"Info: Saved changes.")
+            else:
+                self.print_message(f"Warning: Running in debug mode, not saving the changes")
 
-                self.print_message(f"Info: {task.get_name()} migration complete. {count} updated entries")
+            self.print_message(f"Info: {task.get_name()} migration complete. {count} updated entries")
 
         if task.should_timeout(timeout=timeout):
             self.print_message(f"Info: {task.get_name()} timeout reached.")
             return
 
-        with Session(self.backend_engine) as backend_session:
-            valid = task.verify(
-                backend_session=backend_session,
-                security=None
-            )
+        valid = task.verify(
+            backend_session=backend_session,
+            security=None
+        )
 
         if valid:
             self.print_message(f"Info: {task.get_name()} verification passed.")
@@ -228,14 +248,16 @@ class MigrateHandler:
                     timeout=timeout,
                     force=force,
                     up_to_date=up_to_date,
-                    retry=True
+                    retry=True,
+                    backend_session=backend_session
                 )
 
     async def run_and_verify_security_based_task(self,
                                                  task: AbstractMigrationTask,
                                                  timeout: datetime,
                                                  force: bool,
-                                                 up_to_date: bool
+                                                 up_to_date: bool,
+                                                 backend_session: Session
                                                  ):
         """
         Runs a security based task
@@ -245,6 +267,7 @@ class MigrateHandler:
             timeout: timeout
             force: whether to force the task
             up_to_date: whether the task is up-to-date
+            backend_session: backend session
         """
         for security in self.securities:
             await self.run_and_verify_security_based_task_security(
@@ -253,7 +276,8 @@ class MigrateHandler:
                 force=force,
                 up_to_date=up_to_date,
                 security=security,
-                retry=False
+                retry=False,
+                backend_session=backend_session
             )
 
             if task.should_timeout(timeout=timeout):
@@ -266,7 +290,8 @@ class MigrateHandler:
                                                           force: bool,
                                                           up_to_date: bool,
                                                           retry: bool,
-                                                          security: Security
+                                                          security: Security,
+                                                          backend_session: Session
                                                           ):
         """
         Runs a security-based task and verification. If the verification fails, it will retry the task.
@@ -277,22 +302,22 @@ class MigrateHandler:
             up_to_date: whether the task is up-to-date
             retry: whether this is a retry attempt
             security: security to be used
+            backend_session: backend session
         """
 
         if not self.verify_only and (not up_to_date or force or retry):
-            with Session(self.backend_engine) as backend_session:
-                count = task.migrate_security(backend_session=backend_session,
-                                              timeout=timeout,
-                                              force_recheck=force or retry,
-                                              security=security)
+            count = task.migrate_security(backend_session=backend_session,
+                                          timeout=timeout,
+                                          force_recheck=force or retry,
+                                          security=security)
 
-                if not self.debug:
-                    backend_session.commit()
-                    self.print_message(f"Info: Saved changes.")
-                else:
-                    self.print_message(f"Warning: Running in debug mode, not saving the changes")
+            if not self.debug:
+                backend_session.commit()
+                self.print_message(f"Info: Saved changes.")
+            else:
+                self.print_message(f"Warning: Running in debug mode, not saving the changes")
 
-                self.print_message(f"Info: {task.get_name()} migration complete. {count} updated entries")
+            self.print_message(f"Info: {task.get_name()} migration complete. {count} updated entries")
 
             self.print_message(f"Info: {task.get_name()}, security {security.original_id} migration complete. "
                                f"{count} updated entries")
@@ -301,11 +326,10 @@ class MigrateHandler:
             self.print_message(f"Info: {task.get_name()}, security {security.original_id} timeout reached.")
             return
 
-        with Session(self.backend_engine) as backend_session:
-            valid = task.verify(
-                backend_session=backend_session,
-                security=security
-            )
+        valid = task.verify(
+            backend_session=backend_session,
+            security=security
+        )
 
         if valid:
             self.print_message(f"Info: {task.get_name()}, security {security.original_id} verification passed.")
@@ -324,7 +348,8 @@ class MigrateHandler:
                     force=force,
                     up_to_date=up_to_date,
                     retry=True,
-                    security=security
+                    security=security,
+                    backend_session=backend_session
                 )
 
     async def handle_synchronization_failure(self,
