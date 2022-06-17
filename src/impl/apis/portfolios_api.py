@@ -131,7 +131,6 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             token_bearer: TokenModel
     ) -> List[PortfolioHistoryValue]:
         portfolio = self.get_portfolio(token_bearer=token_bearer, portfolio_id=portfolio_id)
-        portfolio_company_id = portfolio.company_id
 
         if end_date > date.today():
             end_date = date.today()
@@ -160,26 +159,26 @@ class PortfoliosApiImpl(PortfoliosApiSpec):
             is_fund_change = transaction_code == "46"
 
             if is_subscription:
-                """User has subscribed, add value to security"""
+                """User has subscribed to security, add value to portfolio security"""
                 holdings.add_holding(security_id=row.security_id, amount=row.amount, 
                                      holding_date=row.transaction_date)
-            elif is_fund_change:
-                """User has changed fund, remove value security and add to c_security"""
-                holdings.add_holding(security_id=row.security_id, amount=-row.amount,
-                                     holding_date=row.transaction_date)
-                holdings.add_holding(security_id=row.c_security_id, amount=row.amount,
-                                     holding_date=row.transaction_date)
             elif is_redemption:
-                """User has redeemed, remove value from security"""
+                """User has redeemed from security, remove value from portfolio security"""
                 holdings.add_holding(security_id=row.security_id, amount=-row.amount,
                                      holding_date=row.transaction_date)
             elif is_transfer_to_portfolio:
-                """User has transferred to portfolio, add value to security"""
+                """User has transferred to portfolio, add value to portfolio security"""
                 holdings.add_holding(security_id=row.security_id, amount=row.amount,
                                      holding_date=row.transaction_date)
             elif is_transfer_from_portfolio:
-                """User has transferred from portfolio, remove value from security"""
+                """User has transferred from portfolio, remove value from portfolio security"""
                 holdings.add_holding(security_id=row.security_id, amount=-row.amount,
+                                     holding_date=row.transaction_date)
+            elif is_fund_change:
+                """User has changed fund, remove value from portfolio security and add to c_security"""
+                holdings.add_holding(security_id=row.security_id, amount=-row.amount,
+                                     holding_date=row.transaction_date)
+                holdings.add_holding(security_id=row.c_security_id, amount=row.amount,
                                      holding_date=row.transaction_date)
 
             securities[row.security.id] = row.security
