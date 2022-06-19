@@ -323,6 +323,9 @@ class TestPortfolio:
             )
 
     def test_portfolio_history_values(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
+        """
+        Test portfolio history values.
+        """
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
                 sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
                 sql_backend_security_rates(backend_mysql), sql_backend_portfolio(backend_mysql), \
@@ -330,20 +333,47 @@ class TestPortfolio:
 
             portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
 
-            expected_value_1998_01_23 = 2.6354
-            expected_value_2020_06_01 = 1120.0312
-            expected_value_2020_06_06 = 3381.4887
+            """
+            Values 1998-01-23
+            
+            PASSIVETEST01: 0.000000
+            """
+            expected_value_1998_01_23 = 0
+
+            """
+            Values 2020-06-01
+
+            PASSIVETEST01: 47.152754, rate 3.041193
+            ACTIVETEST01: 35.190159, rate 2.841426
+            
+            47.152754 * 3.041193 + 35.190159 * 2.841426 = 243.390858122
+            """
+            expected_value_2020_06_01 = 243.390858122
+
+            """
+            Values 2020-06-06
+            
+            PASSIVETEST01: 61.398344, day_security_rate: 2.265511, day_currency_rate: 1
+            ACTIVETEST01: 40.772240, day_security_rate: 6.248625, day_currency_rate: 1
+            BALANCEDTEST01: 43.381442, day_security_rate: 3.895836, day_currency_rate: 1
+            FIXEDTEST01: 25.318725, day_security_rate: 9.726167, day_currency_rate: 1
+            DIMETEST01: 28.950560, day_security_rate: 10.930109, day_currency_rate: 1
+            SPILTAN TEST: 16.836627, day_security_rate: 10.289345, day_currency_rate: 5.123123)
+            
+            61.398344 * 2.265511 + 40.772240 * 6.248625 + 43.381442 * 3.895836 + 25.318725 * 9.726167 + 
+            28.950560 * 10.930109 + 16.836627 * 10.289345 / 5.123123 = 1159.37786386
+            """
+            expected_value_2020_06_06 = 1159.37786386
 
             responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
                                    f"startDate=1998-01-23&endDate=1998-01-23", auth=user_1_auth).json()
             assert 1 == len(responses)
             assert "1998-01-23" == responses[0]["date"]
             assert round(Decimal(expected_value_1998_01_23), 4) == round(Decimal(responses[0]["value"]), 4)
-
             responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
-                                   f"startDate=2020-06-01&endDate=2020-06-06", auth=user_1_auth).json()
+                                   f"startDate=2020-06-01&endDate=2020-06-20", auth=user_1_auth).json()
 
-            assert 6 == len(responses)
+            assert 20 == len(responses)
             assert "2020-06-01" == responses[0]["date"]
             assert round(Decimal(expected_value_2020_06_01), 4) == round(Decimal(responses[0]["value"]), 4)
 
