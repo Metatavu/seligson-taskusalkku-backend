@@ -359,7 +359,7 @@ def get_portfolio_logs(database: Session,
     if transaction_date_max:
         query = query.filter(PortfolioLog.transaction_date <= transaction_date_max)
 
-    query.order_by(PortfolioLog.transaction_date)
+    query = query.order_by(PortfolioLog.transaction_date, PortfolioLog.transaction_number)
 
     if first_result:
         query = query.offset(first_result)

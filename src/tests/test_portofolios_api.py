@@ -323,6 +323,9 @@ class TestPortfolio:
             )
 
     def test_portfolio_history_values(self, client: TestClient, backend_mysql: MySqlContainer, user_1_auth: BearerAuth):
+        """
+        Test portfolio history values.
+        """
         with sql_backend_company(backend_mysql), sql_backend_funds(backend_mysql), \
                 sql_backend_security(backend_mysql), sql_backend_last_rate(backend_mysql), \
                 sql_backend_security_rates(backend_mysql), sql_backend_portfolio(backend_mysql), \
@@ -330,20 +333,47 @@ class TestPortfolio:
 
             portfolio_id = "6bb05ba3-2b4f-4031-960f-0f20d5244440"
 
-            expected_value_1998_01_23 = 2.6354
-            expected_value_2020_06_01 = 1120.0312
-            expected_value_2020_06_06 = 3263.4449
+            """
+            Values 1998-01-23
+            
+            PASSIVETEST01: 0.000000
+            """
+            expected_value_1998_01_23 = 0
+
+            """
+            Values 2020-06-01
+
+            PASSIVETEST01: 47.152754, rate 3.041193
+            ACTIVETEST01: 35.190159, rate 2.841426
+            
+            47.152754 * 3.041193 + 35.190159 * 2.841426 = 243.390858122
+            """
+            expected_value_2020_06_01 = 243.390858122
+
+            """
+            Values 2020-06-06
+            
+            PASSIVETEST01: 61.398344, day_security_rate: 2.265511, day_currency_rate: 1
+            ACTIVETEST01: 40.772240, day_security_rate: 6.248625, day_currency_rate: 1
+            BALANCEDTEST01: 43.381442, day_security_rate: 3.895836, day_currency_rate: 1
+            FIXEDTEST01: 25.318725, day_security_rate: 9.726167, day_currency_rate: 1
+            DIMETEST01: 28.950560, day_security_rate: 10.930109, day_currency_rate: 1
+            SPILTAN TEST: 16.836627, day_security_rate: 10.289345, day_currency_rate: 5.123123)
+            
+            61.398344 * 2.265511 + 40.772240 * 6.248625 + 43.381442 * 3.895836 + 25.318725 * 9.726167 + 
+            28.950560 * 10.930109 + 16.836627 * 10.289345 / 5.123123 = 1159.37786386
+            """
+            expected_value_2020_06_06 = 1159.37786386
 
             responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
                                    f"startDate=1998-01-23&endDate=1998-01-23", auth=user_1_auth).json()
             assert 1 == len(responses)
             assert "1998-01-23" == responses[0]["date"]
             assert round(Decimal(expected_value_1998_01_23), 4) == round(Decimal(responses[0]["value"]), 4)
-
             responses = client.get(f"/v1/portfolios/{portfolio_id}/historyValues?"
-                                   f"startDate=2020-06-01&endDate=2020-06-06", auth=user_1_auth).json()
+                                   f"startDate=2020-06-01&endDate=2020-06-20", auth=user_1_auth).json()
 
-            assert 6 == len(responses)
+            assert 20 == len(responses)
             assert "2020-06-01" == responses[0]["date"]
             assert round(Decimal(expected_value_2020_06_01), 4) == round(Decimal(responses[0]["value"]), 4)
 
@@ -709,43 +739,17 @@ class TestPortfolio:
                 "provision": "0.06"
             },
             {
-                "id": "27062691-7f69-4f18-b96f-10e5097ef90d",
-                "securityId": security_ids["FIXEDTEST01"],
-                "targetSecurityId": None,
-                "transactionType": "SUBSCRIPTION",
-                "valueDate": "2020-06-04",
-                "value": "39.92",
-                "shareAmount": "38.957855",
-                "marketValue": "9.454822",
-                "totalValue": "40.00",
-                "paymentDate": "2020-06-01",
-                "provision": "0.08"
-            },
-            {
-                "id": "28a3b470-231d-4533-aa2a-59590b480151",
-                "securityId": security_ids["DIMETEST01"],
-                "targetSecurityId": security_ids["SPILTAN TEST"],
-                "transactionType": "SECURITY",
-                "valueDate": "2020-06-05",
-                "value": "0.00",
-                "shareAmount": "18.650488",
-                "marketValue": "5.003667",
-                "totalValue": "0.00",
-                "paymentDate": None,
-                "provision": "0.00"
-            },
-            {
-                "id": "4cfa2d60-aa95-46a6-b0ee-34109b7cf25e",
-                "securityId": security_ids["FIXEDTEST01"],
+                "id": "bd58f793-00ab-4ad3-804f-fb1cc7a885be",
+                "securityId": security_ids["BALANCEDTEST01"],
                 "targetSecurityId": None,
                 "transactionType": "REDEMPTION",
-                "valueDate": "2020-06-04",
-                "value": "39.92",
-                "shareAmount": "11.768924",
-                "marketValue": "2.461088",
-                "totalValue": "40.00",
-                "paymentDate": "2020-06-01",
-                "provision": "0.08"
+                "valueDate": "2020-06-03",
+                "value": "29.94",
+                "shareAmount": "25.144629",
+                "marketValue": "2.361169",
+                "totalValue": "30.00",
+                "paymentDate": "2020-05-31",
+                "provision": "0.06"
             },
             {
                 "id": "4cfdc2bb-ec9d-4fa7-992e-70c3e9f42a3e",
@@ -761,6 +765,32 @@ class TestPortfolio:
                 "provision": "0.00"
             },
             {
+                "id": "27062691-7f69-4f18-b96f-10e5097ef90d",
+                "securityId": security_ids["FIXEDTEST01"],
+                "targetSecurityId": None,
+                "transactionType": "SUBSCRIPTION",
+                "valueDate": "2020-06-04",
+                "value": "39.92",
+                "shareAmount": "38.957855",
+                "marketValue": "9.454822",
+                "totalValue": "40.00",
+                "paymentDate": "2020-06-01",
+                "provision": "0.08"
+            },
+            {
+                "id": "4cfa2d60-aa95-46a6-b0ee-34109b7cf25e",
+                "securityId": security_ids["FIXEDTEST01"],
+                "targetSecurityId": None,
+                "transactionType": "REDEMPTION",
+                "valueDate": "2020-06-04",
+                "value": "39.92",
+                "shareAmount": "11.768924",
+                "marketValue": "2.461088",
+                "totalValue": "40.00",
+                "paymentDate": "2020-06-01",
+                "provision": "0.08"
+            },
+            {
                 "id": "4d903bbe-4add-4eba-8cee-7de921429f77",
                 "securityId": security_ids["FIXEDTEST01"],
                 "targetSecurityId": security_ids["DIMETEST01"],
@@ -769,6 +799,45 @@ class TestPortfolio:
                 "value": "0.00",
                 "shareAmount": "35.477421",
                 "marketValue": "16.634470",
+                "totalValue": "0.00",
+                "paymentDate": None,
+                "provision": "0.00"
+            },
+            {
+                "id": "ee6f5135-a88b-4852-b3be-8e4503d434f8",
+                "securityId": security_ids["DIMETEST01"],
+                "targetSecurityId": None,
+                "transactionType": "SUBSCRIPTION",
+                "valueDate": "2020-06-05",
+                "value": "10.00",
+                "shareAmount": "49.512876",
+                "marketValue": "13.877511",
+                "totalValue": "10.00",
+                "paymentDate": "2020-06-02",
+                "provision": "0.00"
+            },
+            {
+                "id": "95453ba7-667f-4460-b36b-0e24f635a708",
+                "securityId": security_ids["DIMETEST01"],
+                "targetSecurityId": None,
+                "transactionType": "REDEMPTION",
+                "valueDate": "2020-06-05",
+                "value": "10.00",
+                "shareAmount": "37.389249",
+                "marketValue": "16.094385",
+                "totalValue": "10.00",
+                "paymentDate": "2020-06-02",
+                "provision": "0.00"
+            },
+            {
+                "id": "28a3b470-231d-4533-aa2a-59590b480151",
+                "securityId": security_ids["DIMETEST01"],
+                "targetSecurityId": security_ids["SPILTAN TEST"],
+                "transactionType": "SECURITY",
+                "valueDate": "2020-06-05",
+                "value": "0.00",
+                "shareAmount": "18.650488",
+                "marketValue": "5.003667",
                 "totalValue": "0.00",
                 "paymentDate": None,
                 "provision": "0.00"
@@ -787,32 +856,6 @@ class TestPortfolio:
                 "provision": "0.04"
             },
             {
-                "id": "95453ba7-667f-4460-b36b-0e24f635a708",
-                "securityId": security_ids["DIMETEST01"],
-                "targetSecurityId": None,
-                "transactionType": "REDEMPTION",
-                "valueDate": "2020-06-05",
-                "value": "10.00",
-                "shareAmount": "37.389249",
-                "marketValue": "16.094385",
-                "totalValue": "10.00",
-                "paymentDate": "2020-06-02",
-                "provision": "0.00"
-            },
-            {
-                "id": "96d17db6-4d2d-4524-8287-3a8a4e159998",
-                "securityId": security_ids["SPILTAN TEST"],
-                "targetSecurityId": security_ids["PASSIVETEST01"],
-                "transactionType": "SECURITY",
-                "valueDate": "2020-06-06",
-                "value": "0.00",
-                "shareAmount": "14.245590",
-                "marketValue": "39.142442",
-                "totalValue": "0.00",
-                "paymentDate": None,
-                "provision": "0.00"
-            },
-            {
                 "id": "98c68a9c-142c-47d0-8b21-4147c952501e",
                 "securityId": security_ids["SPILTAN TEST"],
                 "targetSecurityId": None,
@@ -826,29 +869,16 @@ class TestPortfolio:
                 "provision": "0.04"
             },
             {
-                "id": "bd58f793-00ab-4ad3-804f-fb1cc7a885be",
-                "securityId": security_ids["BALANCEDTEST01"],
-                "targetSecurityId": None,
-                "transactionType": "REDEMPTION",
-                "valueDate": "2020-06-03",
-                "value": "29.94",
-                "shareAmount": "25.144629",
-                "marketValue": "2.361169",
-                "totalValue": "30.00",
-                "paymentDate": "2020-05-31",
-                "provision": "0.06"
-            },
-            {
-                "id": "ee6f5135-a88b-4852-b3be-8e4503d434f8",
-                "securityId": security_ids["DIMETEST01"],
-                "targetSecurityId": None,
-                "transactionType": "SUBSCRIPTION",
-                "valueDate": "2020-06-05",
-                "value": "10.00",
-                "shareAmount": "49.512876",
-                "marketValue": "13.877511",
-                "totalValue": "10.00",
-                "paymentDate": "2020-06-02",
+                "id": "96d17db6-4d2d-4524-8287-3a8a4e159998",
+                "securityId": security_ids["SPILTAN TEST"],
+                "targetSecurityId": security_ids["PASSIVETEST01"],
+                "transactionType": "SECURITY",
+                "valueDate": "2020-06-06",
+                "value": "0.00",
+                "shareAmount": "14.245590",
+                "marketValue": "39.142442",
+                "totalValue": "0.00",
+                "paymentDate": None,
                 "provision": "0.00"
             }
         ]

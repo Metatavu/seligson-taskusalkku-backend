@@ -31,3 +31,4 @@ staging-data
 src/tests/data/*.js
 src/tests/data/*.txt
 .DS_Store
+/verify.sh
