@@ -5,7 +5,7 @@ import logging
 from cryptography.x509.base import Certificate
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
-from typing import Union
+from typing import Union, List
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 class Oidc:
     """OIDC helper class"""
 
-    def __init__(self, oidc_auth_server_url: str):
+    def __init__(self, issuers: List[str]):
         """Constructor
 
     Args:
-        oidc_auth_server_url (str): OIDC Server URL
+        issuers (str): allowed issuers
     """
-        self.oidc_auth_server_url = oidc_auth_server_url
+        self.issuers = issuers
 
     def decode_jwt_token(self, token: str, audience: str) -> Union[dict, None]:
         """Decodes JWT token and verifies it's signature.
@@ -46,9 +46,20 @@ class Oidc:
             logger.warning("Could not resolve kid from JWT header")
             return None
 
-        oidc_config = self.get_oidc_config(self.oidc_auth_server_url + "/.well-known/openid-configuration")
+        iss = jwt_header.get("iss", None)
+        if not iss:
+            logger.warning("Could not resolve iss from JWT header")
+            return None
+
+        if iss not in self.issuers:
+            logger.warning(f"Issuer {iss} not within allowed issuers: {self.issuers}")
+            return None
+
+        oidc_config = self.get_oidc_config(iss + "/.well-known/openid-configuration")
         token_endpoint_auth_signing_alg_values_supported = oidc_config[
-            "token_endpoint_auth_signing_alg_values_supported"]
+            "token_endpoint_auth_signing_alg_values_supported"
+        ]
+
         issuer = oidc_config.get("issuer", "")
         jwks_uri = oidc_config.get("jwks_uri", "")
         if not jwks_uri:
