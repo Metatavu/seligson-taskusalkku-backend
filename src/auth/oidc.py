@@ -7,6 +7,8 @@ from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
 from typing import Union, List
 
+from jwt import InvalidIssuedAtError
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,7 +24,7 @@ class Oidc:
         self.issuers = issuers
 
     def decode_jwt_token(self, token: str, audience: str) -> Union[dict, None]:
-        """Decodes JWT token and verifies it's signature.
+        """Decodes JWT token and verifies its signature.
 
         Args:
             token (str): JWT token
@@ -46,16 +48,37 @@ class Oidc:
             logger.warning("Could not resolve kid from JWT header")
             return None
 
-        iss = jwt_header.get("iss", None)
-        if not iss:
-            logger.warning("Could not resolve iss from JWT header")
-            return None
+        for issuer in self.issuers:
+            try:
+                result = self.try_decode_with_issuer(
+                    issuer=issuer,
+                    token=token,
+                    audience=audience,
+                    kid=kid
+                )
 
-        if iss not in self.issuers:
-            logger.warning(f"Issuer {iss} not within allowed issuers: {self.issuers}")
-            return None
+                if result:
+                    return result
 
-        oidc_config = self.get_oidc_config(iss + "/.well-known/openid-configuration")
+            except InvalidIssuedAtError:
+                pass
+
+        return None
+
+    def try_decode_with_issuer(self, issuer: str, token: str, audience: str, kid: str):
+        """
+        Tries to decode token using given issuer
+
+        Args:
+            issuer: issuer
+            token: token
+            audience: audience
+            kid: kid
+
+        Returns:
+            Decoded token or None if decoding fails
+        """
+        oidc_config = self.get_oidc_config(issuer + "/.well-known/openid-configuration")
         token_endpoint_auth_signing_alg_values_supported = oidc_config[
             "token_endpoint_auth_signing_alg_values_supported"
         ]
@@ -76,8 +99,13 @@ class Oidc:
             logger.warning("Could not resolve certificate")
             return None
 
-        return jwt.decode(token, certificate.public_key(), issuer=issuer, audience=audience,
-                          algorithms=token_endpoint_auth_signing_alg_values_supported)
+        return jwt.decode(
+            jwt=token,
+            key=certificate.public_key(),
+            issuer=issuer,
+            audience=audience,
+            algorithms=token_endpoint_auth_signing_alg_values_supported
+        )
 
     @staticmethod
     def get_certificate(jwks: dict, kid: str) -> Certificate:
