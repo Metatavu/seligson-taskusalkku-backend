@@ -49,6 +49,8 @@ class Oidc:
             return None
 
         for issuer in self.issuers:
+            logger.info(f"Parsing token with issuer {issuer}")
+
             try:
                 result = self.try_decode_with_issuer(
                     issuer=issuer,
