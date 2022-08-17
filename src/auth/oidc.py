@@ -51,6 +51,7 @@ class Oidc:
         for issuer in self.issuers:
             logger.info(f"Parsing token with issuer {issuer}")
 
+            # noinspection PyBroadException
             try:
                 result = self.try_decode_with_issuer(
                     issuer=issuer,
@@ -62,7 +63,7 @@ class Oidc:
                 if result:
                     return result
 
-            except InvalidIssuedAtError:
+            except Exception:
                 logger.warning(f"Could parse token with issuer {issuer}")
                 pass
 
