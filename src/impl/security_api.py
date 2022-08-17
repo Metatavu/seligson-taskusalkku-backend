@@ -30,6 +30,7 @@ def get_token_bearer(credentials: HTTPAuthorizationCredentials = Depends(bearer_
 
     issuers = os.environ.get("OIDC_ISSUERS", None)
     if not issuers:
+        logger.warning("OIDC_ISSUERS not configured, fallback to OIDC_AUTH_SERVER_URL")
         issuers = os.environ.get("OIDC_AUTH_SERVER_URL", None)
 
     if not issuers:
