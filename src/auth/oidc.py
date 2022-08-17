@@ -61,6 +61,7 @@ class Oidc:
                     return result
 
             except InvalidIssuedAtError:
+                logger.warning(f"Could parse token with issuer {issuer}")
                 pass
 
         return None
