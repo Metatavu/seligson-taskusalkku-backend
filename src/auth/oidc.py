@@ -51,21 +51,15 @@ class Oidc:
         for issuer in self.issuers:
             logger.info(f"Parsing token with issuer {issuer}")
 
-            # noinspection PyBroadException
-            try:
-                result = self.try_decode_with_issuer(
-                    issuer=issuer,
-                    token=token,
-                    audience=audience,
-                    kid=kid
-                )
+            result = self.try_decode_with_issuer(
+                issuer=issuer,
+                token=token,
+                audience=audience,
+                kid=kid
+            )
 
-                if result:
-                    return result
-
-            except Exception:
-                logger.warning(f"Could parse token with issuer {issuer}")
-                pass
+            if result:
+                return result
 
         return None
 
@@ -82,34 +76,39 @@ class Oidc:
         Returns:
             Decoded token or None if decoding fails
         """
-        oidc_config = self.get_oidc_config(issuer + "/.well-known/openid-configuration")
-        token_endpoint_auth_signing_alg_values_supported = oidc_config[
-            "token_endpoint_auth_signing_alg_values_supported"
-        ]
+        try:
+            oidc_config = self.get_oidc_config(issuer + "/.well-known/openid-configuration")
+            token_endpoint_auth_signing_alg_values_supported = oidc_config[
+                "token_endpoint_auth_signing_alg_values_supported"
+            ]
 
-        issuer = oidc_config.get("issuer", "")
-        jwks_uri = oidc_config.get("jwks_uri", "")
-        if not jwks_uri:
-            logger.warning("Could not resolve jwks_uri from OIDC config")
+            issuer = oidc_config.get("issuer", "")
+            jwks_uri = oidc_config.get("jwks_uri", "")
+            if not jwks_uri:
+                logger.warning("Could not resolve jwks_uri from OIDC config")
+                return None
+
+            jwks = self.get_jwks(jwks_uri=jwks_uri)
+            if not jwks:
+                logger.warning("Could not resolve JWKS")
+                return None
+
+            certificate = self.get_certificate(jwks=jwks, kid=kid)
+            if not certificate:
+                logger.warning("Could not resolve certificate")
+                return None
+
+            return jwt.decode(
+                jwt=token,
+                key=certificate.public_key(),
+                issuer=issuer,
+                audience=audience,
+                algorithms=token_endpoint_auth_signing_alg_values_supported
+            )
+
+        except Exception as e:
+            logger.warning(f"Could parse token with issuer {issuer}", e)
             return None
-
-        jwks = self.get_jwks(jwks_uri=jwks_uri)
-        if not jwks:
-            logger.warning("Could not resolve JWKS")
-            return None
-
-        certificate = self.get_certificate(jwks=jwks, kid=kid)
-        if not certificate:
-            logger.warning("Could not resolve certificate")
-            return None
-
-        return jwt.decode(
-            jwt=token,
-            key=certificate.public_key(),
-            issuer=issuer,
-            audience=audience,
-            algorithms=token_endpoint_auth_signing_alg_values_supported
-        )
 
     @staticmethod
     def get_certificate(jwks: dict, kid: str) -> Certificate:
