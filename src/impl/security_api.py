@@ -28,15 +28,19 @@ def get_token_bearer(credentials: HTTPAuthorizationCredentials = Depends(bearer_
     if not credentials or not credentials.credentials:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    oidc_auth_server_url = os.environ["OIDC_AUTH_SERVER_URL"]
-    if not oidc_auth_server_url:
-        raise HTTPException(status_code=500, detail="Missing OIDC_AUTH_SERVER_URL env variable")
+    issuers = os.environ.get("OIDC_ISSUERS", None)
+    if not issuers:
+        logger.warning("OIDC_ISSUERS not configured, fallback to OIDC_AUTH_SERVER_URL")
+        issuers = os.environ.get("OIDC_AUTH_SERVER_URL", None)
+
+    if not issuers:
+        raise HTTPException(status_code=500, detail="Missing OIDC_ISSUERS env variable")
 
     oidc_audience = os.environ["OIDC_AUDIENCE"]
     if not oidc_audience:
         raise HTTPException(status_code=500, detail="Missing OIDC_AUDIENCE env variable")
 
-    oidc = Oidc(oidc_auth_server_url=oidc_auth_server_url)
+    oidc = Oidc(issuers=issuers.split(","))
 
     try:
         token = oidc.decode_jwt_token(token=credentials.credentials, audience=oidc_audience)

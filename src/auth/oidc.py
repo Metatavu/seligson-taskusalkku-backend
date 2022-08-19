@@ -5,7 +5,9 @@ import logging
 from cryptography.x509.base import Certificate
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
-from typing import Union
+from typing import Union, List
+
+from jwt import InvalidIssuedAtError, InvalidIssuerError
 
 logger = logging.getLogger(__name__)
 
@@ -13,16 +15,16 @@ logger = logging.getLogger(__name__)
 class Oidc:
     """OIDC helper class"""
 
-    def __init__(self, oidc_auth_server_url: str):
+    def __init__(self, issuers: List[str]):
         """Constructor
 
     Args:
-        oidc_auth_server_url (str): OIDC Server URL
+        issuers (str): allowed issuers
     """
-        self.oidc_auth_server_url = oidc_auth_server_url
+        self.issuers = issuers
 
     def decode_jwt_token(self, token: str, audience: str) -> Union[dict, None]:
-        """Decodes JWT token and verifies it's signature.
+        """Decodes JWT token and verifies its signature.
 
         Args:
             token (str): JWT token
@@ -46,27 +48,68 @@ class Oidc:
             logger.warning("Could not resolve kid from JWT header")
             return None
 
-        oidc_config = self.get_oidc_config(self.oidc_auth_server_url + "/.well-known/openid-configuration")
-        token_endpoint_auth_signing_alg_values_supported = oidc_config[
-            "token_endpoint_auth_signing_alg_values_supported"]
-        issuer = oidc_config.get("issuer", "")
-        jwks_uri = oidc_config.get("jwks_uri", "")
-        if not jwks_uri:
-            logger.warning("Could not resolve jwks_uri from OIDC config")
+        for issuer in self.issuers:
+            result = self.try_decode_with_issuer(
+                issuer=issuer,
+                token=token,
+                audience=audience,
+                kid=kid
+            )
+
+            if result:
+                return result
+
+        return None
+
+    def try_decode_with_issuer(self, issuer: str, token: str, audience: str, kid: str):
+        """
+        Tries to decode token using given issuer
+
+        Args:
+            issuer: issuer
+            token: token
+            audience: audience
+            kid: kid
+
+        Returns:
+            Decoded token or None if decoding fails
+        """
+        try:
+            oidc_config = self.get_oidc_config(issuer + "/.well-known/openid-configuration")
+            token_endpoint_auth_signing_alg_values_supported = oidc_config[
+                "token_endpoint_auth_signing_alg_values_supported"
+            ]
+
+            issuer = oidc_config.get("issuer", "")
+            jwks_uri = oidc_config.get("jwks_uri", "")
+            if not jwks_uri:
+                logger.warning("Could not resolve jwks_uri from OIDC config")
+                return None
+
+            jwks = self.get_jwks(jwks_uri=jwks_uri)
+            if not jwks:
+                logger.warning("Could not resolve JWKS")
+                return None
+
+            certificate = self.get_certificate(jwks=jwks, kid=kid)
+            if not certificate:
+                logger.warning("Could not resolve certificate")
+                return None
+
+            return jwt.decode(
+                jwt=token,
+                key=certificate.public_key(),
+                issuer=issuer,
+                audience=audience,
+                algorithms=token_endpoint_auth_signing_alg_values_supported
+            )
+
+        except (InvalidIssuedAtError, InvalidIssuerError):
             return None
 
-        jwks = self.get_jwks(jwks_uri=jwks_uri)
-        if not jwks:
-            logger.warning("Could not resolve JWKS")
+        except Exception as e:
+            logger.warning(f"Could parse token with issuer {issuer}", e)
             return None
-
-        certificate = self.get_certificate(jwks=jwks, kid=kid)
-        if not certificate:
-            logger.warning("Could not resolve certificate")
-            return None
-
-        return jwt.decode(token, certificate.public_key(), issuer=issuer, audience=audience,
-                          algorithms=token_endpoint_auth_signing_alg_values_supported)
 
     @staticmethod
     def get_certificate(jwks: dict, kid: str) -> Certificate:
