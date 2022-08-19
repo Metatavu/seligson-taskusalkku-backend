@@ -7,7 +7,7 @@ from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
 from typing import Union, List
 
-from jwt import InvalidIssuedAtError
+from jwt import InvalidIssuedAtError, InvalidIssuerError
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ class Oidc:
                 algorithms=token_endpoint_auth_signing_alg_values_supported
             )
 
-        except InvalidIssuedAtError as e:
+        except (InvalidIssuedAtError, InvalidIssuerError):
             return None
 
         except Exception as e:
