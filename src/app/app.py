@@ -1,8 +1,6 @@
 """
     Taskusalkku API
 """
-import logging
-
 from fastapi import FastAPI
 
 from impl.apis.system_api import system_api_router
@@ -11,8 +9,6 @@ from impl.apis.meetings_api import meetings_api_router
 from impl.apis.portfolios_api import portfolios_api_router
 from impl.apis.companies_api import companies_api_router
 from impl.apis.securities_api import securities_api_router
-
-logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(
     title="Taskusalkku API",
