@@ -106,6 +106,9 @@ class Oidc:
                 algorithms=token_endpoint_auth_signing_alg_values_supported
             )
 
+        except InvalidIssuedAtError as e:
+            return None
+
         except Exception as e:
             logger.warning(f"Could parse token with issuer {issuer}", e)
             return None
