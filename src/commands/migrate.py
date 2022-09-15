@@ -38,7 +38,14 @@ class MigrateHandler:
     Migration handler database
     """
 
-    def __init__(self, debug: bool, force_recheck: bool, timeout: int, security: str, verify_only: bool):
+    def __init__(self,
+                 debug: bool,
+                 force_recheck: bool,
+                 timeout: int,
+                 security: str,
+                 verify_only: bool,
+                 skip_verify: bool
+                 ):
         """
         Constructor
         Args:
@@ -54,6 +61,7 @@ class MigrateHandler:
         self.securities = []
         self.security = security
         self.verify_only = verify_only
+        self.skip_verify = skip_verify
 
     async def handle(self,
                      task_name: Optional[str],
@@ -229,28 +237,29 @@ class MigrateHandler:
             self.print_message(f"Info: {task.get_name()} timeout reached.")
             return
 
-        valid = task.verify(
-            backend_session=backend_session,
-            security=None
-        )
+        if not self.skip_verify:
+            valid = task.verify(
+                backend_session=backend_session,
+                security=None
+            )
 
-        if valid:
-            self.print_message(f"Info: {task.get_name()} verification passed.")
-        else:
-            if retry:
-                self.print_message(f"Error: {task.get_name()} verification failed after retry. Notifying admins...")
-                await self.notify_verification_failure(task)
+            if valid:
+                self.print_message(f"Info: {task.get_name()} verification passed.")
             else:
-                self.print_message(f"Error: {task.get_name()} verification failed. Retrying...")
+                if retry:
+                    self.print_message(f"Error: {task.get_name()} verification failed after retry. Notifying admins...")
+                    await self.notify_verification_failure(task)
+                else:
+                    self.print_message(f"Error: {task.get_name()} verification failed. Retrying...")
 
-                await self.run_and_verify_default_task(
-                    task=task,
-                    timeout=timeout,
-                    force=force,
-                    up_to_date=up_to_date,
-                    retry=True,
-                    backend_session=backend_session
-                )
+                    await self.run_and_verify_default_task(
+                        task=task,
+                        timeout=timeout,
+                        force=force,
+                        up_to_date=up_to_date,
+                        retry=True,
+                        backend_session=backend_session
+                    )
 
     async def run_and_verify_security_based_task(self,
                                                  task: AbstractMigrationTask,
@@ -326,31 +335,32 @@ class MigrateHandler:
             self.print_message(f"Info: {task.get_name()}, security {security.original_id} timeout reached.")
             return
 
-        valid = task.verify(
-            backend_session=backend_session,
-            security=security
-        )
+        if not self.skip_verify:
+            valid = task.verify(
+                backend_session=backend_session,
+                security=security
+            )
 
-        if valid:
-            self.print_message(f"Info: {task.get_name()}, security {security.original_id} verification passed.")
-        else:
-            if retry:
-                self.print_message(f"Error: {task.get_name()}, security {security.original_id} verification failed "
-                                   f"after retry. Notifying admins...")
-                await self.notify_verification_failure(task)
+            if valid:
+                self.print_message(f"Info: {task.get_name()}, security {security.original_id} verification passed.")
             else:
-                self.print_message(f"Warning: {task.get_name()}, security {security.original_id} "
-                                   f"verification failed. Retrying..")
+                if retry:
+                    self.print_message(f"Error: {task.get_name()}, security {security.original_id} verification failed "
+                                       f"after retry. Notifying admins...")
+                    await self.notify_verification_failure(task)
+                else:
+                    self.print_message(f"Warning: {task.get_name()}, security {security.original_id} "
+                                       f"verification failed. Retrying..")
 
-                await self.run_and_verify_security_based_task_security(
-                    task=task,
-                    timeout=timeout,
-                    force=force,
-                    up_to_date=up_to_date,
-                    retry=True,
-                    security=security,
-                    backend_session=backend_session
-                )
+                    await self.run_and_verify_security_based_task_security(
+                        task=task,
+                        timeout=timeout,
+                        force=force,
+                        up_to_date=up_to_date,
+                        retry=True,
+                        security=security,
+                        backend_session=backend_session
+                    )
 
     async def handle_synchronization_failure(self,
                                              backend_session: Session,
@@ -607,14 +617,16 @@ class MigrateHandler:
 @click.option("--timeout", default="90", help="Timeout in minutes")
 @click.option("--security", default=None, help="Specify security for the task")
 @click.option("--verify-only", default=False, help="Runs only verifications")
-def main(debug, task, skip_tasks, force_recheck, timeout, security, verify_only):
+@click.option("--skip-verify", default=False, help="Skip verifications")
+def main(debug, task, skip_tasks, force_recheck, timeout, security, verify_only, skip_verify):
     """Migration method"""
     handler = MigrateHandler(
         debug=debug,
         force_recheck=force_recheck,
         timeout=int(timeout),
         security=security,
-        verify_only=verify_only
+        verify_only=verify_only,
+        skip_verify=skip_verify
     )
 
     asyncio.run(handler.handle(

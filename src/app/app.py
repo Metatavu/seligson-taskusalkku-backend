@@ -1,7 +1,6 @@
 """
     Taskusalkku API
 """
-
 from fastapi import FastAPI
 
 from impl.apis.system_api import system_api_router
