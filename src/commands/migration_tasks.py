@@ -1730,7 +1730,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
         return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTLOG "
                                      f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid AND "
-                                     f"CCOM_CODE NOT IN ({com_code_excluded_query})",
+                                     f"(CCOM_CODE IS NULL OR CCOM_CODE NOT IN ({com_code_excluded_query}))",
                                      {
                                          "secid": secid
                                      }).one()
@@ -2116,7 +2116,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         return funds_session.execute(
             f"SELECT COUNT(TRANS_NR) FROM TABLE_PORTLOG "
             f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid AND "
-            f"CCOM_CODE NOT IN ({com_code_excluded_query})", {
+            f"(CCOM_CODE IS NULL OR CCOM_CODE NOT IN ({com_code_excluded_query}))", {
                 "secid": secid
             }).scalar()
 
@@ -2148,7 +2148,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
 
         rows = funds_session.execute(f"SELECT TRANS_NR FROM TABLE_PORTLOG " 
                                      f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid AND "
-                                     f"CCOM_CODE NOT IN ({com_code_excluded_query})",
+                                     f"(CCOM_CODE IS NULL OR CCOM_CODE NOT IN ({com_code_excluded_query}))",
                                      {
                                          "secid": secid
                                      }).all()
@@ -2231,7 +2231,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                      "SECID = :secid AND "
                                      "PORID IN (SELECT PORID FROM TABLE_PORTFOL) AND "
                                      f"PORID NOT IN ({porid_exclude_query}) AND "
-                                     f"CCOM_CODE NOT IN ({com_code_excluded_query}) "
+                                     f"(CCOM_CODE IS NULL OR CCOM_CODE NOT IN ({com_code_excluded_query})) "
                                      "ORDER BY UPDATED, SECID OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY;",
                                      {
                                          "limit": limit,
