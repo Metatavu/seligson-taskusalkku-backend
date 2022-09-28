@@ -237,6 +237,26 @@ class AbstractFundsTask(AbstractMigrationTask, ABC):
                "AND P.PORID = D.PORID AND D.PORCLASS IN (3, 4, 5)"
 
     @staticmethod
+    def get_excluded_com_codes_query() -> str:
+        """
+        Returns SQL query for excluded com codes
+        Returns: SQL query for excluded com codes
+        """
+        return "SELECT DISTINCT P.COM_CODE FROM TABLE_PORTFOL P " \
+               "INNER JOIN TABLE_PORCLASSDEF D ON P.COM_CODE = D.COM_CODE AND P.PORID = D.PORID " \
+               "AND D.PORCLASS in(3, 4, 5) " \
+               "AND P.COM_CODE NOT IN (" \
+               "SELECT DISTINCT P.COM_CODE FROM TABLE_PORTFOL P " \
+               "LEFT JOIN TABLE_PORCLASSDEF D ON " \
+               "P.COM_CODE = D.COM_CODE AND P.PORID = D.PORID " \
+               "WHERE D.PORCLASS IS NULL " \
+               "UNION " \
+               "SELECT DISTINCT P.COM_CODE " \
+               "FROM TABLE_PORTFOL P " \
+               "INNER JOIN TABLE_PORCLASSDEF D ON P.COM_CODE = D.COM_CODE " \
+               "AND P.PORID = D.PORID AND D.PORCLASS in(1, 2))"
+
+    @staticmethod
     def list_backend_companies(backend_session: Session):
         """
         Lists companies from backend database
@@ -1230,26 +1250,6 @@ class MigrateCompaniesTask(AbstractFundsTask):
         return backend_session.query(func.count(destination_models.Company.id)).scalar()
 
     @staticmethod
-    def get_excluded_com_codes_query() -> str:
-        """
-        Returns SQL query for excluded com codes
-        Returns: SQL query for excluded com codes
-        """
-        return "SELECT DISTINCT P.COM_CODE FROM TABLE_PORTFOL P " \
-               "INNER JOIN TABLE_PORCLASSDEF D ON P.COM_CODE = D.COM_CODE AND P.PORID = D.PORID " \
-               "AND D.PORCLASS in(3, 4, 5) " \
-               "AND P.COM_CODE NOT IN (" \
-               "SELECT DISTINCT P.COM_CODE FROM TABLE_PORTFOL P " \
-               "LEFT JOIN TABLE_PORCLASSDEF D ON " \
-               "P.COM_CODE = D.COM_CODE AND P.PORID = D.PORID " \
-               "WHERE D.PORCLASS IS NULL " \
-               "UNION " \
-               "SELECT DISTINCT P.COM_CODE " \
-               "FROM TABLE_PORTFOL P " \
-               "INNER JOIN TABLE_PORCLASSDEF D ON P.COM_CODE = D.COM_CODE " \
-               "AND P.PORID = D.PORID AND D.PORCLASS in(1, 2))"
-
-    @staticmethod
     def upsert_company(backend_session: Session,
                        original_id: str,
                        name: str,
@@ -1710,6 +1710,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             Verification values.
         """
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
+        com_code_excluded_query = self.get_excluded_com_codes_query()
 
         selects = ",".join([
             "SUM(CAST(TRANS_CODE as BIGINT)) as trans_code_sum",
@@ -1728,7 +1729,8 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         ])
 
         return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTLOG "
-                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid",
+                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid AND "
+                                     f"CCOM_CODE NOT IN ({com_code_excluded_query})",
                                      {
                                          "secid": secid
                                      }).one()
@@ -2109,10 +2111,12 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         Returns: Number of portfolio logs
         """
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
+        com_code_excluded_query = self.get_excluded_com_codes_query()
 
         return funds_session.execute(
             f"SELECT COUNT(TRANS_NR) FROM TABLE_PORTLOG "
-            f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid", {
+            f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid AND "
+            f"CCOM_CODE NOT IN ({com_code_excluded_query})", {
                 "secid": secid
             }).scalar()
 
@@ -2140,9 +2144,11 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         Returns: portfolio log nrs
         """
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
+        com_code_excluded_query = self.get_excluded_com_codes_query()
 
         rows = funds_session.execute(f"SELECT TRANS_NR FROM TABLE_PORTLOG " 
-                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid",
+                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid AND "
+                                     f"CCOM_CODE NOT IN ({com_code_excluded_query})",
                                      {
                                          "secid": secid
                                      }).all()
@@ -2215,6 +2221,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         Returns: rates from funds database
         """
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
+        com_code_excluded_query = self.get_excluded_com_codes_query()
 
         return funds_session.execute("SELECT SECID, CSECID, PORID, COM_CODE, TRANS_NR, TRANS_CODE, TRANS_DATE, "
                                      "CCOM_CODE, CTOT_VALUE, AMOUNT, CPRICE, PMT_DATE, CVALUE, PROVISION, STATUS, "
@@ -2223,7 +2230,8 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                      "WHERE UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) >= :updated AND "
                                      "SECID = :secid AND "
                                      "PORID IN (SELECT PORID FROM TABLE_PORTFOL) AND "
-                                     f"PORID NOT IN ({porid_exclude_query}) "
+                                     f"PORID NOT IN ({porid_exclude_query}) AND "
+                                     f"CCOM_CODE NOT IN ({com_code_excluded_query}) "
                                      "ORDER BY UPDATED, SECID OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY;",
                                      {
                                          "limit": limit,
