@@ -56,7 +56,20 @@ class AbstractMigrationTask(ABC):
         Task can override this method to perform preparations for the task.
         Method is executed before up_to_date and migrate functions.
         Args:
-            backend_session:
+            backend_session: backend session
+
+        Returns:
+
+        """
+        pass
+
+    def prepare_security(self, backend_session: Session, security: destination_models.Security):
+        """
+        Task can override this method to perform preparations for security based task.
+        Method is executed before up_to_date and migrate functions.
+        Args:
+            backend_session: backend session
+            security: security
 
         Returns:
 
@@ -1532,6 +1545,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
     def __init__(self):
         self.funds_updates = None
         self.backend_updates = None
+        self.excluded_ccom_codes = None
 
     def get_name(self):
         return "portfolio-logs"
@@ -1546,6 +1560,11 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         with Session(self.get_funds_database_engine()) as funds_session:
             self.funds_updates = self.get_funds_updates(funds_session=funds_session)
             self.backend_updates = self.get_backend_updates(backend_session=backend_session)
+
+    def prepare_security(self, backend_session: Session, security: destination_models.Security):
+        with Session(self.get_funds_database_engine()) as funds_session:
+            self.excluded_ccom_codes = self.list_excluded_ccom_codes(funds_session=funds_session,
+                                                                     secid=security.original_id)
 
     def migrate_security(self, backend_session: Session, timeout: datetime, force_recheck: bool,
                          security: destination_models.Security) -> int:
@@ -1710,7 +1729,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             Verification values.
         """
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
-        com_code_excluded_query = self.get_excluded_com_codes_query()
+        ccom_exclude_query = self.get_ccom_exclude_query()
 
         selects = ",".join([
             "SUM(CAST(TRANS_CODE as BIGINT)) as trans_code_sum",
@@ -1729,10 +1748,11 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         ])
 
         return funds_session.execute(f"SELECT {selects} FROM TABLE_PORTLOG "
-                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid AND "
-                                     f"(CCOM_CODE IS NULL OR CCOM_CODE NOT IN ({com_code_excluded_query}))",
+                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid"
+                                     f"{ccom_exclude_query}",
                                      {
-                                         "secid": secid
+                                         "secid": secid,
+                                         "excluded_ccom_codes": self.excluded_ccom_codes
                                      }).one()
 
     @staticmethod
@@ -1825,6 +1845,37 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
             .group_by(destination_models.PortfolioLog.c_security_id)
 
         return query.all()
+
+    def list_excluded_ccom_codes(self, funds_session: Session, secid: str):
+        """
+        Lists excluded ccom codes
+
+        Args:
+            funds_session: funds session
+            secid: security id
+
+        Returns:
+            List of excluded ccom codes
+        """
+        com_code_excluded_query = self.get_excluded_com_codes_query()
+
+        rows = funds_session.execute(f"SELECT DISTINCT CCOM_CODE FROM TABLE_PORTLOG "
+                                     f"WHERE SECID = :secid AND CCOM_CODE IN ({com_code_excluded_query})",
+                                     {
+                                         "secid": secid
+                                     })
+
+        return [value for value, in rows]
+
+    def get_ccom_exclude_query(self):
+        """
+        Returns SQL query for excluded CCOM_CODEs. Query is empty if no CCOM_CODEs should be excluded
+        Returns: SQL query for excluded CCOM_CODEs. Query is empty if no CCOM_CODEs should be excluded
+        """
+        if not self.excluded_ccom_codes:
+            return ""
+
+        return " AND (CCOM_CODE IS NULL OR CCOM_CODE = '' OR CCOM_CODE NOT IN :excluded_ccom_codes) "
 
     def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         result = True
@@ -2111,13 +2162,14 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         Returns: Number of portfolio logs
         """
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
-        com_code_excluded_query = self.get_excluded_com_codes_query()
+        ccom_exclude_query = self.get_ccom_exclude_query()
 
         return funds_session.execute(
             f"SELECT COUNT(TRANS_NR) FROM TABLE_PORTLOG "
-            f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid AND "
-            f"(CCOM_CODE IS NULL OR CCOM_CODE NOT IN ({com_code_excluded_query}))", {
-                "secid": secid
+            f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid"
+            f"{ccom_exclude_query}", {
+                "secid": secid,
+                "excluded_ccom_codes": self.excluded_ccom_codes
             }).scalar()
 
     @staticmethod
@@ -2144,13 +2196,14 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         Returns: portfolio log nrs
         """
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
-        com_code_excluded_query = self.get_excluded_com_codes_query()
+        ccom_exclude_query = self.get_ccom_exclude_query()
 
         rows = funds_session.execute(f"SELECT TRANS_NR FROM TABLE_PORTLOG " 
-                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid AND "
-                                     f"(CCOM_CODE IS NULL OR CCOM_CODE NOT IN ({com_code_excluded_query}))",
+                                     f"WHERE PORID NOT IN ({porid_exclude_query}) AND SECID = :secid"
+                                     f"{ccom_exclude_query}",
                                      {
-                                         "secid": secid
+                                         "secid": secid,
+                                         "excluded_ccom_codes": self.excluded_ccom_codes
                                      }).all()
 
         return [value for value, in rows]
@@ -2221,7 +2274,7 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
         Returns: rates from funds database
         """
         porid_exclude_query = self.get_excluded_portfolio_ids_query()
-        com_code_excluded_query = self.get_excluded_com_codes_query()
+        ccom_exclude_query = self.get_ccom_exclude_query()
 
         return funds_session.execute("SELECT SECID, CSECID, PORID, COM_CODE, TRANS_NR, TRANS_CODE, TRANS_DATE, "
                                      "CCOM_CODE, CTOT_VALUE, AMOUNT, CPRICE, PMT_DATE, CVALUE, PROVISION, STATUS, "
@@ -2230,14 +2283,15 @@ class MigratePortfolioLogsTask(AbstractFundsTask):
                                      "WHERE UPD_DATE + CAST(REPLACE(UPD_TIME, '.', ':') as DATETIME) >= :updated AND "
                                      "SECID = :secid AND "
                                      "PORID IN (SELECT PORID FROM TABLE_PORTFOL) AND "
-                                     f"PORID NOT IN ({porid_exclude_query}) AND "
-                                     f"(CCOM_CODE IS NULL OR CCOM_CODE NOT IN ({com_code_excluded_query})) "
+                                     f"PORID NOT IN ({porid_exclude_query})"
+                                     f"{ccom_exclude_query}"
                                      "ORDER BY UPDATED, SECID OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY;",
                                      {
                                          "limit": limit,
                                          "offset": offset,
                                          "updated": updated.isoformat(),
-                                         "secid": security.original_id
+                                         "secid": security.original_id,
+                                         "excluded_ccom_codes": self.excluded_ccom_codes
                                      })
 
     def list_fund_statuses(self, funds_session: Session, security: destination_models.Security, updated: datetime):

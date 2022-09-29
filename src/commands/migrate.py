@@ -279,6 +279,11 @@ class MigrateHandler:
             backend_session: backend session
         """
         for security in self.securities:
+            task.prepare_security(
+                backend_session=backend_session,
+                security=security
+            )
+
             await self.run_and_verify_security_based_task_security(
                 task=task,
                 timeout=timeout,
