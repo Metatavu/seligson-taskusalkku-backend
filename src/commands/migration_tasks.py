@@ -1095,48 +1095,63 @@ class MigrateCompaniesTask(AbstractFundsTask):
 
                 offset += batch
 
-            backend_original_ids = backend_company_map.keys()
-            removed_com_codes = []
+        backend_original_ids = backend_company_map.keys()
+        removed_com_codes = []
 
-            for original_id in backend_original_ids:
-                if original_id not in funds_company_com_codes:
-                    removed_com_codes.append(original_id)
+        for original_id in backend_original_ids:
+            if original_id not in funds_company_com_codes:
+                removed_com_codes.append(original_id)
 
-            if len(removed_com_codes) > 0:
-                removed_company_ids_query = backend_session.query(destination_models.Company.id) \
-                    .filter(destination_models.Company.original_id.in_(removed_com_codes))
+        if len(removed_com_codes) > 0:
+            removed_company_ids_query = backend_session.query(destination_models.Company.id) \
+                .filter(destination_models.Company.original_id.in_(removed_com_codes))
 
-                removed_company_ids = [value for value, in removed_company_ids_query]
+            removed_company_ids = [value for value, in removed_company_ids_query]
 
-                log_c_company_ids = backend_session.query(destination_models.PortfolioLog.c_company_id) \
-                    .filter(destination_models.PortfolioLog.c_company_id.in_(removed_company_ids))
+            if len(removed_company_ids) > 0:
+                self.print_message(f"Deleting {len(removed_company_ids)} companies")
 
-                company_access_company_ids = backend_session.query(destination_models.CompanyAccess.company_id) \
-                    .filter(destination_models.CompanyAccess.company_id.in_(removed_company_ids))
+                deleted_company_portfolio_log_count = backend_session.query(destination_models.PortfolioLog) \
+                    .filter(destination_models.PortfolioLog.c_company_id.in_(removed_company_ids)) \
+                    .delete(synchronize_session=False)
 
-                portfolio_company_ids = backend_session.query(destination_models.Portfolio.company_id) \
+                self.print_message(f"Deleted {deleted_company_portfolio_log_count} company related portfolio logs")
+
+                removed_portfolios_query = backend_session.query(destination_models.Portfolio.id) \
                     .filter(destination_models.Portfolio.company_id.in_(removed_company_ids))
 
-                company_ids_in_use_rows = portfolio_company_ids.union(log_c_company_ids, company_access_company_ids)\
-                    .all()
+                deleted_portfolio_portfolio_log_count = backend_session.query(destination_models.PortfolioLog) \
+                    .filter(destination_models.PortfolioLog.portfolio_id.in_(removed_portfolios_query)) \
+                    .delete(synchronize_session=False)
 
-                company_ids_in_use = [value for value, in company_ids_in_use_rows]
+                self.print_message(f"Deleted {deleted_portfolio_portfolio_log_count} portfolio related portfolio logs")
 
-                if len(company_ids_in_use) > 0:
-                    self.print_message(f"Excluding companies in use from the removal {company_ids_in_use}")
-                    removed_company_ids = set(removed_company_ids).difference(set(company_ids_in_use))
+                deleted_portfolio_transaction_count = backend_session.query(destination_models.PortfolioTransaction) \
+                    .filter(destination_models.PortfolioTransaction.portfolio_id.in_(removed_portfolios_query)) \
+                    .delete(synchronize_session=False)
 
-                if len(removed_company_ids) > 0:
-                    self.print_message(f"Deleting {len(removed_company_ids)} companies")
+                self.print_message(f"Deleted {deleted_portfolio_transaction_count} portfolio related transactions")
 
-                    synchronized_count = synchronized_count + backend_session.query(destination_models.Company) \
-                        .filter(destination_models.Company.id.in_(removed_company_ids)) \
-                        .delete(synchronize_session=False)
+                deleted_company_access_count = backend_session.query(destination_models.CompanyAccess) \
+                    .filter(destination_models.CompanyAccess.company_id.in_(removed_company_ids)) \
+                    .delete(synchronize_session=False)
 
-            if self.should_timeout(timeout=timeout):
-                self.print_message(TIMED_OUT)
+                self.print_message(f"Deleted {deleted_company_access_count} related company access rows")
 
-            return synchronized_count
+                deleted_portfolios_count = backend_session.query(destination_models.Portfolio) \
+                    .filter(destination_models.Portfolio.company_id.in_(removed_company_ids)) \
+                    .delete(synchronize_session=False)
+
+                self.print_message(f"Deleted {deleted_portfolios_count} related portfolios")
+
+                synchronized_count = synchronized_count + backend_session.query(destination_models.Company) \
+                    .filter(destination_models.Company.id.in_(removed_company_ids)) \
+                    .delete(synchronize_session=False)
+
+        if self.should_timeout(timeout=timeout):
+            self.print_message(TIMED_OUT)
+
+        return synchronized_count
 
     def verify(self, backend_session: Session, security: Optional[destination_models.Security]) -> bool:
         batch = 10000
