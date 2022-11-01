@@ -3169,11 +3169,6 @@ class MigrateCompanyAccessTask(AbstractSalkkuTask):
             salkku_company_accesses_map = {f"{x.authorizedSSN}-{x.comCode}": x for x in salkku_company_accesses}
             backend_company_accesses = self.list_backend_company_access(backend_session=backend_session)
 
-            if len(backend_company_accesses) != len(salkku_company_accesses):
-                self.print_message(f"Warning: Company access count mismatch: "
-                                   f"{len(backend_company_accesses)} != {len(salkku_company_accesses)} ")
-                return False
-
             for backend_company_access in backend_company_accesses:
                 backend_company = backend_company_access.company
                 key = f"{backend_company_access.ssn}-{backend_company.original_id}"
