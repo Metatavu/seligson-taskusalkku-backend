@@ -1248,7 +1248,7 @@ class MigrateCompaniesTask(AbstractFundsTask):
         return funds_session.execute(
             f"SELECT COM_CODE, NAME1, SO_SEC_NR, CREA_DATE, UPD_DATE FROM TABLE_COMPANY "
             f"WHERE COM_TYPE = '3' AND COM_CODE NOT IN ({excluded}) "
-            "ORDER BY UPD_DATE, CREA_DATE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY",
+            "ORDER BY COM_CODE OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY",
             {
                 "limit": limit,
                 "offset": offset
